@@ -193,8 +193,8 @@ def main():
     # Plot Skaggs vs. Distance (Before)
     plot_spearman_correlation(
         df_data=df_merged_before,
-        x_col="skaggs_score",
-        y_col="avg_distance",
+        x_col="avg_distance",
+        y_col="skaggs_score",
         title="Before RL: Skaggs Score vs. Avg. Distance to Reward",
         output_file=os.path.join(
             FIGURES_DIR, "corr_spearman_skaggs_vs_dist_before.png"
@@ -204,8 +204,8 @@ def main():
     # Plot ICL vs. Distance (Before)
     plot_spearman_correlation(
         df_data=df_merged_before,  # Now this correctly uses the merged data
-        x_col="icl_score",
-        y_col="avg_distance",
+        x_col="avg_distance",
+        y_col="icl_score",
         title="Before RL: ICL Score vs. Avg. Distance to Reward",
         output_file=os.path.join(FIGURES_DIR, "corr_spearman_icl_vs_dist_before.png"),
     )
@@ -230,8 +230,8 @@ def main():
     # Plot Skaggs vs. Distance (After)
     plot_spearman_correlation(
         df_data=df_merged_after,
-        x_col="skaggs_score",
-        y_col="avg_distance",
+        x_col="avg_distance",
+        y_col="skaggs_score",
         title="After RL: Skaggs Score vs. Avg. Distance to Reward",
         output_file=os.path.join(FIGURES_DIR, "corr_spearman_skaggs_vs_dist_after.png"),
     )
@@ -239,8 +239,8 @@ def main():
     # Plot ICL vs. Distance (After)
     plot_spearman_correlation(
         df_data=df_merged_after,  # Now this correctly uses the merged data
-        x_col="icl_score",
-        y_col="avg_distance",
+        x_col="avg_distance",
+        y_col="icl_score",
         title="After RL: ICL Score vs. Avg. Distance to Reward",
         output_file=os.path.join(FIGURES_DIR, "corr_spearman_icl_vs_dist_after.png"),
     )
