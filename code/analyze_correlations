@@ -1,0 +1,252 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+import os
+
+# --- CONSTANTS ---
+REWARD_POINT = (0.5, 0.5)
+FIGURES_DIR = "figures"
+
+# --- Helper Functions ---
+
+
+def euclidean_distance(p1, p2):
+    """Calculates the Euclidean distance between two (x, y) tuples."""
+    if p1 is None or p2 is None:
+        return np.nan
+    return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+
+def calculate_avg_distances(df_centers):
+    """
+    Calculates the average distance to reward for ALL neurons.
+    If a neuron has multiple centers (k > 1), it averages their distances.
+    This is the new logic you provided.
+    """
+    print("Calculating average distances for all neurons...")
+
+    # 1. Calculate distance for EVERY center
+    df_centers["distance_to_reward"] = df_centers["center"].apply(
+        lambda c: euclidean_distance(REWARD_POINT, c)
+    )
+
+    # 2. Group by neuron_id and calculate the mean distance
+    df_avg_dist = (
+        df_centers.groupby("neuron_id")[["distance_to_reward", "icl_score"]]
+        .mean()
+        .reset_index()
+    )
+
+    # 3. Rename for clarity
+    df_avg_dist.rename(columns={"distance_to_reward": "avg_distance"}, inplace=True)
+
+    print(f"Processed {len(df_avg_dist)} unique neurons.")
+    return df_avg_dist
+
+
+def plot_spearman_correlation(df_data, x_col, y_col, title, output_file, show=True):
+    """
+    Creates a joint plot using Spearman's rank correlation and prints
+    a plain-language interpretation of the test.
+
+    Returns (rho, p, decision, conclusion).
+    """
+    # Drop NaNs for this specific comparison to avoid errors
+    df_plot = df_data[[x_col, y_col]].dropna()
+
+    if len(df_plot) < 2:
+        print(f"Skipping plot '{title}': Not enough data (N < 2).")
+        return np.nan, np.nan, "SKIP", "Not enough data"
+
+    print(f"Plotting: {title}")
+
+    # --- Use Spearman's Rank Correlation ---
+    try:
+        rho, p = stats.spearmanr(df_plot[x_col], df_plot[y_col])
+    except Exception as e:
+        print(f"Could not calculate Spearman's rho for {title}: {e}")
+        rho, p = np.nan, np.nan
+
+    # Interpretation
+    alpha = 0.05
+    n = len(df_plot)
+
+    if np.isnan(rho) or np.isnan(p):
+        decision = "ERROR"
+        conclusion = "Could not calculate correlation (rho or p is NaN)."
+    else:
+        # Test decision: PASS means reject null (there is a correlation)
+        if p < alpha:
+            decision = "PASS"  # statistically significant
+            direction = (
+                "positive"
+                if rho > 0
+                else "negative" if rho < 0 else "no direction (rho=0)"
+            )
+            conclusion = f"There is a statistically significant {direction} correlation between '{x_col}' and '{y_col}'."
+        else:
+            decision = "FAIL"  # fail to reject null
+            conclusion = f"No statistically significant correlation detected between '{x_col}' and '{y_col}' (fail to reject H0)."
+
+        # Effect size description
+        abs_rho = abs(rho)
+        if abs_rho < 0.3:
+            effect_desc = "small"
+        elif abs_rho < 0.5:
+            effect_desc = "moderate"
+        else:
+            effect_desc = "strong"
+
+        # Final human-friendly print
+        p_str = f"{p:.2e}" if p < 0.001 else f"{p:.3f}"
+        print(
+            f"Spearman's rho = {rho:.3f}, p = {p_str}, N = {n}\n"
+            f"Test decision: {decision} (alpha = {alpha}). {conclusion}\n"
+            f"Effect size: {effect_desc} (|rho| = {abs_rho:.3f})."
+        )
+
+    # --- Plotting (unchanged) ---
+    g = sns.jointplot(
+        data=df_plot,
+        x=x_col,
+        y=y_col,
+        kind="scatter",
+        height=6,
+        joint_kws={"alpha": 1.0, "s": 20},
+    )
+
+    # Add a non-parametric regression line (LOWESS)
+    sns.regplot(
+        data=df_plot,
+        x=x_col,
+        y=y_col,
+        scatter=False,
+        ax=g.ax_joint,
+        color="red",
+        lowess=True,
+        line_kws={"linestyle": "--", "linewidth": 2},
+    )
+
+    # Add a main title and correlation info on plot
+    if not (np.isnan(rho) or np.isnan(p)):
+        p_str_for_title = f"p = {p:.2e}" if p < 0.001 else f"p = {p:.3f}"
+        plot_title = (
+            f"{title}\nSpearman's $\\rho = {rho:.3f}$, {p_str_for_title}, N = {n}"
+        )
+    else:
+        plot_title = f"{title}\nSpearman's $\\rho$ = NaN"
+    g.fig.suptitle(plot_title, y=1.03, fontsize=14)
+
+    if output_file:
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}")
+    if show:
+        plt.show()
+    plt.close()
+
+    return rho, p, decision, conclusion
+
+
+# --- Main Analysis Function ---
+
+
+def main():
+    """
+    Main function to run the correlation analysis.
+    """
+    # Ensure the figures directory exists
+    if not os.path.exists(FIGURES_DIR):
+        os.makedirs(FIGURES_DIR)
+
+    # --- Load All Data ---
+    print("Loading data...")
+    try:
+        df_skaggs_before = pd.read_pickle("data/df_skaggs_before.pkl")
+        df_centers_before = pd.read_pickle("data/df_centers_before.pkl")
+        df_skaggs_after = pd.read_pickle("data/df_skaggs_after.pkl")
+        df_centers_after = pd.read_pickle("data/df_centers_after.pkl")
+    except FileNotFoundError as e:
+        print(f"Error loading data: {e}")
+        print("Please ensure all .pkl files are in the 'data/' directory.")
+        return
+
+    # --- 1. "Before RL" Analysis ---
+    print("\n" + "=" * 50)
+    print("--- Running 'Before RL' Correlation Analysis ---")
+    print("=" * 50)
+
+    # Calculate average distances for ALL "before" neurons
+    df_avg_dist_before = calculate_avg_distances(df_centers_before)
+
+    # Merge Skaggs/ICL scores with average distances
+    # df_skaggs_before should contain 'neuron_id', 'skaggs_score', 'icl_score'
+    df_merged_before = df_skaggs_before.merge(
+        df_avg_dist_before, on="neuron_id", how="inner"
+    )
+
+    if df_merged_before.empty:
+        print("No common neurons found for 'Before' analysis. Exiting.")
+        return
+
+    # Plot Skaggs vs. Distance (Before)
+    plot_spearman_correlation(
+        df_data=df_merged_before,
+        x_col="skaggs_score",
+        y_col="avg_distance",
+        title="Before RL: Skaggs Score vs. Avg. Distance to Reward",
+        output_file=os.path.join(
+            FIGURES_DIR, "corr_spearman_skaggs_vs_dist_before.png"
+        ),
+    )
+
+    # Plot ICL vs. Distance (Before)
+    plot_spearman_correlation(
+        df_data=df_merged_before,  # Now this correctly uses the merged data
+        x_col="icl_score",
+        y_col="avg_distance",
+        title="Before RL: ICL Score vs. Avg. Distance to Reward",
+        output_file=os.path.join(FIGURES_DIR, "corr_spearman_icl_vs_dist_before.png"),
+    )
+
+    # --- 2. "After RL" Analysis ---
+    print("\n" + "=" * 50)
+    print("--- Running 'After RL' Correlation Analysis ---")
+    print("=" * 50)
+
+    # Calculate average distances for ALL "after" neurons
+    df_avg_dist_after = calculate_avg_distances(df_centers_after)
+
+    # Merge Skaggs/ICL scores with average distances
+    df_merged_after = df_skaggs_after.merge(
+        df_avg_dist_after, on="neuron_id", how="inner"
+    )
+
+    if df_merged_after.empty:
+        print("No common neurons found for 'After' analysis. Exiting.")
+        return
+
+    # Plot Skaggs vs. Distance (After)
+    plot_spearman_correlation(
+        df_data=df_merged_after,
+        x_col="skaggs_score",
+        y_col="avg_distance",
+        title="After RL: Skaggs Score vs. Avg. Distance to Reward",
+        output_file=os.path.join(FIGURES_DIR, "corr_spearman_skaggs_vs_dist_after.png"),
+    )
+
+    # Plot ICL vs. Distance (After)
+    plot_spearman_correlation(
+        df_data=df_merged_after,  # Now this correctly uses the merged data
+        x_col="icl_score",
+        y_col="avg_distance",
+        title="After RL: ICL Score vs. Avg. Distance to Reward",
+        output_file=os.path.join(FIGURES_DIR, "corr_spearman_icl_vs_dist_after.png"),
+    )
+
+    print("\nCorrelation analysis complete.")
+
+
+if __name__ == "__main__":
+    main()
