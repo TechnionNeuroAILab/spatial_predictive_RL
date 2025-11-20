@@ -3,172 +3,255 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from scipy.spatial.distance import cdist
 
 # --- Configuration ---
 DATA_DIR = "data"
 REWARD_POS = np.array([0.5, 0.5])
 D_R = 0.05
 LOOKING_THRESHOLD_RAD = np.deg2rad(5)
-EPSILON = 1e-9  # To prevent division by zero in SI calculation
+EPSILON = 1e-9
 
 
-def load_and_merge_data():
-    """Loads pickles and merges behavior with neural data."""
-    df_act = pd.read_pickle(os.path.join(DATA_DIR, "df_activations_after.pkl"))
-    df_beh = pd.read_pickle(os.path.join(DATA_DIR, "df_behavior_after.pkl"))
+def load_and_merge_data(period="after"):
+    """
+    Loads pickles for a specific period (before/after) 
+    and merges behavior with neural data.
+    """
+    act_file = f"df_activations_{period}.pkl"
+    beh_file = f"df_behavior_{period}.pkl"
+    
+    try:
+        df_act = pd.read_pickle(os.path.join(DATA_DIR, act_file))
+        df_beh = pd.read_pickle(os.path.join(DATA_DIR, beh_file))
+    except FileNotFoundError as e:
+        print(f"Could not load {period} files: {e}")
+        return None
 
-    # Merge on timestep to align behavior with neural states
-    # Assuming inner join to keep only timesteps present in both
     df_merged = pd.merge(df_act, df_beh, on="timestep")
     return df_merged
 
 
 def calculate_spatial_metrics(df):
     """Adds distance to reward and determines 'Near' status."""
-    # Calculate Euclidean distance to reward (0.5, 0.5)
     df["dist_to_reward"] = np.sqrt(
         (df["x"] - REWARD_POS[0]) ** 2 + (df["y"] - REWARD_POS[1]) ** 2
     )
-
-    # Boolean mask: Is the agent within radius D_R?
     df["is_near_reward"] = df["dist_to_reward"] < D_R
     return df
 
 
 def calculate_angular_metrics(df):
     """Calculates if the agent is looking at the reward."""
-    # 1. Calculate the angle of the vector pointing TO the reward
-    # arctan2(dy, dx)
     vec_y = REWARD_POS[1] - df["y"]
     vec_x = REWARD_POS[0] - df["x"]
     df["target_angle"] = np.arctan2(vec_y, vec_x)
 
-    # 2. Calculate difference between agent's theta and target angle
-    # We use arctan2(sin, cos) to handle the wrap-around (e.g. 359 deg vs 1 deg)
-    # This ensures the error is always between -pi and pi
     diff = df["theta"] - df["target_angle"]
     df["angle_error"] = np.arctan2(np.sin(diff), np.cos(diff))
 
-    # 3. Is the agent looking at the reward? (Within the cone)
     df["is_looking_at_reward"] = np.abs(df["angle_error"]) < LOOKING_THRESHOLD_RAD
     return df
 
 
 def compute_selectivity(df, condition_col, neuron_col="neuron_id", act_col="activity"):
-    """
-    Computes Selectivity Index for each neuron based on a boolean condition.
-    SI = (Mean_Condition - Mean_Rest) / (Mean_Condition + Mean_Rest)
-    """
-    # Group by neuron and condition
+    """Computes Selectivity Index (Condition - Rest)/(Condition + Rest)."""
     grouped = df.groupby([neuron_col, condition_col])[act_col].mean().unstack()
-
-    # Rename columns for clarity (False -> Rest, True -> Condition)
-    grouped.columns = ["mean_rest", "mean_condition"]
-
-    # Calculate SI
-    # We add epsilon to avoid division by zero if a neuron is silent
+    
+    # Handle cases where a condition might be missing (fill NaN)
+    if True not in grouped.columns: grouped[True] = 0
+    if False not in grouped.columns: grouped[False] = 0
+    
+    grouped.columns = ["mean_rest", "mean_condition"] # False, True
+    
     numerator = grouped["mean_condition"] - grouped["mean_rest"]
     denominator = grouped["mean_condition"] + grouped["mean_rest"] + EPSILON
-
     grouped["selectivity_index"] = numerator / denominator
+    
+    return grouped
 
-    return grouped.sort_values("selectivity_index", ascending=False)
+def calculate_place_field_shift():
+    """
+    Loads center data for before/after and calculates 
+    the Euclidean shift for each neuron.
+    """
+    try:
+        df_before = pd.read_pickle(os.path.join(DATA_DIR, "df_centers_before.pkl"))
+        df_after = pd.read_pickle(os.path.join(DATA_DIR, "df_centers_after.pkl"))
+    except FileNotFoundError:
+        print("Center files not found. Skipping shift calculation.")
+        return None
+
+    # We only need relevant columns
+    df_b = df_before[['neuron_id', 'k', 'center']].set_index('neuron_id')
+    df_a = df_after[['neuron_id', 'k', 'center']].set_index('neuron_id')
+
+    # Find intersection of neurons that exist in both
+    common_neurons = df_b.index.intersection(df_a.index)
+    
+    shifts = []
+    neuron_ids = []
+
+    for nid in common_neurons:
+        centers_b = df_b.loc[nid, 'center']
+        centers_a = df_a.loc[nid, 'center']
+
+        # Helper to safely convert center data to (N, 2) array
+        def get_valid_points(centers):
+            if centers is None: 
+                return None
+            
+            # Handle single numpy array case (e.g. array([0.5, 0.5]))
+            if isinstance(centers, np.ndarray):
+                # If it's flat (2,), reshape to (1, 2)
+                if centers.ndim == 1 and centers.size == 2:
+                    return centers.reshape(1, 2)
+                # If it's (N, 2), return as is
+                if centers.ndim == 2 and centers.shape[1] == 2:
+                    return centers
+            
+            # Handle lists
+            if isinstance(centers, list):
+                if len(centers) == 0: 
+                    return None
+                # Check if it's a flat list [0.5, 0.5]
+                if len(centers) == 2 and all(isinstance(x, (int, float)) for x in centers):
+                    return np.array([centers]) # Make it (1, 2)
+                
+            # General fallback: try to convert and check shape
+            try:
+                pts = np.array([c for c in centers if c is not None])
+                if pts.size == 0: return None
+                
+                # If we ended up with (2,) -> reshape to (1, 2)
+                if pts.ndim == 1 and pts.size == 2:
+                    pts = pts.reshape(1, 2)
+                
+                # Final check: Must be (N, 2)
+                if pts.ndim == 2 and pts.shape[1] == 2:
+                    return pts
+            except:
+                pass
+            
+            return None
+
+        pts_b = get_valid_points(centers_b)
+        pts_a = get_valid_points(centers_a)
+
+        # Skip if data is missing or invalid for this neuron
+        if pts_b is None or pts_a is None:
+            continue
+
+        # Calculate pairwise distances
+        try:
+            dists = cdist(pts_b, pts_a, metric='euclidean')
+            min_dist = np.min(dists)
+            shifts.append(min_dist)
+            neuron_ids.append(nid)
+        except ValueError:
+            # Skip neurons that still cause shape issues
+            continue
+
+    df_shift = pd.DataFrame({
+        'neuron_id': neuron_ids,
+        'pf_shift': shifts
+    })
+    
+    return df_shift
 
 
-def plot_results(spatial_stats, angular_stats):
-    """Visualizes the metrics across all neurons."""
+def plot_correlation(spatial_si, angular_si, shift_df):
+    """
+    Plots the correlation between SI (After) and Place Field Shift.
+    """
     sns.set_theme(style="whitegrid")
-    fig, axes = plt.subplots(2, 1, figsize=(12, 10))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    # --- Plot 1: Spatial Selectivity ---
-    # We reset index to make neuron_id a column for plotting,
-    # and we create a generic index 0-511 for the x-axis sorted by magnitude
-    spatial_sorted = spatial_stats.sort_values(
-        "selectivity_index", ascending=False
-    ).reset_index()
+    # Merge Data
+    # We look at SI from the 'After' period vs the Shift that happened
+    df_sp = pd.merge(spatial_si, shift_df, on="neuron_id")
+    df_ang = pd.merge(angular_si, shift_df, on="neuron_id")
+    
+    # Helper for correlation text
+    def get_corr_text(x, y):
+        if len(x) < 2: return "N/A"
+        r = np.corrcoef(x, y)[0, 1]
+        return f"r = {r:.2f}"
 
-    sns.scatterplot(
-        data=spatial_sorted,
-        x=spatial_sorted.index,
-        y="selectivity_index",
-        ax=axes[0],
-        hue="selectivity_index",
-        palette="vlag",
-        legend=False,
-        s=15,
+    # --- Plot 1: Spatial SI vs Shift ---
+    sns.regplot(
+        data=df_sp, x="selectivity_index", y="pf_shift", 
+        ax=axes[0], scatter_kws={'s': 15, 'alpha': 0.6}, line_kws={'color': 'red'}
+    )
+    
+    corr_sp = get_corr_text(df_sp["selectivity_index"], df_sp["pf_shift"])
+    axes[0].set_title(f"Spatial Selectivity vs. PF Shift\nCorrelation: {corr_sp}", fontsize=12)
+    axes[0].set_xlabel("Spatial Selectivity Index (After)")
+    axes[0].set_ylabel("Place Field Shift (Euclidean Dist)")
+    axes[0].axvline(0, color='black', linestyle='--', linewidth=0.8)
+
+    # --- Plot 2: Angular SI vs Shift ---
+    sns.regplot(
+        data=df_ang, x="selectivity_index", y="pf_shift", 
+        ax=axes[1], scatter_kws={'s': 15, 'alpha': 0.6}, line_kws={'color': 'red'}
     )
 
-    axes[0].axhline(0, color="black", linestyle="--", linewidth=0.8)
-    axes[0].set_title(f"Spatial Reward Selectivity (Radius < {D_R})", fontsize=14)
-    axes[0].set_ylabel("Selectivity Index\n(Near - Far) / (Near + Far)")
-    axes[0].set_xlabel("Neurons (Sorted by Selectivity)")
+    corr_ang = get_corr_text(df_ang["selectivity_index"], df_ang["pf_shift"])
+    axes[1].set_title(f"Gaze Selectivity vs. PF Shift\nCorrelation: {corr_ang}", fontsize=12)
+    axes[1].set_xlabel("Gaze Selectivity Index (After)")
+    axes[1].set_ylabel("Place Field Shift (Euclidean Dist)")
+    axes[1].axvline(0, color='black', linestyle='--', linewidth=0.8)
 
-    # --- Plot 2: Angular Selectivity ---
-    angular_sorted = angular_stats.sort_values(
-        "selectivity_index", ascending=False
-    ).reset_index()
-
-    sns.scatterplot(
-        data=angular_sorted,
-        x=angular_sorted.index,
-        y="selectivity_index",
-        ax=axes[1],
-        hue="selectivity_index",
-        palette="vlag",
-        legend=False,
-        s=15,
-    )
-
-    axes[1].axhline(0, color="black", linestyle="--", linewidth=0.8)
-    axes[1].set_title(
-        f"Gaze Selectivity (Looking at Reward +/- {np.rad2deg(LOOKING_THRESHOLD_RAD):.0f}°)",
-        fontsize=14,
-    )
-    axes[1].set_ylabel("Selectivity Index\n(Looking - Not Looking) / Sum")
-    axes[1].set_xlabel("Neurons (Sorted by Selectivity)")
-
+    plt.suptitle("Do Reward Neurons Move More?", fontsize=16)
     plt.tight_layout()
-    plt.savefig("figures/Selectivity_Index_activ_ang.png")
+    plt.savefig("figures/Correlation_Selectivity_Shift.png")
     plt.show()
-
-    return spatial_sorted, angular_sorted
 
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    # 1. Load
-    df = load_and_merge_data()
+    # 1. Process "After" Data for Selectivity
+    print("Loading 'After' data for selectivity...")
+    df_after = load_and_merge_data(period="after")
 
-    if df is not None:
-        print(f"Data loaded. Shape: {df.shape}")
+    if df_after is not None:
+        # Process metrics
+        df_after = calculate_spatial_metrics(df_after)
+        df_after = calculate_angular_metrics(df_after)
 
-        # 2. Process Features
-        df = calculate_spatial_metrics(df)
-        df = calculate_angular_metrics(df)
+        # Compute SI
+        print("Computing Selectivity Indices...")
+        spatial_stats = compute_selectivity(df_after, condition_col="is_near_reward")
+        angular_stats = compute_selectivity(df_after, condition_col="is_looking_at_reward")
+        
+        # Make index a column for merging
+        spatial_stats = spatial_stats.reset_index()
+        angular_stats = angular_stats.reset_index()
 
-        # 3. Compute Metrics
-        print("Computing Spatial Selectivity...")
-        spatial_stats = compute_selectivity(df, condition_col="is_near_reward")
+        # 2. Calculate Shift (Before -> After)
+        print("Calculating Place Field Shifts...")
+        df_shift = calculate_place_field_shift()
 
-        print("Computing Angular Selectivity...")
-        angular_stats = compute_selectivity(df, condition_col="is_looking_at_reward")
+        if df_shift is not None and not df_shift.empty:
+            print(f"Shift calculated for {len(df_shift)} neurons.")
+            
+            # 3. Plot Correlations
+            plot_correlation(spatial_stats, angular_stats, df_shift)
+            
+            # 4. Simple stats
+            
+            # --- Spatial SI Stats ---
+            high_sp_si = spatial_stats[spatial_stats['selectivity_index'] > 0.5]['neuron_id']
+            shifts_high_sp_si = df_shift[df_shift['neuron_id'].isin(high_sp_si)]['pf_shift']
+            print(f"\nAvg Shift for High Spatial SI (>0.5) neurons ({len(high_sp_si)} neurons): {shifts_high_sp_si.mean():.4f}")
 
-        # 4. Visualize
-        sp_sorted, ang_sorted = plot_results(spatial_stats, angular_stats)
+            # --- Angular SI Stats ---
+            high_ang_si = angular_stats[angular_stats['selectivity_index'] > 0.5]['neuron_id']
+            shifts_high_ang_si = df_shift[df_shift['neuron_id'].isin(high_ang_si)]['pf_shift']
+            print(f"Avg Shift for High Angular SI (>0.5) neurons ({len(high_ang_si)} neurons): {shifts_high_ang_si.mean():.4f}")
 
-        # 5. Output Top Neurons
-        print("\nTop 5 'Reward Location' Neurons:")
-        print(
-            sp_sorted[
-                ["neuron_id", "mean_condition", "mean_rest", "selectivity_index"]
-            ].head(5)
-        )
+            # --- Overall Stats ---
+            print(f"Avg Shift for all neurons ({len(df_shift)} neurons): {df_shift['pf_shift'].mean():.4f}")
 
-        print("\nTop 5 'Gaze at Reward' Neurons:")
-        print(
-            ang_sorted[
-                ["neuron_id", "mean_condition", "mean_rest", "selectivity_index"]
-            ].head(5)
-        )
-        print(f"Amount of neurons that have positive spatial SI {len(sp_sorted[sp_sorted["selectivity_index"] > 0])}")
-        print(f"Amount of neurons that have positive angular SI {len(ang_sorted[ang_sorted["selectivity_index"] > 0])}")
+        else:
+            print("Could not calculate shifts (missing files or empty overlap).")
