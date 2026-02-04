@@ -1,0 +1,572 @@
+!pip install ratinabox
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.distributions import Categorical
+from torch.utils.data import DataLoader, TensorDataset
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+from tqdm import tqdm
+from ratinabox.Environment import Environment
+from ratinabox.Agent import Agent
+from ratinabox.Neurons import FieldOfViewOVCs
+from ratinabox import utils
+import warnings
+from scipy.ndimage import gaussian_filter
+import random
+
+warnings.filterwarnings('ignore')
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f"Using device: {device}")
+RNN_RL_LEARNING_RATE = 1e-6
+PRED_LOSS_WEIGHT = 0.1
+SEED = 42
+np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
+m = 32
+grid_centers = np.array([[(x/m, y/m) for y in range(m)] for x in range(m)])
+hds = np.array([(1,0),(np.sqrt(2)/2,np.sqrt(2)/2),(0,1),(-np.sqrt(2)/2,np.sqrt(2)/2),(-1,0),(-np.sqrt(2)/2,-np.sqrt(2)/2),(0,-1),(np.sqrt(2)/2,-np.sqrt(2)/2)])
+coord_updates = np.array([(1,0),(1,1),(0,1),(-1,1),(-1,0),(-1,-1),(0,-1),(1,-1)])
+
+GOAL_RADIUS = 0.05
+VISUAL_GOAL_R = 0.05
+
+class WallFixedFOVc(FieldOfViewOVCs):
+    def __init__(self, Agent, params={}):
+        super().__init__(Agent,params)
+        self.dists = []
+    def ray_distances_to_walls(self, agent_pos, head_direction, thetas, ray_length, walls):
+        n = len(thetas)
+        heading = np.arctan2(head_direction[1], head_direction[0])
+        ends = np.stack([agent_pos + ray_length * np.array([np.cos(heading + θ),np.sin(heading + θ)]) for θ in thetas], axis=0)
+        starts = np.tile(agent_pos[np.newaxis, :], (n, 1))
+        segs = np.zeros((n, 2, 2)); segs[:, 0, :], segs[:, 1, :] = starts, ends
+        intercepts = utils.vector_intercepts(segs, walls, return_collisions=False)
+        la, lb = intercepts[..., 0], intercepts[..., 1]
+        valid = (la > 0) & (la < 1) & (lb > 0) & (lb < 1)
+        la_valid = np.where(valid, la, np.inf)
+        min_la = la_valid.min(axis=1)
+        distances = np.minimum(min_la * ray_length, ray_length)
+        return distances
+    def update_cell_locations(self):
+        thetas, n = self.Agent.Neurons[0].tuning_angles, len(self.Agent.Neurons[0].tuning_angles)
+        self.dists = self.ray_distances_to_walls(self.Agent.pos, self.Agent.head_direction, thetas, 100.0, np.array(Env.walls))
+        s = self.dists * 16.5
+        self.tuning_distances, self.sigma_distances, self.sigma_angles = np.ones(n)*0.06*s, np.ones(n)*0.05, np.ones(n)*0.83333333/s
+
+class NormReLU(nn.Module):
+    def __init__(self, hidden_size, epsilon=1e-2):
+        super().__init__()
+        self.bias = nn.Parameter(torch.ones(hidden_size) * -0.5)
+        self.epsilon = epsilon
+    def forward(self, x):
+        x_norm = (x - x.mean(dim=-1, keepdim=True)) / (x.std(dim=-1, keepdim=True) + self.epsilon)
+        return F.relu(x_norm + self.bias)
+
+class NextStepRNN(nn.Module):
+    def __init__(self, obs_dim, act_dim, hidden_dim, lambda_b=0.1, eta_b=0.1):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.W_in = nn.Linear(obs_dim, hidden_dim, bias=False)
+        self.W_act = nn.Linear(act_dim, hidden_dim, bias=False)
+        self.W_rec = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.W_out = nn.Linear(hidden_dim, obs_dim)
+
+        self.lambda_b = lambda_b
+        self.eta_b = eta_b
+        self.c_readout = nn.Linear(hidden_dim, 1, bias=False)
+        self.g_strength = nn.Parameter(torch.zeros(1))
+        self.g = NormReLU(hidden_dim)
+
+        self.init_weights()
+
+    def init_weights(self):
+        tau = 2.0
+        k_in = 1.0 / np.sqrt(self.W_in.in_features)
+        k_out = 1.0 / np.sqrt(self.hidden_dim)
+        torch.nn.init.uniform_(self.W_in.weight, -k_in, k_in)
+        torch.nn.init.uniform_(self.W_act.weight, -k_in, k_in)
+        torch.nn.init.uniform_(self.W_out.weight, -k_out, k_out)
+        W_rec_data = torch.empty(self.hidden_dim, self.hidden_dim)
+        torch.nn.init.uniform_(W_rec_data, -k_out, k_out)
+        self.W_rec.weight.data = W_rec_data + torch.eye(self.hidden_dim) * (1 - 1 / tau)
+
+    def forward(self, obs_seq, act_seq):
+        T, B, _ = obs_seq.size()
+        h = torch.zeros(B, self.hidden_dim, device=obs_seq.device)
+        b = torch.zeros(B, self.hidden_dim, device=obs_seq.device)
+        outputs, hiddens = [], []
+        for t in range(T):
+            o_in, a_in, h_in = self.W_in(obs_seq[t]), self.W_act(act_seq[t]), self.W_rec(h)
+            b = (1 - self.lambda_b) * b + self.eta_b * o_in
+            inhib_readout = self.c_readout(h)
+            denominator = 1 + F.softplus(self.g_strength) * inhib_readout
+            numerator = h_in + o_in + a_in + b
+            h = self.g(numerator / denominator)
+            outputs.append(torch.sigmoid(self.W_out(h)))
+            hiddens.append(h)
+        return torch.stack(outputs), torch.stack(hiddens)
+
+    def forward_step(self, obs, act, h, b):
+        o_in, a_in, h_in = self.W_in(obs), self.W_act(act), self.W_rec(h)
+        b = (1 - self.lambda_b) * b + self.eta_b * o_in
+        inhib_readout = self.c_readout(h)
+        denominator = 1 + F.softplus(self.g_strength) * inhib_readout
+        numerator = h_in + o_in + a_in + b
+        h = self.g(numerator / denominator)
+        return h, b
+
+class Controller(nn.Module):
+    def __init__(self, hidden_dim, act_dim, num_heads=2):
+        super().__init__()
+        self.input_norm = nn.LayerNorm(hidden_dim)
+        self.goal_encoder = nn.Linear(2, hidden_dim)
+        self.attention = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, batch_first=True)
+        self.ln1 = nn.LayerNorm(hidden_dim)
+        self.fc = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        self.actor = nn.Sequential(nn.Linear(hidden_dim, 64), nn.Tanh(), nn.Linear(64, act_dim))
+        self.critic = nn.Sequential(nn.Linear(hidden_dim, 64), nn.Tanh(), nn.Linear(64, 1))
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.orthogonal_(module.weight, gain=np.sqrt(2))
+            if module.bias is not None: torch.nn.init.constant_(module.bias, 0.0)
+
+    def forward(self, h, goal_vec):
+        h = self.input_norm(h)
+        g_emb = self.goal_encoder(goal_vec).unsqueeze(1)
+        h_seq = h.unsqueeze(1)
+        attn_out, _ = self.attention(h_seq, g_emb, g_emb)
+        x = h_seq + attn_out
+        x = x.squeeze(1)
+        x = x + self.fc(x)
+        logits = self.actor(x)
+        logits = torch.clamp(logits, min=-20, max=20)
+        value = self.critic(x)
+        return logits, value
+
+def extract_hidden_activity_frozen_weights(model, obs_seq, act_seq):
+    model.eval()
+    if obs_seq.dim() == 3 and obs_seq.size(0) != obs_seq.size(1):
+        if obs_seq.size(1) > obs_seq.size(0):
+            obs_seq = obs_seq.permute(1, 0, 2)
+            act_seq = act_seq.permute(1, 0, 2)
+    with torch.no_grad():
+        pred, hiddens = model(obs_seq.to(device), act_seq.to(device))
+    return pred.cpu(), hiddens.cpu().numpy()
+
+Env = Environment()
+for type_id in range(3):
+    locations = np.concatenate((np.round(np.random.uniform(low=0.0, high=1.0, size=(12, 1))), (np.random.uniform(low=0.0, high=1.0, size=(12, 1)))), axis=1)
+    [Env.add_object(l, type=type_id) for l in locations]
+
+Ag = Agent(Env)
+fov_params = {"distance_range": [0.01, .11], "spatial_resolution": 0.05, "cell_arrangement": "uniform_manifold", "angle_range": [0, 125]}
+fov_cells_all = [WallFixedFOVc(Ag, params={**fov_params, "object_tuning_type": i}) for i in range(3)]
+for c in fov_cells_all: c.tuning_angles /= 3
+def get_next_move(coords, hd_idx, m=32):
+    wall_buffer = 1
+    border_flags = [coords[0] >= m-wall_buffer, coords[1] >= m-wall_buffer, coords[0] <= wall_buffer, coords[1] <= wall_buffer]
+    action_probs = np.roll(np.array([0.5, 0.15, 0.05, 0.04, 0.02, 0.04, 0.05, 0.15]), hd_idx)
+    if np.any(border_flags):
+        if border_flags[0]: action_probs[[0,1,7]] = 0
+        if border_flags[1]: action_probs[[2,1,3]] = 0
+        if border_flags[2]: action_probs[[4,3,5]] = 0
+        if border_flags[3]: action_probs[[6,5,7]] = 0
+        if action_probs.sum() > 0: action_probs /= action_probs.sum()
+        else: action_probs = np.ones(8)/8
+    next_action_idx = np.random.choice(8, p=action_probs)
+    coord_updates = np.array([(1,0),(1,1),(0,1),(-1,1),(-1,0),(-1,-1),(0,-1),(1,-1)])
+    next_coords = np.clip(coords + coord_updates[next_action_idx], 0, m-1)
+    action_encoding = np.zeros(8); action_encoding[next_action_idx] = 1
+    return next_coords, next_action_idx, action_encoding
+def get_obs():
+    [c.update_cell_locations() for c in fov_cells_all]; [c.update() for c in fov_cells_all]
+    fr = np.concatenate([c.firingrate for c in fov_cells_all]) / 10.0
+    dist = fov_cells_all[0].dists / 1.5
+    obs = np.concatenate([fr, dist])
+    return np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0)
+
+dummy = get_obs()
+OBS_DIM = len(dummy)
+ACT_DIM = 8
+HIDDEN_DIM = 512
+rnn_model = NextStepRNN(OBS_DIM, ACT_DIM, HIDDEN_DIM).to(device)
+controller = Controller(HIDDEN_DIM, ACT_DIM).to(device)
+def visualize_place_fields(rnn, title="Latent Space"):
+    print(f"Generating {title}...")
+    rnn.eval()
+    Ag.reset_history()
+    coords = np.random.randint(2, m-2, size=2)
+    Ag.pos = grid_centers[coords[0], coords[1]]
+    h = torch.zeros(1, HIDDEN_DIM).to(device)
+    b = torch.zeros(1, HIDDEN_DIM).to(device)
+    positions, activations = [], []
+    for t in range(5000):
+        obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+        action_idx = np.random.randint(8)
+        act_vec = torch.zeros(1, 8).to(device); act_vec[0, action_idx] = 1.0
+        with torch.no_grad():
+            h, b = rnn.forward_step(obs, act_vec, h, b)
+        positions.append(Ag.pos.copy())
+        activations.append(h.detach().cpu().numpy()[0])
+        coords = np.clip(coords + coord_updates[action_idx], 1, m-2)
+        Ag.pos = grid_centers[coords[0], coords[1]]
+        Ag.head_direction = hds[action_idx]
+    positions = np.array(positions)
+    activations = np.array(activations)
+    nbins = 32
+    activity_map = np.zeros((100, nbins, nbins), dtype=np.float32)
+    counts = np.zeros((nbins, nbins), dtype=np.float32)
+
+    for t in range(len(positions)):
+        x = int(np.clip(positions[t, 0]*nbins, 0, nbins-1))
+        y = int(np.clip(positions[t, 1]*nbins, 0, nbins-1))
+        activity_map[:, y, x] += activations[t, :100]
+        counts[y, x] += 1
+
+    for i in range(100):
+        activity_map[i] = np.divide(activity_map[i], counts, out=np.zeros_like(activity_map[i]), where=counts!=0)
+    for i in range(100):
+        smoothed = gaussian_filter(activity_map[i], sigma=1.5)
+        if smoothed.max() > 0:
+            activity_map[i] = (smoothed - smoothed.min()) / (smoothed.max() - smoothed.min())
+        else:
+            activity_map[i] = smoothed
+
+    fig = plt.figure(figsize=(15, 15), dpi=150)
+    fig.suptitle(title, fontsize=16, y=0.98)
+
+    for i in range(100):
+        ax = fig.add_subplot(10, 10, i+1)
+        ax.imshow(activity_map[i], origin='lower', cmap='jet', interpolation='gaussian', vmin=0, vmax=1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_aspect('equal')
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
+def controller_latent(controller, h, goal_vec):
+    controller.eval()
+    with torch.no_grad():
+        h_n = controller.input_norm(h)
+        g_emb = controller.goal_encoder(goal_vec).unsqueeze(1)
+        h_seq = h_n.unsqueeze(1)
+        attn_out, _ = controller.attention(h_seq, g_emb, g_emb)
+        x = (h_seq + attn_out).squeeze(1)
+        x = x + controller.fc(x)
+    return x
+
+def visualize_controller_fields(rnn, controller, title="Controller Latent Fields", goal_mode="fixed"):
+    print(f"Generating {title}...")
+    rnn.eval()
+    controller.eval()
+    Ag.reset_history()
+    coords = np.random.randint(2, m-2, size=2)
+    Ag.pos = grid_centers[coords[0], coords[1]]
+    Ag.head_direction = hds[np.random.randint(8)]
+    h = torch.zeros(1, HIDDEN_DIM).to(device)
+    b = torch.zeros(1, HIDDEN_DIM).to(device)
+    prev_act = torch.zeros(1, 8).to(device)
+    if goal_mode == "fixed":
+        goal_grid = np.random.randint(2, m-2, size=2)
+        goal_pos_fixed = grid_centers[goal_grid[0], goal_grid[1]]
+    positions, activations = [], []
+
+    for t in range(5000):
+        obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+        action_idx = np.random.randint(8)
+        act_vec = torch.zeros(1, 8).to(device); act_vec[0, action_idx] = 1.0
+        with torch.no_grad():
+            h, b = rnn.forward_step(obs, prev_act, h, b)
+        if goal_mode == "random":
+            gg = np.random.randint(2, m-2, size=2)
+            goal_pos = grid_centers[gg[0], gg[1]]
+            goal_vec = torch.tensor(goal_pos - Ag.pos, dtype=torch.float32).unsqueeze(0).to(device)
+        elif goal_mode == "fixed":
+            goal_vec = torch.tensor(goal_pos_fixed - Ag.pos, dtype=torch.float32).unsqueeze(0).to(device)
+        elif goal_mode == "zero":
+            goal_vec = torch.zeros(1, 2, device=device)
+        else:
+            raise ValueError("goal_mode must be one of: 'fixed', 'random', 'zero'")
+        x = controller_latent(controller, h, goal_vec)
+        positions.append(Ag.pos.copy())
+        activations.append(x.detach().cpu().numpy()[0])
+        coords = np.clip(coords + coord_updates[action_idx], 1, m-2)
+        Ag.pos = grid_centers[coords[0], coords[1]]
+        Ag.head_direction = hds[action_idx]
+        prev_act = act_vec
+
+    positions = np.array(positions)
+    activations = np.array(activations)
+    nbins = 32
+    activity_map = np.zeros((100, nbins, nbins), dtype=np.float32)
+    counts = np.zeros((nbins, nbins), dtype=np.float32)
+    for t in range(len(positions)):
+        xb = int(np.clip(positions[t, 0] * nbins, 0, nbins - 1))
+        yb = int(np.clip(positions[t, 1] * nbins, 0, nbins - 1))
+        activity_map[:, yb, xb] += np.abs(activations[t, :100])
+        counts[yb, xb] += 1
+    for i in range(100):
+        activity_map[i] = np.divide(activity_map[i], counts, out=np.zeros_like(activity_map[i]), where=counts!=0)
+    for i in range(100):
+        smoothed = gaussian_filter(activity_map[i], sigma=1.5)
+        if smoothed.max() > 0:
+            activity_map[i] = (smoothed - smoothed.min()) / (smoothed.max() - smoothed.min())
+        else:
+            activity_map[i] = smoothed
+    fig = plt.figure(figsize=(15, 15), dpi=150)
+    fig.suptitle(title, fontsize=16, y=0.98)
+    for i in range(100):
+        ax = fig.add_subplot(10, 10, i+1)
+        ax.imshow(activity_map[i], origin='lower', cmap='jet', interpolation='gaussian', vmin=0, vmax=1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_aspect('equal')
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
+print("\n=== PHASE 1: Training World Model ===")
+n_trials = 1000
+timesteps = 100
+obs_data, act_data = np.zeros((n_trials, timesteps, OBS_DIM)), np.zeros((n_trials, timesteps, ACT_DIM))
+
+print("Generating Data...")
+for i in tqdm(range(n_trials)):
+    [c.reset_history() for c in fov_cells_all]; Ag.reset_history()
+    coords = np.random.randint(2, m-2, size=2)
+    action_hd_idx = np.random.randint(8)
+    Ag.pos = grid_centers[coords[0], coords[1]]
+    Ag.head_direction = hds[action_hd_idx]
+    for t in range(timesteps):
+        obs = get_obs()
+        obs_data[i, t] = obs
+        coords, action_hd_idx, action_encoding = get_next_move(coords, action_hd_idx, m=m)
+        act_data[i, t] = action_encoding
+        Ag.update(forced_next_position=grid_centers[coords[0], coords[1]])
+        Ag.head_direction = hds[action_hd_idx]
+obs_seq = torch.tensor(obs_data[:, :-1], dtype=torch.float32)
+act_seq = torch.tensor(act_data[:, :-1], dtype=torch.float32)
+next_obs_seq = torch.tensor(obs_data[:, 1:], dtype=torch.float32)
+dataset = TensorDataset(obs_seq, act_seq, next_obs_seq)
+loader = DataLoader(dataset, batch_size=64, shuffle=True)
+optimizer_rnn = optim.RMSprop(rnn_model.parameters(), lr=0.001)
+criterion = nn.MSELoss()
+rnn_model.train()
+losses = []
+print("Training RNN (150 Epochs)...")
+for epoch in range(150):
+    epoch_loss = 0
+    for o, a, target in loader:
+        o, a, target = o.to(device).permute(1,0,2), a.to(device).permute(1,0,2), target.to(device).permute(1,0,2)
+        pred, h_seq = rnn_model(o, a)
+        mse_loss = criterion(pred, target)
+        l1_loss = 1e-4 * torch.mean(torch.abs(h_seq))
+        loss = mse_loss + l1_loss
+
+        optimizer_rnn.zero_grad(); loss.backward(); optimizer_rnn.step()
+        epoch_loss += loss.item()
+    losses.append(epoch_loss / len(loader))
+    if epoch % 20 == 0: print(f"Epoch {epoch}: Loss {losses[-1]:.5f}")
+
+plt.plot(losses); plt.title("Prediction Loss"); plt.show()
+visualize_place_fields(rnn_model, title="Phase 1: Cognitive Map")
+
+print("\n=== Extracting Hidden Activity for Analysis ===")
+obs_sample = obs_seq[:10]
+act_sample = act_seq[:10]
+predictions, hidden_states = extract_hidden_activity_frozen_weights(rnn_model, obs_sample, act_sample)
+print(f"Predictions shape: {predictions.shape}")
+print(f"Hidden states shape: {hidden_states.shape}")
+print("Hidden activity extraction complete. Your colleague can now use 'hidden_states' for analysis.")
+
+print("\n=== PHASE 2: RL Training (With RNN Gradient Flow at Reduced LR) ===")
+rnn_model.train()
+optimizer_controller = optim.Adam(controller.parameters(), lr=1e-4, eps=1e-5)
+optimizer_rnn_rl = optim.Adam(rnn_model.parameters(), lr=RNN_RL_LEARNING_RATE, eps=1e-5)
+MAX_EPISODES = 5000
+MAX_STEPS = 200
+GAMMA = 0.99
+CLIP_EPS = 0.1
+UPDATE_EPOCHS = 4
+WARMUP_STEPS = 10
+history = {'rewards': [], 'success': []}
+for episode in tqdm(range(MAX_EPISODES)):
+    coords = np.random.randint(2, m-2, size=2)
+    Ag.pos = grid_centers[coords[0], coords[1]]
+    Ag.head_direction = hds[np.random.randint(8)]
+    goal_grid = np.random.randint(2, m-2, size=2)
+    while np.linalg.norm(goal_grid - coords) < 5: goal_grid = np.random.randint(2, m-2, size=2)
+    goal_pos = grid_centers[goal_grid[0], goal_grid[1]]
+    h = torch.zeros(1, HIDDEN_DIM).to(device)
+    b = torch.zeros(1, HIDDEN_DIM).to(device)
+    prev_act = torch.zeros(1, 8).to(device)
+    with torch.no_grad():
+        for _ in range(WARMUP_STEPS):
+            obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+            action_idx = np.random.randint(8)
+            act_vec = torch.zeros(1, 8).to(device); act_vec[0, action_idx] = 1.0
+            h, b = rnn_model.forward_step(obs, act_vec, h, b)
+            coords = np.clip(coords + coord_updates[action_idx], 1, m-2)
+            Ag.pos = grid_centers[coords[0], coords[1]]
+            Ag.head_direction = hds[action_idx]
+            prev_act = act_vec
+    hs, goals, actions, log_probs, rewards, values, dones, obs_list, prev_acts, bs, next_obs_list = [], [], [], [], [], [], [], [], [], [], []
+    ep_reward = 0; success = False
+    prev_dist = np.linalg.norm(Ag.pos - goal_pos)
+
+    for t in range(MAX_STEPS):
+        obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+        goal_vec = torch.tensor(goal_pos - Ag.pos, dtype=torch.float32).unsqueeze(0).to(device)
+        h, b = rnn_model.forward_step(obs, prev_act, h, b)
+
+        logits, value = controller(h, goal_vec)
+        dist = Categorical(logits=logits)
+        action = dist.sample()
+        new_coords = coords + coord_updates[action.item()]
+        if (new_coords[0] < 1 or new_coords[0] >= m-1 or new_coords[1] < 1 or new_coords[1] >= m-1): new_coords = coords
+        coords = new_coords
+        Ag.pos = grid_centers[coords[0], coords[1]]
+        Ag.head_direction = hds[action.item()]
+        next_obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+        prev_act_old = prev_act.clone()
+        prev_act = torch.zeros(1, 8).to(device); prev_act[0, action.item()] = 1.0
+        curr_dist = np.linalg.norm(Ag.pos - goal_pos)
+        r = 0; done = False
+        if curr_dist < GOAL_RADIUS:
+            r += 15.0; done = True; success = True
+        else:
+            progress = prev_dist - curr_dist
+            r += progress * 20.0
+            r -= 0.05
+        prev_dist = curr_dist
+        ep_reward += r
+
+        hs.append(h); goals.append(goal_vec); actions.append(action)
+        log_probs.append(dist.log_prob(action)); rewards.append(r); values.append(value); dones.append(done)
+        obs_list.append(obs); prev_acts.append(prev_act_old); bs.append(b)
+        next_obs_list.append(next_obs)
+        if done: break
+    history['rewards'].append(ep_reward)
+    history['success'].append(1 if success else 0)
+    if len(rewards) < 2: continue
+    R = 0
+    returns, advantages = [], []
+    if not done:
+        with torch.no_grad():
+            _, next_val = controller(h, goal_vec)
+            R = next_val.item()
+    for r in reversed(rewards):
+        R = r + GAMMA * R
+        returns.insert(0, R)
+    returns = torch.tensor(returns).to(device)
+    b_values = torch.cat(values).squeeze().detach()
+    b_log_probs = torch.stack(log_probs).squeeze().detach()
+    advantages = returns - b_values
+    if advantages.std() > 1e-5: advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+    else: advantages = advantages - advantages.mean()
+
+    b_hs = torch.stack(hs).squeeze(1)
+    b_goals = torch.cat(goals)
+    b_actions = torch.stack(actions).squeeze()
+    b_obs = torch.cat(obs_list)
+    b_prev_acts = torch.cat(prev_acts)
+    b_bs = torch.stack(bs).squeeze(1)
+    b_next_obs = torch.cat(next_obs_list)
+    for _ in range(UPDATE_EPOCHS):
+        recomputed_hs = []
+        h_temp = b_hs[0].unsqueeze(0).detach()
+        b_temp = b_bs[0].unsqueeze(0).detach()
+        for i in range(len(b_obs)):
+            h_temp, b_temp = rnn_model.forward_step(b_obs[i:i+1], b_prev_acts[i:i+1], h_temp, b_temp)
+            recomputed_hs.append(h_temp)
+        recomputed_hs = torch.cat(recomputed_hs)
+        logits, new_vals = controller(recomputed_hs, b_goals)
+        dist = Categorical(logits=logits)
+        new_log_probs = dist.log_prob(b_actions)
+        ratio = torch.exp(new_log_probs - b_log_probs)
+        surr1 = ratio * advantages
+        surr2 = torch.clamp(ratio, 1.0 - CLIP_EPS, 1.0 + CLIP_EPS) * advantages
+        rl_loss = -torch.min(surr1, surr2).mean() + 0.5 * (new_vals.squeeze() - returns).pow(2).mean() - 0.02 * dist.entropy().mean()
+        pred_next_obs = torch.sigmoid(rnn_model.W_out(recomputed_hs))
+        pred_loss = criterion(pred_next_obs, b_next_obs)
+        total_loss = rl_loss + PRED_LOSS_WEIGHT * pred_loss
+        optimizer_controller.zero_grad()
+        optimizer_rnn_rl.zero_grad()
+        total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(controller.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(rnn_model.parameters(), 0.5)
+        optimizer_controller.step()
+        optimizer_rnn_rl.step()
+
+visualize_place_fields(rnn_model, title="After RL: Cognitive Map (with gradient flow)")
+visualize_controller_fields(rnn_model, controller, title="After RL: Controller Latent Fields", goal_mode="fixed")
+plt.figure(figsize=(10,4))
+plt.subplot(1,2,1); plt.plot(np.convolve(history['rewards'], np.ones(100)/100, mode='valid')); plt.title("RL Reward")
+plt.subplot(1,2,2); plt.plot(np.convolve(history['success'], np.ones(100)/100, mode='valid'), color='green'); plt.title("Success Rate")
+plt.show()
+
+print("\nTesting...")
+controller.eval()
+rnn_model.eval()
+test_goals = [np.array([0.5, 0.5]), np.array([0.75, 0.25])]
+titles = ["Center Goal (0.5, 0.5)", "Generalization Goal (0.75, 0.25)"]
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+for ax, t_goal, title in zip([ax1, ax2], test_goals, titles):
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect('equal')
+    ax.set_title(title, fontsize=14); ax.set_facecolor('#e6e6e6')
+    ax.add_patch(Circle(t_goal, VISUAL_GOAL_R, color='gold', zorder=10))
+    successes = 0
+    for i in range(15):
+        coords = np.random.randint(2, m-2, size=2)
+        while np.linalg.norm(grid_centers[coords[0], coords[1]] - t_goal) < 0.3: coords = np.random.randint(2, m-2, size=2)
+        Ag.pos = grid_centers[coords[0], coords[1]]
+        h = torch.zeros(1, HIDDEN_DIM).to(device)
+        b = torch.zeros(1, HIDDEN_DIM).to(device)
+        prev_act = torch.zeros(1, 8).to(device)
+        with torch.no_grad():
+            for _ in range(WARMUP_STEPS):
+                obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+                action_idx = np.random.randint(8)
+                act_vec = torch.zeros(1, 8).to(device); act_vec[0, action_idx] = 1.0
+                h, b = rnn_model.forward_step(obs, act_vec, h, b)
+                coords = np.clip(coords + coord_updates[action_idx], 1, m-2)
+                Ag.pos = grid_centers[coords[0], coords[1]]
+                Ag.head_direction = hds[action_idx]
+                prev_act = act_vec
+        path = [Ag.pos.copy()]
+        for t in range(MAX_STEPS):
+            obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+            goal_vec = torch.tensor(t_goal - Ag.pos, dtype=torch.float32).unsqueeze(0).to(device)
+            with torch.no_grad():
+                h, b = rnn_model.forward_step(obs, prev_act, h, b)
+                logits, _ = controller(h, goal_vec)
+                action = torch.argmax(logits, dim=1)
+            prev_act = torch.zeros(1, 8).to(device); prev_act[0, action.item()] = 1.0
+            coords = np.clip(coords + coord_updates[action.item()], 1, m-2)
+            Ag.pos = grid_centers[coords[0], coords[1]]
+            path.append(Ag.pos.copy())
+            if np.linalg.norm(Ag.pos - t_goal) < GOAL_RADIUS: successes += 1; break
+        path = np.array(path)
+        is_success = np.linalg.norm(path[-1] - t_goal) < GOAL_RADIUS
+        color = 'green' if is_success else 'red'
+        ax.plot(path[:, 0], path[:, 1], color=color, linewidth=2, alpha=0.8)
+        ax.scatter(path[0, 0], path[0, 1], color='blue', s=40)
+    ax.text(0.05, 0.95, f"Success: {successes}/15", transform=ax.transAxes, fontsize=12, fontweight='bold')
+
+plt.tight_layout(); plt.show()
+
+print("\n=== Final Hidden Activity Extraction for Analysis ===")
+obs_sample_final = obs_seq[:50]
+act_sample_final = act_seq[:50]
+predictions_final, hidden_states_final = extract_hidden_activity_frozen_weights(rnn_model, obs_sample_final, act_sample_final)
+print(f"Final Predictions shape: {predictions_final.shape}")
+print(f"Final Hidden states shape: {hidden_states_final.shape}")
