@@ -1,0 +1,55 @@
+{
+  "RNN_ORI_ci_95": [
+    0.49557522123893816,
+    0.9567049258727877
+  ],
+  "RNN_ORI_from_B1": 0.7037037037037038,
+  "SR_ORI": 12.038095238095238,
+  "SR_ORI_ci_95": [
+    7.987256771821989,
+    16.2034243882362
+  ],
+  "center_sources": {
+    "after": "data\\df_centers_after.pkl",
+    "before": "data\\df_centers_before.pkl"
+  },
+  "condition_numbers": {
+    "I_minus_gamma_T_policy": 298.359389185187,
+    "I_minus_gamma_T_random": 155.69926816870347,
+    "threshold": 10000000000.0
+  },
+  "gamma": 0.99,
+  "goal_position": [
+    0.75,
+    0.75
+  ],
+  "goal_position_source": "fallback_args",
+  "goal_zone_radius": 0.252313252202016,
+  "m": 32,
+  "n_states": 900,
+  "qualitative_match_assessment": false,
+  "row_stochastic_checks": {
+    "T_policy": true,
+    "T_random": true
+  },
+  "sr_ori_counts": {
+    "n_goal": 189,
+    "n_goal_above": 160,
+    "n_non_goal": 711,
+    "n_non_goal_above": 50
+  },
+  "sr_solver": {
+    "neumann_K": 500,
+    "requested_method": "auto",
+    "used_policy": "inverse",
+    "used_random": "inverse"
+  },
+  "transition_sources": {
+    "T_policy": "goal_biased_analytic",
+    "T_policy_info": {
+      "visited_fraction": NaN
+    },
+    "T_random": "analytic_get_next_move_marginalized_heading"
+  },
+  "wall_buffer": 1
+}

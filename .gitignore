@@ -1,0 +1,9 @@
+data/
+*.pkl
+*.npy
+*.pt
+Results/ratinabox_v9/checkpoints/
+Papers/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

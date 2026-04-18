@@ -1,0 +1,37 @@
+{
+  "analysis": "D3_reward_relocation",
+  "behavior": {
+    "success_end": NaN,
+    "success_start": NaN
+  },
+  "directional_shift": {
+    "toward_new_goal_mean": NaN,
+    "toward_new_goal_perm_p": NaN,
+    "toward_old_goal_mean": NaN,
+    "toward_old_goal_perm_p": NaN
+  },
+  "goal_positions": {
+    "goal_radius": 0.252313252202016,
+    "new_goal": [
+      0.25,
+      0.25
+    ],
+    "old_goal": [
+      0.75,
+      0.75
+    ]
+  },
+  "script": "reward_manipulation.py",
+  "sources": {
+    "branch_dir": "C:\\Users\\hp\\Desktop\\Code\\Technion(Stefano)\\manifold_reward_shaping\\New_Results\\reward_manipulation\\reward_relocation",
+    "n_checkpoint_files": 0,
+    "phase2_centers": "missing"
+  },
+  "trajectory": {
+    "ORI_new_goal": [],
+    "ORI_old_goal": [],
+    "crossing_episode": NaN,
+    "episode": [],
+    "success": []
+  }
+}

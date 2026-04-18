@@ -1,0 +1,55 @@
+{
+  "figure4": "C:\\Users\\hp\\Desktop\\Code\\Technion(Stefano)\\manifold_reward_shaping\\New_Results\\reward_manipulation\\figures\\figure4_model_predictions.png",
+  "goal_position": [
+    0.5,
+    0.5
+  ],
+  "goal_position_source": "fallback_args",
+  "goal_radius": 0.252313252202016,
+  "paths": {
+    "D1": "C:\\Users\\hp\\Desktop\\Code\\Technion(Stefano)\\manifold_reward_shaping\\New_Results\\reward_manipulation\\D1_reward_removal",
+    "D2": "C:\\Users\\hp\\Desktop\\Code\\Technion(Stefano)\\manifold_reward_shaping\\New_Results\\reward_manipulation\\D2_multi_reward",
+    "D3": "C:\\Users\\hp\\Desktop\\Code\\Technion(Stefano)\\manifold_reward_shaping\\New_Results\\reward_manipulation\\D3_reward_relocation",
+    "D4": "C:\\Users\\hp\\Desktop\\Code\\Technion(Stefano)\\manifold_reward_shaping\\New_Results\\reward_manipulation\\D4_dissociation"
+  },
+  "summary": {
+    "D1_reward_removal": {
+      "ORI_phase1_baseline": NaN,
+      "ORI_phase2": NaN,
+      "ORI_phase3_end": NaN,
+      "Procrustes_disparity_phase2": NaN,
+      "Procrustes_disparity_phase3_end": NaN,
+      "decay_time_constant_tau": NaN,
+      "tau_bootstrap_ci": [
+        NaN,
+        NaN
+      ]
+    },
+    "D2_multi_reward": {
+      "ORI_combined": NaN,
+      "ORI_goal1": NaN,
+      "ORI_goal1_vs_goal2_pval": NaN,
+      "ORI_goal2": NaN
+    },
+    "D3_reward_relocation": {
+      "ORI_new_goal_end": NaN,
+      "ORI_new_goal_start": NaN,
+      "ORI_old_goal_end": NaN,
+      "ORI_old_goal_start": NaN,
+      "crossing_episode": NaN,
+      "directional_shift_new_goal_pval": NaN
+    },
+    "D4_dissociation": {
+      "ORI_end_obs_corruption": NaN,
+      "ORI_end_reward_removal": NaN,
+      "cohens_d": NaN,
+      "mann_whitney_pval": NaN,
+      "tau_difference_ci": [
+        NaN,
+        NaN
+      ],
+      "tau_obs_corruption": NaN,
+      "tau_reward_removal": NaN
+    }
+  }
+}
