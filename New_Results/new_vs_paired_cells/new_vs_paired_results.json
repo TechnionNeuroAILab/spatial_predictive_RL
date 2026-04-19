@@ -1,0 +1,40 @@
+{
+  "comparison": {
+    "distance_to_reward": {
+      "ks_p": 0.05960295714779135,
+      "ks_stat": 0.16689475399152817,
+      "mannwhitney_u": 8391.0,
+      "n_new": 99,
+      "n_paired": 155,
+      "new_ci": [
+        0.2860423056951942,
+        0.34463352103996436
+      ],
+      "new_mean": 0.3159225257146089,
+      "p_new_closer": 0.8961581953473403,
+      "paired_ci": [
+        0.25528036875326443,
+        0.3121819633484918
+      ],
+      "paired_mean": 0.2833139557011895
+    },
+    "fraction_inside_goal_zone": {
+      "new": 0.1111111111111111,
+      "paired": 0.22580645161290322,
+      "ratio_new_over_paired": 0.49206349206349204
+    },
+    "skaggs_comparison": {
+      "mannwhitney_u": 7499.5,
+      "new_mean": 0.05092794687053273,
+      "p_two_sided": 0.762465436826486,
+      "paired_mean": 0.057582298193160714
+    }
+  },
+  "counts": {
+    "n_after": 254,
+    "n_before": 208,
+    "n_lost": 53,
+    "n_new": 99,
+    "n_paired": 155
+  }
+}
