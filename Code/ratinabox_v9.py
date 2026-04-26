@@ -56,8 +56,9 @@ ARGS = parse_args()
 warnings.filterwarnings('ignore')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
-RNN_RL_LEARNING_RATE = 1e-5
-PRED_LOSS_WEIGHT = 0.5
+RNN_RL_LEARNING_RATE = 5e-5
+PRED_LOSS_WEIGHT = 0.03
+PROBE_REWARD_POS = np.array([0.15, 0.15])  # fixed reward for goal-conditioned probe
 SEED = int(ARGS.seed)
 np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
 if torch.cuda.is_available():
@@ -263,7 +264,8 @@ def run_probe_walk(rnn, period, n_steps=5000, save_dir=None):
         beh_theta.append(float(np.arctan2(Ag.head_direction[1], Ag.head_direction[0])))
         hidden_list.append(h.detach().cpu().numpy()[0])   # shape (HIDDEN_DIM,)
 
-        coords, action_hd_idx, _ = get_next_move(coords, action_hd_idx, m=m)
+        action_hd_idx = np.random.randint(8)
+        coords = np.clip(coords + coord_updates[action_hd_idx], 1, m - 2)
         Ag.pos = grid_centers[coords[0], coords[1]]
         Ag.head_direction = hds[action_hd_idx]
 
@@ -281,6 +283,91 @@ def run_probe_walk(rnn, period, n_steps=5000, save_dir=None):
     if save_dir is not None:
         beh_path = os.path.join(save_dir, f"df_behavior_{period}.pkl")
         act_path = os.path.join(save_dir, f"df_activations_{period}.pkl")
+        df_behavior.to_pickle(beh_path)
+        df_activations.to_pickle(act_path)
+        print(f"  Saved behavior  : {beh_path}  ({len(df_behavior):,} rows)")
+        print(f"  Saved activations: {act_path}  ({len(df_activations):,} rows)")
+
+    return df_behavior, df_activations
+
+
+def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=5000, save_dir=None):
+    """
+    Goal-conditioned probe: run the RL controller with a fixed reward position.
+    Uses 50 short episodes from random starts to ensure full spatial coverage.
+    Records hidden states under active reward-seeking to expose RL-shaped representations.
+    """
+    print(f"\n=== Goal-Conditioned Probe (reward at {reward_pos}) ===")
+    rnn.eval()
+    ctrl.eval()
+
+    goal_pos = np.asarray(reward_pos, dtype=float)
+    n_episodes = 50
+    steps_per_ep = n_steps // n_episodes
+
+    beh_x, beh_y, beh_theta = [], [], []
+    hidden_list = []
+    total_steps = 0
+
+    for ep in tqdm(range(n_episodes), desc="Goal-conditioned probe"):
+        coords = np.random.randint(2, m - 2, size=2)
+        Ag.pos = grid_centers[coords[0], coords[1]]
+        action_hd_idx = np.random.randint(8)
+        Ag.head_direction = hds[action_hd_idx]
+        h = torch.zeros(1, HIDDEN_DIM, device=device)
+        b = torch.zeros(1, HIDDEN_DIM, device=device)
+        prev_act = torch.zeros(1, 8, device=device)
+
+        with torch.no_grad():
+            for _ in range(WARMUP_STEPS):
+                obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+                widx = np.random.randint(8)
+                wv = torch.zeros(1, 8, device=device); wv[0, widx] = 1.0
+                h, b = rnn.forward_step(obs, wv, h, b)
+                coords = np.clip(coords + coord_updates[widx], 1, m - 2)
+                Ag.pos = grid_centers[coords[0], coords[1]]
+                Ag.head_direction = hds[widx]
+                prev_act = wv
+
+        for t in range(steps_per_ep):
+            obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
+            goal_vec = torch.tensor(goal_pos - Ag.pos, dtype=torch.float32).unsqueeze(0).to(device)
+
+            with torch.no_grad():
+                h, b = rnn.forward_step(obs, prev_act, h, b)
+                logits, _ = ctrl(h, goal_vec)
+                action = torch.argmax(logits, dim=1)
+
+            beh_x.append(float(Ag.pos[0]))
+            beh_y.append(float(Ag.pos[1]))
+            beh_theta.append(float(np.arctan2(Ag.head_direction[1], Ag.head_direction[0])))
+            hidden_list.append(h.detach().cpu().numpy()[0])
+
+            action_idx = action.item()
+            coords = np.clip(coords + coord_updates[action_idx], 1, m - 2)
+            Ag.pos = grid_centers[coords[0], coords[1]]
+            Ag.head_direction = hds[action_idx]
+            prev_act = torch.zeros(1, 8, device=device); prev_act[0, action_idx] = 1.0
+
+            total_steps += 1
+            if total_steps >= n_steps:
+                break
+        if total_steps >= n_steps:
+            break
+
+    n_rec = len(hidden_list)
+    timesteps = np.arange(n_rec)
+    df_behavior = pd.DataFrame({"timestep": timesteps, "x": beh_x, "y": beh_y, "theta": beh_theta})
+
+    hidden_arr = np.vstack(hidden_list)
+    ts_repeated = np.repeat(timesteps, HIDDEN_DIM)
+    nid_tiled   = np.tile(np.arange(HIDDEN_DIM), n_rec)
+    act_flat    = hidden_arr.reshape(-1)
+    df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
+
+    if save_dir is not None:
+        beh_path = os.path.join(save_dir, "df_behavior_goal_conditioned.pkl")
+        act_path = os.path.join(save_dir, "df_activations_goal_conditioned.pkl")
         df_behavior.to_pickle(beh_path)
         df_activations.to_pickle(act_path)
         print(f"  Saved behavior  : {beh_path}  ({len(df_behavior):,} rows)")
@@ -813,6 +900,9 @@ save_checkpoint(
 
 # --- Probe walk AFTER RL (uses Phase 2 fine-tuned weights) ---
 run_probe_walk(rnn_model, period="after", n_steps=5000, save_dir=DATA_DIR)
+
+# --- Goal-conditioned probe AFTER RL: representations during active reward-seeking ---
+run_goal_conditioned_probe(rnn_model, controller, PROBE_REWARD_POS, n_steps=5000, save_dir=DATA_DIR)
 
 print("\nTesting...")
 controller.eval()
