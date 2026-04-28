@@ -1,0 +1,15 @@
+{
+  "checkpoint_every": 500,
+  "device": "cpu",
+  "max_episodes": 5000,
+  "max_steps": 200,
+  "n_trials": 1000,
+  "output_dir": "../Results/ratinabox_v9\\per_group_lr_v1",
+  "phase1_epochs": 150,
+  "pred_loss_weight": 0.03,
+  "rnn_rl_learning_rate_W_in_act": 5e-06,
+  "rnn_rl_learning_rate_W_out": 5e-05,
+  "rnn_rl_learning_rate_W_rec": 5e-07,
+  "seed": 42,
+  "timesteps": 100
+}

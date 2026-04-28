@@ -90,6 +90,7 @@ def center_to_xy(center: object) -> tuple[float, float] | None:
 def extract_single_centers(
     centers_df: pd.DataFrame,
     k_value: int | None = 1,
+    icl_threshold: float | None = -5000.0,
     neuron_col: str = "neuron_id",
     center_col: str = "center",
     k_col: str = "k",
@@ -97,6 +98,8 @@ def extract_single_centers(
     df = centers_df.copy()
     if k_value is not None and k_col in df.columns:
         df = df[df[k_col] == k_value]
+    if icl_threshold is not None and "icl_score" in df.columns:
+        df = df[df["icl_score"] <= icl_threshold]
     rows: list[dict] = []
     for _, row in df.iterrows():
         xy = center_to_xy(row.get(center_col))

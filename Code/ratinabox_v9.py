@@ -58,7 +58,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
 RNN_RL_LEARNING_RATE = 5e-5
 PRED_LOSS_WEIGHT = 0.03
-PROBE_REWARD_POS = np.array([0.15, 0.15])  # fixed reward for goal-conditioned probe
+PROBE_REWARD_POS = np.array([0.5, 0.5])   # fixed reward for goal-conditioned probe
 SEED = int(ARGS.seed)
 np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
 if torch.cuda.is_available():
@@ -81,7 +81,9 @@ save_json(
         "max_episodes": ARGS.max_episodes,
         "max_steps": ARGS.max_steps,
         "checkpoint_every": ARGS.checkpoint_every,
-        "rnn_rl_learning_rate": RNN_RL_LEARNING_RATE,
+        "rnn_rl_learning_rate_W_rec": 5e-7,
+        "rnn_rl_learning_rate_W_in_act": 5e-6,
+        "rnn_rl_learning_rate_W_out": 5e-5,
         "pred_loss_weight": PRED_LOSS_WEIGHT,
     },
 )
@@ -225,7 +227,7 @@ def extract_hidden_activity_frozen_weights(model, obs_seq, act_seq):
     return pred.cpu(), hiddens.cpu().numpy()
 
 
-def run_probe_walk(rnn, period, n_steps=5000, save_dir=None):
+def run_probe_walk(rnn, period, n_steps=50000, save_dir=None):
     """
     Run a random probe walk with the RNN in eval mode and save the results
     as long-format DataFrames that all downstream analysis scripts expect.
@@ -233,9 +235,6 @@ def run_probe_walk(rnn, period, n_steps=5000, save_dir=None):
     Outputs (saved to save_dir if provided):
       df_behavior_{period}.pkl  -- columns: [timestep, x, y, theta]
       df_activations_{period}.pkl -- columns: [timestep, neuron_id, activity]
-
-    With HIDDEN_DIM=512 and n_steps=5000 this produces ~2.56M activation rows
-    (~60 MB each), which is fully sufficient for every analysis script.
     """
     print(f"\n=== Probe Walk for '{period}' representations ===")
     rnn.eval()
@@ -291,7 +290,7 @@ def run_probe_walk(rnn, period, n_steps=5000, save_dir=None):
     return df_behavior, df_activations
 
 
-def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=5000, save_dir=None):
+def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=50000, save_dir=None):
     """
     Goal-conditioned probe: run the RL controller with a fixed reward position.
     Uses 50 short episodes from random starts to ensure full spatial coverage.
@@ -374,6 +373,95 @@ def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=5000, save_dir=Non
         print(f"  Saved activations: {act_path}  ({len(df_activations):,} rows)")
 
     return df_behavior, df_activations
+
+
+def compute_skaggs_report(df_behavior, df_activations, period, m=32,
+                           skaggs_threshold=0.05, n_top=38,
+                           save_dir=None, figures_dir=None):
+    """
+    Compute Skaggs information scores from probe walk DataFrames.
+    Saves df_skaggs_{period}.pkl and a top-cells figure so place cell quality
+    """
+    print(f"\n=== Place cell quality report — '{period}' ===")
+    n_steps = len(df_behavior)
+    n_neurons = HIDDEN_DIM
+    n_bins = m * m
+    if len(df_activations) == n_steps * n_neurons:
+        act_mat = df_activations["activity"].values.reshape(n_steps, n_neurons)
+        neuron_ids = np.arange(n_neurons)
+        beh_sorted = df_behavior.sort_values("timestep")
+    else:
+        act_pivot = df_activations.pivot(index="timestep", columns="neuron_id", values="activity").fillna(0)
+        beh_sorted = df_behavior[df_behavior["timestep"].isin(act_pivot.index)].sort_values("timestep")
+        act_mat = act_pivot.reindex(beh_sorted["timestep"]).values
+        neuron_ids = act_pivot.columns.values
+        n_steps = act_mat.shape[0]
+
+    # Position → grid cell
+    x_bin = np.clip((beh_sorted["x"].values * m).astype(int), 0, m - 1)
+    y_bin = np.clip((beh_sorted["y"].values * m).astype(int), 0, m - 1)
+    gc = x_bin * m + y_bin  # (T,)
+    # Scatter-add activity into bins — fully vectorised
+    bin_sum = np.zeros((n_bins, n_neurons), dtype=float)
+    np.add.at(bin_sum, gc, act_mat)
+    bin_count = np.bincount(gc, minlength=n_bins).astype(float)
+
+    occ = bin_count / n_steps
+    mean_rate_per_bin = np.divide(bin_sum, bin_count[:, None],
+                                   out=np.zeros_like(bin_sum),
+                                   where=bin_count[:, None] > 0)
+    mean_rate = act_mat.mean(axis=0)  # (N,)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = np.where(mean_rate[None, :] > 1e-10,
+                         mean_rate_per_bin / mean_rate[None, :], 0.0)
+        log_ratio = np.where(ratio > 0, np.log2(np.maximum(ratio, 1e-300)), 0.0)
+    skaggs = (occ[:, None] * ratio * log_ratio).sum(axis=0)  # (N,)
+
+    df_skaggs = pd.DataFrame({"neuron_id": neuron_ids, "skaggs_score": skaggs})
+    n_pass = int((df_skaggs["skaggs_score"] >= skaggs_threshold).sum())
+    print(f"  Mean Skaggs : {df_skaggs['skaggs_score'].mean():.4f}")
+    print(f"  Cells >= {skaggs_threshold} (place cells) : {n_pass} / {n_neurons}")
+
+    if save_dir is not None:
+        pkl_path = os.path.join(save_dir, f"df_skaggs_{period}.pkl")
+        df_skaggs.to_pickle(pkl_path)
+        print(f"  Saved: {pkl_path}")
+
+    # Top cells figure
+    if figures_dir is not None:
+        top_idx = df_skaggs.nlargest(n_top, "skaggs_score").index.values  # row indices = neuron ids
+        top_act = act_mat[:, top_idx]  # (T, n_top)
+
+        rate_maps = np.zeros((n_top, m, m), dtype=float)
+        for b in range(n_bins):
+            mask = gc == b
+            if mask.any():
+                rate_maps[:, b // m, b % m] = top_act[mask].mean(axis=0)
+
+        n_cols = 8
+        n_rows = int(np.ceil(n_top / n_cols))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 1.8, n_rows * 1.8))
+        axes_flat = np.array(axes).flatten()
+        for i, nid in enumerate(top_idx):
+            ax = axes_flat[i]
+            rm = gaussian_filter(rate_maps[i], sigma=1.5)
+            if rm.max() > 0:
+                rm = (rm - rm.min()) / (rm.max() - rm.min())
+            ax.imshow(rm, origin="lower", cmap="jet", vmin=0, vmax=1)
+            score = df_skaggs.loc[nid, "skaggs_score"] if nid in df_skaggs.index else 0.0
+            ax.set_title(f"{nid}  {score:.3f}", fontsize=6)
+            ax.axis("off")
+        for i in range(n_top, len(axes_flat)):
+            axes_flat[i].axis("off")
+        fig.suptitle(f"Top {n_top} by Skaggs — {period}  |  {n_pass}/{n_neurons} place cells", fontsize=9)
+        plt.tight_layout()
+        fig_path = os.path.join(figures_dir, f"top_skaggs_{period}.png")
+        plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved figure: {fig_path}")
+
+    return df_skaggs
 
 
 def moving_average(values, window):
@@ -664,7 +752,8 @@ save_checkpoint(
 )
 
 # --- Probe walk BEFORE RL (uses Phase 1 weights) ---
-run_probe_walk(rnn_model, period="before", n_steps=5000, save_dir=DATA_DIR)
+_beh_before, _act_before = run_probe_walk(rnn_model, period="before", n_steps=50000, save_dir=DATA_DIR)
+compute_skaggs_report(_beh_before, _act_before, period="before", save_dir=DATA_DIR, figures_dir=FIGURES_DIR)
 
 visualize_place_fields(
     rnn_model,
@@ -688,12 +777,19 @@ save_pickle(
         "act_sample_shape": tuple(act_sample.shape),
     },
 )
-print("Hidden activity extraction complete. Your colleague can now use 'hidden_states' for analysis.")
 
 print("\n=== PHASE 2: RL Training (With RNN Gradient Flow at Reduced LR) ===")
 rnn_model.train()
 optimizer_controller = optim.Adam(controller.parameters(), lr=1e-4, eps=1e-5)
-optimizer_rnn_rl = optim.Adam(rnn_model.parameters(), lr=RNN_RL_LEARNING_RATE, eps=1e-5)
+optimizer_rnn_rl = optim.Adam([
+    {"params": rnn_model.W_rec.parameters(), "lr": 5e-7},# recurrent manifold
+    {"params": rnn_model.W_in.parameters(),  "lr": 5e-6},# sensory input
+    {"params": rnn_model.W_act.parameters(), "lr": 5e-6},# action input 
+    {"params": rnn_model.W_out.parameters(), "lr": 5e-5},# predictive output
+    {"params": list(rnn_model.c_readout.parameters()) +
+               list(rnn_model.g.parameters()) +
+               [rnn_model.g_strength],"lr": 5e-6},# gain control
+], eps=1e-5)
 MAX_EPISODES = int(ARGS.max_episodes)
 MAX_STEPS = int(ARGS.max_steps)
 GAMMA = 0.99
@@ -899,10 +995,12 @@ save_checkpoint(
 )
 
 # --- Probe walk AFTER RL (uses Phase 2 fine-tuned weights) ---
-run_probe_walk(rnn_model, period="after", n_steps=5000, save_dir=DATA_DIR)
+_beh_after, _act_after = run_probe_walk(rnn_model, period="after", n_steps=50000, save_dir=DATA_DIR)
+compute_skaggs_report(_beh_after, _act_after, period="after", save_dir=DATA_DIR, figures_dir=FIGURES_DIR)
 
 # --- Goal-conditioned probe AFTER RL: representations during active reward-seeking ---
-run_goal_conditioned_probe(rnn_model, controller, PROBE_REWARD_POS, n_steps=5000, save_dir=DATA_DIR)
+_beh_gc, _act_gc = run_goal_conditioned_probe(rnn_model, controller, PROBE_REWARD_POS, n_steps=50000, save_dir=DATA_DIR)
+compute_skaggs_report(_beh_gc, _act_gc, period="goal_conditioned", save_dir=DATA_DIR, figures_dir=FIGURES_DIR)
 
 print("\nTesting...")
 controller.eval()
