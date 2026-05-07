@@ -2,7 +2,8 @@ data/
 *.pkl
 *.npy
 *.pt
-Results/ratinabox_v9/checkpoints/
+checkpoints/
+**/checkpoints/
 Papers/
 __pycache__/
 *.pyc

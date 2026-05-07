@@ -82,7 +82,7 @@ save_json(
         "max_steps": ARGS.max_steps,
         "checkpoint_every": ARGS.checkpoint_every,
         "rnn_rl_learning_rate_W_rec": 5e-7,
-        "rnn_rl_learning_rate_W_in_act": 5e-6,
+        "rnn_rl_learning_rate_W_in_act": 1e-5,
         "rnn_rl_learning_rate_W_out": 5e-5,
         "pred_loss_weight": PRED_LOSS_WEIGHT,
     },
@@ -783,8 +783,8 @@ rnn_model.train()
 optimizer_controller = optim.Adam(controller.parameters(), lr=1e-4, eps=1e-5)
 optimizer_rnn_rl = optim.Adam([
     {"params": rnn_model.W_rec.parameters(), "lr": 5e-7},# recurrent manifold
-    {"params": rnn_model.W_in.parameters(),  "lr": 5e-6},# sensory input
-    {"params": rnn_model.W_act.parameters(), "lr": 5e-6},# action input 
+    {"params": rnn_model.W_in.parameters(),  "lr": 1e-5},# sensory input
+    {"params": rnn_model.W_act.parameters(), "lr": 1e-5},# action input
     {"params": rnn_model.W_out.parameters(), "lr": 5e-5},# predictive output
     {"params": list(rnn_model.c_readout.parameters()) +
                list(rnn_model.g.parameters()) +
