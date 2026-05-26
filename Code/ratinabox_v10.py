@@ -61,7 +61,7 @@ ARGS = parse_args()
 warnings.filterwarnings('ignore')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
-PRED_LOSS_WEIGHT = 0.3
+PRED_LOSS_WEIGHT = 0.7
 PROBE_REWARD_POS = np.array([0.5, 0.5])
 WARMUP_STEPS = 10
 SEED = int(ARGS.seed)
@@ -146,7 +146,7 @@ class SparseBiasReLU(nn.Module):
     """relu(x + bias): preserves amplitude, no normalization."""
     def __init__(self, hidden_size):
         super().__init__()
-        self.bias = nn.Parameter(torch.ones(hidden_size) * -0.5)
+        self.bias = nn.Parameter(torch.ones(hidden_size) * -0.2)
 
     def forward(self, x):
         return F.relu(x + self.bias)
@@ -946,7 +946,7 @@ print("\n=== PHASE 2: Interleaved RL + Predictive Training ===")
 rnn_model.train()
 # Single optimizer for RL: one consistent momentum state
 optimizer_rl = optim.Adam([
-    {"params": rnn_model.parameters(), "lr": 5e-6},
+    {"params": rnn_model.parameters(), "lr": 2e-6},
     {"params": controller.parameters(), "lr": 1e-4},
 ], eps=1e-5)
 

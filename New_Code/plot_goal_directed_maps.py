@@ -197,6 +197,164 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", 
     plt.close(fig)
 
 
+def _load_cycle_rate_maps(data_dir, m=32, hidden_dim=512, probe_type="goal"):
+    if probe_type == "goal":
+        cycle_files = sorted([
+            f for f in os.listdir(data_dir)
+            if f.startswith("df_activations_cycle_") and f.endswith("_goal.pkl")
+        ])
+    else:
+        cycle_files = sorted([
+            f for f in os.listdir(data_dir)
+            if f.startswith("df_activations_cycle_") and f.endswith(".pkl")
+            and "goal" not in f
+        ])
+    cycle_data = {}
+    for fname in cycle_files:
+        label = fname.replace("df_activations_", "").replace(".pkl", "")
+        df_a = pd.read_pickle(os.path.join(data_dir, fname))
+        beh_fname = fname.replace("df_activations_", "df_behavior_")
+        df_b = pd.read_pickle(os.path.join(data_dir, beh_fname))
+        rm, occ = build_rate_maps(df_b, df_a, m, hidden_dim)
+        sk = compute_skaggs(rm, occ)
+        cycle_data[label] = (rm, occ, sk)
+    return cycle_data
+
+
+def fig_drift_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,
+                            skaggs_threshold=0.05, max_neurons=60,
+                            save_path=None, no_show=False):
+    """Track field-centre trajectory of active neurons across cycles."""
+    cycle_data = _load_cycle_rate_maps(data_dir, m, hidden_dim, probe_type="goal")
+    if len(cycle_data) < 2:
+        print("  Need >=2 cycles for drift figure; skipping.")
+        return
+    labels = sorted(cycle_data.keys())
+    rm_last, _, sk_last = cycle_data[labels[-1]]
+    active = np.where(sk_last >= skaggs_threshold)[0]
+    if len(active) == 0:
+        print("  No active neurons above Skaggs threshold; skipping drift.")
+        return
+    if len(active) > max_neurons:
+        rng = np.random.default_rng(0)
+        active = rng.choice(active, max_neurons, replace=False)
+    centres = np.zeros((len(labels), len(active), 2))
+    for ci, lab in enumerate(labels):
+        rm = cycle_data[lab][0]
+        for ni, nid in enumerate(active):
+            centres[ci, ni] = field_center_of_mass(smooth_and_norm(rm[nid]))
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    ax = axes[0]
+    cmap = plt.cm.viridis(np.linspace(0, 1, len(labels)))
+    for ni in range(len(active)):
+        ax.plot(centres[:, ni, 0], centres[:, ni, 1],
+                color="gray", alpha=0.3, linewidth=0.6, zorder=2)
+    for ci, lab in enumerate(labels):
+        ax.scatter(centres[ci, :, 0], centres[ci, :, 1],
+                   c=[cmap[ci]], s=18, alpha=0.75, zorder=3,
+                   label=lab.replace("_", " ").title())
+    ax.plot(*reward_pos, "r*", markersize=22, zorder=5)
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect("equal")
+    ax.set_title(f"Field-centre drift across cycles\n({len(active)} active neurons)")
+    ax.legend(loc="upper right", fontsize=7)
+    ax.grid(alpha=0.2)
+
+    ax = axes[1]
+    disp = np.linalg.norm(centres - centres[0:1], axis=2)
+    mean_disp = disp.mean(axis=1)
+    std_disp = disp.std(axis=1)
+    xs = np.arange(len(labels))
+    ax.plot(xs, mean_disp, "o-", color="steelblue", linewidth=2, markersize=8)
+    ax.fill_between(xs, mean_disp - std_disp, mean_disp + std_disp,color="steelblue", alpha=0.2)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([l.replace("cycle_", "C").replace("_goal", "") for l in labels])
+    ax.set_xlabel("Cycle")
+    ax.set_ylabel("Mean displacement from cycle-1 centre")
+    ax.set_title("Drift magnitude over training")
+    ax.grid(alpha=0.3)
+    fig.suptitle("Per-neuron drift of field centres across interleaved cycles", fontsize=13)
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"  Saved: {save_path}")
+    if not no_show:
+        plt.show()
+    plt.close(fig)
+
+
+def fig_ori_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,skaggs_threshold=0.05, save_path=None, no_show=False):
+    """Mean field-centre distance to reward (ORI) per cycle."""
+    cycle_data = _load_cycle_rate_maps(data_dir, m, hidden_dim, probe_type="goal")
+    if len(cycle_data) == 0:
+        print("  No cycle data; skipping ORI-per-cycle figure.")
+        return
+    labels = sorted(cycle_data.keys())
+    means, stds, n_cells = [], [], []
+    for lab in labels:
+        rm, occ, sk = cycle_data[lab]
+        active = np.where(sk >= skaggs_threshold)[0]
+        if len(active) == 0:
+            means.append(np.nan); stds.append(np.nan); n_cells.append(0)
+            continue
+        centres = np.array([field_center_of_mass(smooth_and_norm(rm[nid]))
+                            for nid in active])
+        dists = np.linalg.norm(centres - reward_pos, axis=1)
+        means.append(dists.mean()); stds.append(dists.std()); n_cells.append(len(active))
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    xs = np.arange(len(labels))
+    ax.errorbar(xs, means, yerr=stds, fmt="o-", color="tomato",linewidth=2, capsize=4, markersize=8)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([l.replace("cycle_", "C").replace("_goal", "") for l in labels])
+    ax.set_xlabel("Cycle")
+    ax.set_ylabel("Mean |field-centre − reward|")
+    ax.set_title("Over-representation index across cycles\n(lower = stronger reward concentration)")
+    for x, n, mu in zip(xs, n_cells, means):
+        if not np.isnan(mu):
+            ax.annotate(f"n={n}", (x, mu), textcoords="offset points",
+                        xytext=(6, 8), fontsize=8, color="gray")
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"  Saved: {save_path}")
+    if not no_show:
+        plt.show()
+    plt.close(fig)
+
+def fig_100cells_random(rate_maps, reward_bin, mean_rate_threshold=0.01,n_show=100, seed=0, title="Random active neurons",save_path=None, no_show=False):
+    """100 randomly-chosen active neurons."""
+    mean_rates = rate_maps.mean(axis=(1, 2))
+    active = np.where(mean_rates >= mean_rate_threshold)[0]
+    if len(active) == 0:
+        print("  No active neurons; skipping random-100 figure.")
+        return
+    rng = np.random.default_rng(seed)
+    sel = rng.choice(active, size=min(n_show, len(active)), replace=False)
+    rx, ry = reward_bin
+    fig = plt.figure(figsize=(15, 15), dpi=150)
+    fig.suptitle(f"{title}\n(random pick from {len(active)} active neurons, "
+                 f"threshold mean rate >= {mean_rate_threshold})",
+                 fontsize=14, y=0.98)
+    for i, nid in enumerate(sel):
+        ax = fig.add_subplot(10, 10, i + 1)
+        rm = smooth_and_norm(rate_maps[nid])
+        ax.imshow(rm, origin="lower", cmap="jet",
+                  interpolation="gaussian", vmin=0, vmax=1)
+        ax.plot(rx, ry, "w*", markersize=4)
+        ax.set_title(f"{nid}", fontsize=5)
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.set_aspect("equal")
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"  Saved: {save_path}")
+    if not no_show:
+        plt.show()
+    plt.close(fig)
+
+
 def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_path=None, no_show=False):
     cycle_files = sorted([
         f for f in os.listdir(data_dir)
@@ -257,12 +415,15 @@ def main():
                         help="Number of cells to show in comparison figure (default: 20)")
     parser.add_argument("--m", type=int, default=32, help="Grid resolution (default: 32)")
     parser.add_argument("--hidden_dim", type=int, default=512, help="RNN hidden size (default: 512)")
-    parser.add_argument("--skaggs_threshold", type=float, default=0.05)
+    parser.add_argument("--skaggs_threshold", type=float, default=0.15)
     parser.add_argument("--no_show", action="store_true",
                         help="Save figures without displaying them")
+    parser.add_argument("--fig_subdir", type=str, default="",
+                        help="Optional subfolder under <run_dir>/figures/ to save into")
     args = parser.parse_args()
     data_dir = os.path.join(args.run_dir, "data")
-    fig_dir = os.path.join(args.run_dir, "figures")
+    fig_dir = os.path.join(args.run_dir, "figures", args.fig_subdir) if args.fig_subdir \
+              else os.path.join(args.run_dir, "figures")
     os.makedirs(fig_dir, exist_ok=True)
     reward_pos = np.array(args.reward_pos)
     m = args.m
@@ -331,6 +492,40 @@ def main():
         m=m,
         hidden_dim=hidden_dim,
         save_path=os.path.join(fig_dir, "cycle_progression_goaltop.png"),
+        no_show=args.no_show,
+    )
+    print("Figure 5: Drift across cycles...")
+    fig_drift_across_cycles(
+        data_dir=data_dir,
+        reward_pos=reward_pos,
+        m=m, hidden_dim=hidden_dim,
+        skaggs_threshold=args.skaggs_threshold,
+        save_path=os.path.join(fig_dir, "drift_across_cycles.png"),
+        no_show=args.no_show,
+    )
+    print("Figure 6: ORI across cycles...")
+    fig_ori_across_cycles(
+        data_dir=data_dir,
+        reward_pos=reward_pos,
+        m=m, hidden_dim=hidden_dim,
+        skaggs_threshold=args.skaggs_threshold,
+        save_path=os.path.join(fig_dir, "ori_across_cycles.png"),
+        no_show=args.no_show,
+    )
+    print("Figure 7: 100 random active neurons — random walk probe...")
+    fig_100cells_random(
+        rm_rw, reward_bin,
+        mean_rate_threshold=0.01,
+        title="Random Walk Probe — 100 random active neurons",
+        save_path=os.path.join(fig_dir, "100cells_randomwalk_random.png"),
+        no_show=args.no_show,
+    )
+    print("Figure 8: 100 random active neurons — goal-directed probe...")
+    fig_100cells_random(
+        rm_gc, reward_bin,
+        mean_rate_threshold=0.01,
+        title="Goal-Directed Probe — 100 random active neurons",
+        save_path=os.path.join(fig_dir, "100cells_goaldirected_random.png"),
         no_show=args.no_show,
     )
     print("\nAll done. Figures saved to:", fig_dir)
