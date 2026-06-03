@@ -3,10 +3,29 @@ Plot goal-directed cognitive maps from an existing training run.
 """
 import argparse
 import os
+import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from scipy.ndimage import gaussian_filter
+sns.set_theme(style="ticks")
+def save_figure(fig, save_path, no_show=False, despine=True):
+    """Despine, then save the figure as BOTH .png and .pdf"""
+    if despine:
+        try:
+            sns.despine(fig=fig)
+        except Exception:
+            pass
+    if save_path:
+        base, _ = os.path.splitext(save_path)
+        for ext in (".png", ".pdf"):
+            fig.savefig(base + ext, dpi=150, bbox_inches="tight",
+                        facecolor=fig.get_facecolor())
+            print(f"  Saved: {base + ext}")
+    if not no_show:
+        plt.show()
+    plt.close(fig)
 
 def build_rate_maps(df_beh, df_act, m=32, hidden_dim=512):
     n_steps = len(df_beh)
@@ -61,12 +80,6 @@ def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title
     fig, axes = plt.subplots(nrows_per * 2, ncols,
                              figsize=(ncols * 1.9, nrows_per * 2 * 2.1))
     fig.patch.set_facecolor("#1a1a1a")
-    fig.suptitle(
-        f"Top {n} neurons by goal-directed Skaggs {title_suffix}\n"
-        f"TOP rows: random-walk probe  |  BOTTOM rows: goal-directed probe  "
-        f"|  ★ = reward",
-        fontsize=9, color="white"
-    )
     rx, ry = reward_bin
     for i, nid in enumerate(top_idx):
         row_rw = i // ncols
@@ -80,7 +93,6 @@ def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title
             ax.imshow(smooth_and_norm(rm_src[nid]), origin="lower",
                       cmap="jet", vmin=0, vmax=1)
             ax.plot(rx, ry, "w*", markersize=5)
-            ax.set_title(f"#{nid}  {sk[nid]:.2f}", fontsize=5, color="white")
             ax.axis("off")
             ax.set_facecolor("black")
     # Row labels
@@ -92,34 +104,21 @@ def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title
         axes[i // ncols, i % ncols].axis("off")
         axes[i // ncols + nrows_per, i % ncols].axis("off")
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    save_figure(fig, save_path, no_show, despine=False)
 
 
 def fig_occupancy(occ_rw, occ_gc, reward_bin, save_path=None, no_show=False):
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
-    labels = ["Random Walk — uniform coverage", "Goal-Directed — concentrated near reward"]
     rx, ry = reward_bin
-    for ax, occ, label in zip(axes, [occ_rw, occ_gc], labels):
+    for ax, occ in zip(axes, [occ_rw, occ_gc]):
         im = ax.imshow(occ.T, origin="lower", cmap="inferno", aspect="equal")
         ax.plot(rx * occ.shape[0] / occ.shape[0],
                 ry * occ.shape[1] / occ.shape[1], "c*", markersize=16)
-        ax.set_title(label, fontsize=12)
         ax.axis("off")
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Occupancy fraction")
 
-    fig.suptitle("Probe trajectory density — why the maps look different", fontsize=13)
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    save_figure(fig, save_path, no_show, despine=False)
 
 
 def fig_ori(rm_rw, skaggs_rw, rm_gc, skaggs_gc, reward_pos, threshold=0.05, save_path=None, no_show=False):
@@ -142,7 +141,6 @@ def fig_ori(rm_rw, skaggs_rw, rm_gc, skaggs_gc, reward_pos, threshold=0.05, save
     ax.axvline(0, color="gold", linewidth=2.5, linestyle="--", label="Reward location")
     ax.set_xlabel("Distance of field centre from reward", fontsize=11)
     ax.set_ylabel("Density", fontsize=11)
-    ax.set_title("Field centre distance distribution", fontsize=12)
     ax.legend(fontsize=9)
     ax = axes[1]
     if len(c_rw):
@@ -150,25 +148,15 @@ def fig_ori(rm_rw, skaggs_rw, rm_gc, skaggs_gc, reward_pos, threshold=0.05, save
     ax.plot(*reward_pos, "r*", markersize=16)
     ax.add_patch(plt.Circle(reward_pos, 0.15, color="red", fill=False,linewidth=1.5, linestyle="--"))
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect("equal")
-    ax.set_title(f"Field centres — Random Walk\n({len(d_rw)} place cells)", fontsize=11)
     ax = axes[2]
     if len(c_gc):
         ax.scatter(c_gc[:, 0], c_gc[:, 1], alpha=0.3, s=9, c="tomato")
     ax.plot(*reward_pos, "r*", markersize=16)
     ax.add_patch(plt.Circle(reward_pos, 0.15, color="red", fill=False,linewidth=1.5, linestyle="--"))
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect("equal")
-    ax.set_title(f"Field centres — Goal-Directed\n({len(d_gc)} place cells)", fontsize=11)
 
-    fig.suptitle(
-        "Over-Representation Index — do fields cluster near reward after RL?", fontsize=13
-    )
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    save_figure(fig, save_path, no_show)
 
 
 def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", save_path=None, no_show=False):
@@ -176,7 +164,6 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", 
     rx, ry = reward_bin
 
     fig = plt.figure(figsize=(15, 15), dpi=150)
-    fig.suptitle(title, fontsize=16, y=0.98)
 
     for i in range(n_show):
         nid = top_idx[i]
@@ -184,18 +171,11 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", 
         rm = smooth_and_norm(rate_maps[nid])
         ax.imshow(rm, origin="lower", cmap="jet", interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=4)
-        ax.set_title(f"{nid}  {skaggs[nid]:.2f}", fontsize=4)
         ax.set_xticks([]); ax.set_yticks([])
         ax.set_aspect("equal")
 
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
-
+    plt.tight_layout()
+    save_figure(fig, save_path, no_show, despine=False)
 
 def _load_cycle_rate_maps(data_dir, m=32, hidden_dim=512, probe_type="goal"):
     if probe_type == "goal":
@@ -220,6 +200,11 @@ def _load_cycle_rate_maps(data_dir, m=32, hidden_dim=512, probe_type="goal"):
         cycle_data[label] = (rm, occ, sk)
     return cycle_data
 
+
+def _cycle_num(label):
+    """Extract the integer cycle index from a label like 'cycle_3' or 'cycle_3_goal'."""
+    mobj = re.search(r"cycle_(\d+)", label)
+    return int(mobj.group(1)) if mobj else -1
 
 def fig_drift_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,
                             skaggs_threshold=0.05, max_neurons=60,
@@ -256,7 +241,6 @@ def fig_drift_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,
                    label=lab.replace("_", " ").title())
     ax.plot(*reward_pos, "r*", markersize=22, zorder=5)
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect("equal")
-    ax.set_title(f"Field-centre drift across cycles\n({len(active)} active neurons)")
     ax.legend(loc="upper right", fontsize=7)
     ax.grid(alpha=0.2)
 
@@ -271,16 +255,9 @@ def fig_drift_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,
     ax.set_xticklabels([l.replace("cycle_", "C").replace("_goal", "") for l in labels])
     ax.set_xlabel("Cycle")
     ax.set_ylabel("Mean displacement from cycle-1 centre")
-    ax.set_title("Drift magnitude over training")
     ax.grid(alpha=0.3)
-    fig.suptitle("Per-neuron drift of field centres across interleaved cycles", fontsize=13)
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    save_figure(fig, save_path, no_show)
 
 
 def fig_ori_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,skaggs_threshold=0.05, save_path=None, no_show=False):
@@ -309,19 +286,13 @@ def fig_ori_across_cycles(data_dir, reward_pos, m=32, hidden_dim=512,skaggs_thre
     ax.set_xticklabels([l.replace("cycle_", "C").replace("_goal", "") for l in labels])
     ax.set_xlabel("Cycle")
     ax.set_ylabel("Mean |field-centre − reward|")
-    ax.set_title("Over-representation index across cycles\n(lower = stronger reward concentration)")
     for x, n, mu in zip(xs, n_cells, means):
         if not np.isnan(mu):
             ax.annotate(f"n={n}", (x, mu), textcoords="offset points",
                         xytext=(6, 8), fontsize=8, color="gray")
     ax.grid(alpha=0.3)
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    save_figure(fig, save_path, no_show)
 
 def fig_100cells_random(rate_maps, reward_bin, mean_rate_threshold=0.01,n_show=100, seed=0, title="Random active neurons",save_path=None, no_show=False):
     """100 randomly-chosen active neurons."""
@@ -334,25 +305,16 @@ def fig_100cells_random(rate_maps, reward_bin, mean_rate_threshold=0.01,n_show=1
     sel = rng.choice(active, size=min(n_show, len(active)), replace=False)
     rx, ry = reward_bin
     fig = plt.figure(figsize=(15, 15), dpi=150)
-    fig.suptitle(f"{title}\n(random pick from {len(active)} active neurons, "
-                 f"threshold mean rate >= {mean_rate_threshold})",
-                 fontsize=14, y=0.98)
     for i, nid in enumerate(sel):
         ax = fig.add_subplot(10, 10, i + 1)
         rm = smooth_and_norm(rate_maps[nid])
         ax.imshow(rm, origin="lower", cmap="jet",
                   interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=4)
-        ax.set_title(f"{nid}", fontsize=5)
         ax.set_xticks([]); ax.set_yticks([])
         ax.set_aspect("equal")
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    plt.tight_layout()
+    save_figure(fig, save_path, no_show, despine=False)
 
 
 def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_path=None, no_show=False):
@@ -389,19 +351,158 @@ def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_
                 ax.set_ylabel(label.replace("_", " ").title(),
                               fontsize=7, rotation=0, labelpad=50, color="white")
 
-    fig.suptitle(
-        "Per-cycle random-walk probe — same top-10 goal-directed neurons\n"
-        "★ = reward location",
-        fontsize=9, color="white"
-    )
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight",
-                    facecolor=fig.get_facecolor())
-        print(f"  Saved: {save_path}")
-    if not no_show:
-        plt.show()
-    plt.close(fig)
+    save_figure(fig, save_path, no_show, despine=False)
+
+
+def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin,save_path=None, no_show=False):
+    """For ONE neuron: top row = prediction (random-walk probe), bottom row = RL (goal-directed probe); one column per cycle."""
+    rw_labels = sorted(rw_cycles.keys(), key=_cycle_num)
+    goal_labels = sorted(goal_cycles.keys(), key=_cycle_num)
+    n = max(len(rw_labels), len(goal_labels))
+    if n == 0:
+        print("  No per-cycle data; skipping pred-vs-RL figure.")
+        return
+    rx, ry = reward_bin
+    fig, axes = plt.subplots(2, n, figsize=(n * 1.9, 2 * 2.1), squeeze=False)
+    fig.patch.set_facecolor("#1a1a1a")
+    for col in range(n):
+        for row, cycles, labels in [(0, rw_cycles, rw_labels),
+                                     (1, goal_cycles, goal_labels)]:
+            ax = axes[row][col]
+            if col < len(labels):
+                rm = cycles[labels[col]][0]
+                ax.imshow(smooth_and_norm(rm[neuron_id]), origin="lower",
+                          cmap="jet", vmin=0, vmax=1)
+                ax.plot(rx, ry, "w*", markersize=5)
+            ax.set_xticks([]); ax.set_yticks([])
+            ax.set_facecolor("black")
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+    # row labels (axis labels, not headers)
+    axes[0][0].set_ylabel("Prediction", fontsize=10, color="white")
+    axes[1][0].set_ylabel("RL", fontsize=10, color="white")
+    # cycle labels along the bottom
+    for col in range(n):
+        lab = goal_labels[col] if col < len(goal_labels) else rw_labels[col]
+        axes[1][col].set_xlabel(f"C{_cycle_num(lab)}", fontsize=9, color="white")
+    plt.tight_layout()
+    save_figure(fig, save_path, no_show, despine=False)
+
+
+def fig_drift_matrix(goal_cycles, skaggs_gc, n_cells=100,save_path=None, no_show=False):
+    """Neuron x cycle heatmap of field-centre drift: each row is one place cell,
+    each column a training cycle, colour = displacement of that cell's field
+    centre from its cycle-1 position. Rows sorted by final drift, so stable
+    cells (dark) and the few drifting cells (bright) are immediately visible."""
+    labels = sorted(goal_cycles.keys(), key=_cycle_num)
+    if len(labels) < 2:
+        print("  Need >=2 cycles for drift matrix; skipping.")
+        return
+    top = np.argsort(skaggs_gc)[::-1][:n_cells]
+    centres = np.zeros((len(labels), len(top), 2))
+    for ci, lab in enumerate(labels):
+        rm = goal_cycles[lab][0]
+        for ni, nid in enumerate(top):
+            centres[ci, ni] = field_center_of_mass(smooth_and_norm(rm[nid]))
+    # displacement of each neuron from its cycle-1 centre, at every cycle
+    disp = np.linalg.norm(centres - centres[0:1], axis=2).T# (n_cells, n_cycles)
+    disp = disp[np.argsort(disp[:, -1])[::-1]]# sort rows by final drift
+    fig, ax = plt.subplots(figsize=(5.5, 8))
+    im = ax.imshow(disp, aspect="auto", cmap="magma", origin="upper",
+                   vmin=0, vmax=np.nanpercentile(disp, 99))
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels([f"C{_cycle_num(l)}" for l in labels], fontsize=11)
+    ax.set_yticks([0, len(top) - 1])
+    ax.set_yticklabels(["1", str(len(top))], fontsize=10)
+    ax.set_xlabel("Training cycle", fontsize=12)
+    ax.set_ylabel(f"Place cells (sorted by drift, n={len(top)})", fontsize=12)
+    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Field-centre displacement from cycle 1", fontsize=11)
+    plt.tight_layout()
+    save_figure(fig, save_path, no_show, despine=False)
+
+
+def fig_drift_rdm(goal_cycles, skaggs_gc, n_cells=100, save_path=None, no_show=False):
+    """Cycle-to-cycle dissimilarity matrix (annotated). Entry (i,j) = mean
+    field-centre distance between cycle i and cycle j across the top n_cells
+    place cells. Diagonal = 0; small off-diagonals = the map is stable."""
+    labels = sorted(goal_cycles.keys(), key=_cycle_num)
+    if len(labels) < 2:
+        print("  Need >=2 cycles for drift RDM; skipping.")
+        return
+    top = np.argsort(skaggs_gc)[::-1][:n_cells]
+    nc = len(labels)
+    centres = np.zeros((nc, len(top), 2))
+    for ci, lab in enumerate(labels):
+        rm = goal_cycles[lab][0]
+        for ni, nid in enumerate(top):
+            centres[ci, ni] = field_center_of_mass(smooth_and_norm(rm[nid]))
+    mat = np.zeros((nc, nc))
+    for i in range(nc):
+        for j in range(nc):
+            mat[i, j] = np.linalg.norm(centres[i] - centres[j], axis=1).mean()
+
+    fig, ax = plt.subplots(figsize=(6.5, 5.5))
+    im = ax.imshow(mat, cmap="magma", origin="upper", vmin=0)
+    ticks = [f"C{_cycle_num(l)}" for l in labels]
+    ax.set_xticks(range(nc)); ax.set_xticklabels(ticks, fontsize=11)
+    ax.set_yticks(range(nc)); ax.set_yticklabels(ticks, fontsize=11)
+    ax.set_xlabel("Training cycle", fontsize=12)
+    ax.set_ylabel("Training cycle", fontsize=12)
+    thr = mat.max() * 0.6 if mat.max() > 0 else 1.0
+    for i in range(nc):
+        for j in range(nc):
+            ax.text(j, i, f"{mat[i, j]:.2f}", ha="center", va="center",
+                    color="white" if mat[i, j] < thr else "black", fontsize=11)
+    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Mean field-centre distance between cycles", fontsize=11)
+    plt.tight_layout()
+    save_figure(fig, save_path, no_show, despine=False)
+
+
+def fig_drift_rdm_10(rw_cycles, goal_cycles, skaggs_gc, n_cells=100,save_path=None, no_show=False):
+    """10x10 dissimilarity matrix over 10 timepoints = 5 cycles x
+    {Prediction (random-walk probe), RL (goal-directed probe)}, interleaved per
+    cycle. Entry (i,j) = mean field-centre distance between timepoints i and j
+    across the top n_cells. Captures both the consolidated map and the
+    displacement after the RL part of each cycle."""
+    rw_by_num = {_cycle_num(l): l for l in rw_cycles}
+    goal_by_num = {_cycle_num(l): l for l in goal_cycles}
+    cycles = sorted(set(rw_by_num) & set(goal_by_num))
+    if len(cycles) < 2:
+        print("  Need >=2 cycles for 10x10 drift matrix; skipping.")
+        return
+    top = np.argsort(skaggs_gc)[::-1][:n_cells]
+    def centres_of(cyc_dict, lab):
+        rm = cyc_dict[lab][0]
+        return np.array([field_center_of_mass(smooth_and_norm(rm[nid])) for nid in top])
+    series = []   # (tick label, centres (n_cells, 2))
+    for c in cycles:
+        series.append((f"C{c}·P", centres_of(rw_cycles, rw_by_num[c])))    # Prediction
+        series.append((f"C{c}·R", centres_of(goal_cycles, goal_by_num[c])))  # RL
+    nt = len(series)
+    mat = np.zeros((nt, nt))
+    for i in range(nt):
+        for j in range(nt):
+            mat[i, j] = np.linalg.norm(series[i][1] - series[j][1], axis=1).mean()
+
+    ticks = [s[0] for s in series]
+    fig, ax = plt.subplots(figsize=(8.5, 7.5))
+    im = ax.imshow(mat, cmap="magma", origin="upper", vmin=0)
+    ax.set_xticks(range(nt)); ax.set_xticklabels(ticks, fontsize=9, rotation=90)
+    ax.set_yticks(range(nt)); ax.set_yticklabels(ticks, fontsize=9)
+    ax.set_xlabel("Cycle · phase  (P = prediction, R = RL)", fontsize=11)
+    thr = mat.max() * 0.6 if mat.max() > 0 else 1.0
+    for i in range(nt):
+        for j in range(nt):
+            ax.text(j, i, f"{mat[i, j]:.2f}", ha="center", va="center",
+                    color="white" if mat[i, j] < thr else "black", fontsize=7)
+    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Mean field-centre distance", fontsize=11)
+    plt.tight_layout()
+    save_figure(fig, save_path, no_show, despine=False)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -420,6 +521,12 @@ def main():
                         help="Save figures without displaying them")
     parser.add_argument("--fig_subdir", type=str, default="",
                         help="Optional subfolder under <run_dir>/figures/ to save into")
+    parser.add_argument("--n_example_neurons", type=int, default=5,
+                        help="How many top neurons to render in the pred-vs-RL-across-cycles figure")
+    parser.add_argument("--drift_cells", type=int, default=100,
+                        help="Number of neurons in the drift matrix (default: 100 -> 10x10)")
+    parser.add_argument("--panel_neuron", type=int, default=425,
+                        help="Neuron rendered as the named pred-vs-RL panel figure (default: 425)")
     args = parser.parse_args()
     data_dir = os.path.join(args.run_dir, "data")
     fig_dir = os.path.join(args.run_dir, "figures", args.fig_subdir) if args.fig_subdir \
@@ -450,14 +557,12 @@ def main():
     print("\nFigure 0a: 100-cell grid (random walk probe)...")
     fig_100cells(
         rm_rw, skaggs_rw, top_idx_100, reward_bin,
-        title=f"Random Walk Probe — Top 100 neurons by goal-directed Skaggs\n(★ = reward at {reward_pos})",
         save_path=os.path.join(fig_dir, "100cells_randomwalk.png"),
         no_show=args.no_show,
     )
     print("Figure 0b: 100-cell grid (goal-directed probe)...")
     fig_100cells(
         rm_gc, skaggs_gc, top_idx_100, reward_bin,
-        title=f"Goal-Directed Probe — Top 100 neurons by Skaggs\n(★ = reward at {reward_pos})",
         save_path=os.path.join(fig_dir, "100cells_goaldirected.png"),
         no_show=args.no_show,
     )
@@ -516,7 +621,6 @@ def main():
     fig_100cells_random(
         rm_rw, reward_bin,
         mean_rate_threshold=0.01,
-        title="Random Walk Probe — 100 random active neurons",
         save_path=os.path.join(fig_dir, "100cells_randomwalk_random.png"),
         no_show=args.no_show,
     )
@@ -524,10 +628,80 @@ def main():
     fig_100cells_random(
         rm_gc, reward_bin,
         mean_rate_threshold=0.01,
-        title="Goal-Directed Probe — 100 random active neurons",
         save_path=os.path.join(fig_dir, "100cells_goaldirected_random.png"),
         no_show=args.no_show,
     )
+    #per-cycle data (random-walk = prediction, goal = RL)
+    print("\nLoading per-cycle probe data...")
+    rw_cycles = _load_cycle_rate_maps(data_dir, m, hidden_dim, probe_type="rw")
+    goal_cycles = _load_cycle_rate_maps(data_dir, m, hidden_dim, probe_type="goal")
+    print("Figure 9: Prediction vs RL across cycles (per neuron)...")
+    for nid in top_idx_100[:args.n_example_neurons]:
+        fig_pred_vs_rl_across_cycles(
+            rw_cycles, goal_cycles, int(nid), reward_bin,
+            save_path=os.path.join(fig_dir, f"pred_vs_rl_cycles_neuron_{int(nid)}.png"),
+            no_show=args.no_show,
+        )
+    if args.panel_neuron is not None:
+        print(f"Figure 9b: Pred-vs-RL panel figure (neuron {args.panel_neuron})...")
+        fig_pred_vs_rl_across_cycles(
+            rw_cycles, goal_cycles, int(args.panel_neuron), reward_bin,
+            save_path=os.path.join(fig_dir, f"pred_vs_rl_panel_neuron_{int(args.panel_neuron)}.png"),
+            no_show=args.no_show,
+        )
+
+    print("Figure 10: Drift matrix (10x10)...")
+    fig_drift_matrix(
+        goal_cycles, skaggs_gc,
+        n_cells=args.drift_cells,
+        save_path=os.path.join(fig_dir, "drift_matrix.png"),
+        no_show=args.no_show,
+    )
+    print("Figure 10b: Drift cycle-to-cycle matrix (annotated)...")
+    fig_drift_rdm(
+        goal_cycles, skaggs_gc,
+        n_cells=args.drift_cells,
+        save_path=os.path.join(fig_dir, "drift_matrix_numbers.png"),
+        no_show=args.no_show,
+    )
+    print("Figure 10c: Drift 10x10 matrix (cycle x {prediction, RL})...")
+    fig_drift_rdm_10(
+        rw_cycles, goal_cycles, skaggs_gc,
+        n_cells=args.drift_cells,
+        save_path=os.path.join(fig_dir, "drift_matrix_10x10.png"),
+        no_show=args.no_show,
+    )
+    # clean re-render of cognitive maps from saved data
+    print("Figure 11: Clean cognitive maps (phase1 = before RL, phase2 = after RL, each cycle)...")
+    # phase1 = before RL (random-walk probe)
+    fig_100cells(
+        rm_rw, skaggs_rw, top_idx_100, reward_bin,
+        save_path=os.path.join(fig_dir, "phase1_cognitive_map.png"),
+        no_show=args.no_show,
+    )
+    # phase2 = after RL (final, fully-consolidated random-walk probe)
+    after_beh = os.path.join(data_dir, "df_behavior_after.pkl")
+    after_act = os.path.join(data_dir, "df_activations_after.pkl")
+    if os.path.exists(after_beh) and os.path.exists(after_act):
+        rm_after, occ_after = build_rate_maps(
+            pd.read_pickle(after_beh), pd.read_pickle(after_act), m, hidden_dim)
+        skaggs_after = compute_skaggs(rm_after, occ_after)
+        fig_100cells(
+            rm_after, skaggs_after, top_idx_100, reward_bin,
+            save_path=os.path.join(fig_dir, "phase2_cognitive_map.png"),
+            no_show=args.no_show,
+        )
+    else:
+        print("  (no df_*_after.pkl found; skipping phase2 cognitive map)")
+    # intermediate snapshots per cycle
+    for lab in sorted(rw_cycles.keys(), key=_cycle_num):
+        rm_c, _, sk_c = rw_cycles[lab]
+        fig_100cells(
+            rm_c, sk_c, top_idx_100, reward_bin,
+            save_path=os.path.join(fig_dir, f"{lab}_cognitive_map.png"),
+            no_show=args.no_show,
+        )
+
     print("\nAll done. Figures saved to:", fig_dir)
 
 if __name__ == "__main__":
