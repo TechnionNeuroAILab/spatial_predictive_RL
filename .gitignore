@@ -8,3 +8,5 @@ Papers/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+New_Results_v2/**/data/
+New_Results_v2/**/checkpoints/

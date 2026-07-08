@@ -61,7 +61,9 @@ ARGS = parse_args()
 warnings.filterwarnings('ignore')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
-PRED_LOSS_WEIGHT = 0.7
+PRED_LOSS_WEIGHT = 0.3
+RNN_RL_LR = 5e-6
+CONTROLLER_LR = 1e-4
 PROBE_REWARD_POS = np.array([0.5, 0.5])
 WARMUP_STEPS = 10
 SEED = int(ARGS.seed)
@@ -89,8 +91,8 @@ save_json(
         "n_cycles": ARGS.n_cycles,
         "interleave_epochs": ARGS.interleave_epochs,
         "interleave_lr": ARGS.interleave_lr,
-        "rnn_rl_learning_rate": 5e-6,
-        "controller_learning_rate": 1e-4,
+        "rnn_rl_learning_rate": RNN_RL_LR,
+        "controller_learning_rate": CONTROLLER_LR,
         "pred_loss_weight": PRED_LOSS_WEIGHT,
         "activation": "SparseBiasReLU",
     },
@@ -946,8 +948,8 @@ print("\n=== PHASE 2: Interleaved RL + Predictive Training ===")
 rnn_model.train()
 # Single optimizer for RL: one consistent momentum state
 optimizer_rl = optim.Adam([
-    {"params": rnn_model.parameters(), "lr": 2e-6},
-    {"params": controller.parameters(), "lr": 1e-4},
+    {"params": rnn_model.parameters(), "lr": RNN_RL_LR},
+    {"params": controller.parameters(), "lr": CONTROLLER_LR},
 ], eps=1e-5)
 
 MAX_EPISODES = int(ARGS.max_episodes)
