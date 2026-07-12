@@ -907,10 +907,8 @@ def generate_predictive_data(rnn, ctrl, n_trials, timesteps):
 
 Env = Environment()
 for type_id in range(3):
-    locations = np.concatenate((
-        np.round(np.random.uniform(low=0.0, high=1.0, size=(12, 1))),
-        np.random.uniform(low=0.0, high=1.0, size=(12, 1))
-    ), axis=1)
+    # Objects placed uniformly throughout the arena.
+    locations = np.random.uniform(low=0.0, high=1.0, size=(12, 2))
     [Env.add_object(l, type=type_id) for l in locations]
 
 Ag = Agent(Env)
