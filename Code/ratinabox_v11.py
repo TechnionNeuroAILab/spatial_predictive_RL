@@ -967,6 +967,16 @@ if ARGS.reward_pred_head:
 print(f"RNN parameters    : {sum(p.numel() for p in rnn_model.parameters()):,}")
 print(f"Controller params : {sum(p.numel() for p in controller.parameters()):,}")
 print("\n=== PHASE 1: Training World Model ===")
+# Re-seed here so instantiating the reward head above cannot perturb the RNG.
+# Creating the head draws from the RNG for its weight init; without this re-seed
+# that shifts the Phase-1 data generation, the DataLoader shuffle and the replay-
+# trajectory recording, giving head and no-head runs DIFFERENT pre-RL maps and
+# trajectories -- which silently confounds any with/without-head comparison.
+# Re-seeding guarantees an identical pre-RL map and replay trajectory across
+# conditions, isolating the head's effect to the RL phase.
+np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 n_trials = int(ARGS.n_trials)
 timesteps = int(ARGS.timesteps)
 obs_data = np.zeros((n_trials, timesteps, OBS_DIM))
