@@ -1,0 +1,16 @@
+# Python dependencies for the spatial_predictive_rl research pipeline.
+#
+# NOTE on PyTorch: the cloud environment has no GPU, so a CPU-only build is used.
+# Install torch from the CPU wheel index first, e.g.:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+# then install the rest with:
+#   pip install -r requirements.txt
+torch
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+seaborn
+tqdm
+ratinabox
