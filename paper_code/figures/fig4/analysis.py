@@ -25,7 +25,9 @@ from analysis_helpers import load_period_centers, has_period, seed_is_clean  # n
 from plot_goal_directed_maps import build_rate_maps, compute_skaggs, smooth_and_norm  # noqa: E402
 from plot_replay_v11 import field_peak  # noqa: E402
 
-from utils import (  # noqa: E402
+from utils import (
+    C, FS_BASE, FS_SMALL, fmt_p, stat_annot, style_violin, title, zero_line,
+    RATEMAP,  # noqa: E402
     PERIOD_PRE, PERIOD_POST_A, PERIOD_POST_B, PERIODS,
     REWARD_A, REWARD_B, SKAGGS_THRESHOLD, MIN_ENTROPY,
     COLOR_A, COLOR_B, PERIOD_COLORS, M, HIDDEN_DIM,
@@ -131,15 +133,17 @@ def fig_tracking_curves(ts: dict, stem) -> tuple:
     sB = [d.std(ddof=1) / np.sqrt(len(d)) for d in ts["dists_B"]]
 
     fig, ax = plt.subplots(figsize=(3.2, 2.4))
-    ax.errorbar(x, mA, yerr=sA, fmt="-o", lw=1.8, color=COLOR_A, capsize=3,
-                label=f"dist to A ({REWARD_A[0]},{REWARD_A[1]})")
-    ax.errorbar(x, mB, yerr=sB, fmt="-s", lw=1.8, color=COLOR_B, capsize=3,
-                label=f"dist to B ({REWARD_B[0]},{REWARD_B[1]})")
+    ax.errorbar(x, mA, yerr=sA, fmt="-o", lw=1.1, ms=3.2, color=COLOR_A, capsize=2,
+                capthick=0.6, elinewidth=0.7, label="Reward A")
+    ax.errorbar(x, mB, yerr=sB, fmt="-s", lw=1.1, ms=3.0, color=COLOR_B, capsize=2,
+                capthick=0.6, elinewidth=0.7, label="Reward B")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
-    ax.set_ylabel("Mean field-centre distance (±SEM)")
-    ax.set_title("Fields leave A and arrive at B\n(frozen trajectory; occupancy fixed)", fontsize=6, pad=2)
-    ax.legend(fontsize=5)
+    ax.set_ylabel("Field-centre distance (arena units)")
+    title(ax, "Distance to each reward")
+    ax.legend(loc="best")
+    # SEM is stated once, here, rather than folded into the axis label.
+    stat_annot(ax, "mean ± s.e.m.", loc="lower left")
     fig.tight_layout(pad=0.4)
     return save_figure(fig, stem)
 
@@ -157,31 +161,29 @@ def fig_shift_violins(ts: dict, stem) -> tuple:
             return ""
         return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
-    fig, ax = plt.subplots(figsize=(2.8, 2.4))
-    data = [sA["delta"], sB["delta"]]
-    parts = ax.violinplot(data, positions=[1, 2], showmeans=True, showmedians=False, showextrema=True)
-    colors = [COLOR_A, COLOR_B]
-    for body, c in zip(parts["bodies"], colors):
-        body.set_facecolor(c)
-        body.set_alpha(0.6)
-        body.set_edgecolor("0.2")
-    for key in ("cbars", "cmins", "cmaxes", "cmeans"):
-        if key in parts:
-            parts[key].set_color("0.25")
-            parts[key].set_linewidth(0.8)
-
-    ax.axhline(0, color="0.35", lw=0.7, ls="--")
+    fig, ax = plt.subplots(figsize=(2.9, 2.4))
+    spec = ((1, sA, COLOR_A), (2, sB, COLOR_B))
+    for pos, s, colour in spec:
+        style_violin(ax.violinplot([s["delta"]], positions=[pos], widths=0.72,
+                                   showmeans=True, showmedians=False,
+                                   showextrema=True), colour)
+    zero_line(ax)
     ax.set_xticks([1, 2])
-    ax.set_xticklabels([
-        f"pre→postA\n(toward A)\n{_fmt_p(sA['wilcoxon_p'])}",
-        f"postA→postB\n(toward B)\n{_fmt_p(sB['wilcoxon_p'])}",
-    ])
-    ax.set_ylabel(r"$\Delta$ field-centre dist to reward")
-    ax.set_title(
-        f"Shift toward A: {sA['mean_delta']:+.3f} ({100*sA['frac_toward']:.0f}%)\n"
-        f"Shift toward B: {sB['mean_delta']:+.3f} ({100*sB['frac_toward']:.0f}%)",
-        fontsize=5.5, pad=2,
-    )
+    # Tick labels name the contrast only. Statistics under a tick label is not
+    # a tick label, and it pushed the axis furniture down by three lines.
+    ax.set_xticklabels(["pre → post A", "post A → post B"])
+    ax.set_xlim(0.45, 2.55)
+    ax.set_ylabel(r"$\Delta$ distance to reward")
+    title(ax, "Shift toward the active reward")
+    lo, hi = ax.get_ylim()
+    ax.set_ylim(lo, hi + 0.20 * (hi - lo))
+    for pos, s, _c in spec:
+        top = float(np.nanmax(s["delta"])) if len(s["delta"]) else 0.0
+        ax.text(pos, top + 0.05 * (hi - lo),
+                f"{s['mean_delta']:+.3f}\n{100*s['frac_toward']:.0f}% toward\n"
+                f"{fmt_p(s['wilcoxon_p'] if np.isfinite(s['wilcoxon_p']) else None)}",
+                ha="center", va="bottom", fontsize=FS_SMALL, color=C["muted"],
+                linespacing=1.3)
     fig.tight_layout(pad=0.4)
     return save_figure(fig, stem)
 
@@ -193,23 +195,36 @@ def fig_com_scatter_three(states: dict, stem, reward_a=REWARD_A, reward_b=REWARD
     Same graphic as Figure 3 panel b (fig_centers_abc): centre-of-mass dots,
     s=3, alpha=0.35, no edge, rasterized — not grid-snapped field peaks.
     """
-    fig, axes = plt.subplots(1, 3, figsize=(5.4, 1.85))
-    for ax, (period, label) in zip(axes, PERIODS):
+    fig, axes = plt.subplots(1, 3, figsize=(5.4, 1.95))
+    counts = []
+    for i, (ax, (period, label)) in enumerate(zip(axes, PERIODS)):
         sk = states[period]["sk"]
         com = states[period]["com"]
         place = np.where(sk >= skaggs_threshold)[0]
+        counts.append(len(place))
         ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect("equal")
-        ax.set_xticks([]); ax.set_yticks([])
+        # Closed box + arena coordinates on the first panel: bare L-shaped
+        # spines with no ticks gave the reader no sense of the arena extent.
         for spine in ax.spines.values():
-            spine.set_linewidth(0.6)
+            spine.set_visible(True); spine.set_linewidth(0.5); spine.set_color("#B0B0B0")
+        if i == 0:
+            ax.set_xticks([0, 0.5, 1]); ax.set_yticks([0, 0.5, 1])
+            ax.tick_params(labelsize=FS_SMALL, pad=1.5)
+            ax.set_xlabel("Arena x", labelpad=1.5); ax.set_ylabel("Arena y", labelpad=1.5)
+        else:
+            ax.set_xticks([]); ax.set_yticks([])
         ax.scatter(com[place, 0], com[place, 1],
-                   s=3, alpha=0.35, c=PERIOD_COLORS[period], linewidths=0, rasterized=True)
-        ax.plot(*reward_a, "*", color=COLOR_A, markersize=7, markeredgecolor="white",
-                markeredgewidth=0.5, zorder=5)
-        ax.plot(*reward_b, "*", color=COLOR_B, markersize=7, markeredgecolor="white",
-                markeredgewidth=0.5, zorder=5)
-        ax.set_title(f"{label.replace(chr(10), ' ')}  (n={len(place)})", fontsize=6, pad=2)
-    fig.suptitle("Field centres (COM) across phases", fontsize=6.5, y=1.02)
+                   s=3.2, alpha=0.42, c=PERIOD_COLORS[period], linewidths=0, rasterized=True)
+        for (rx, ry), col in ((reward_a, COLOR_A), (reward_b, COLOR_B)):
+            ax.plot([rx], [ry], marker="*", ms=8.6, mfc="none", mec="white",
+                    mew=1.3, ls="none", zorder=5, clip_on=False)
+            ax.plot([rx], [ry], marker="*", ms=7.0, mfc=col, mec="#333333",
+                    mew=0.4, ls="none", zorder=5.1, clip_on=False)
+        title(ax, label.replace(chr(10), " "))
+    # n once, outside the boxes, instead of three times in three titles.
+    axes[2].text(1.0, -0.06, "n = " + " / ".join(str(c) for c in counts) + " cells",
+                 transform=axes[2].transAxes, ha="right", va="top",
+                 fontsize=FS_SMALL, color=C["muted"])
     fig.tight_layout(pad=0.35, w_pad=0.35)
     return save_figure(fig, stem)
 
@@ -294,7 +309,7 @@ def fig_example_cells_grid(run_dir, stem, n_examples: int = 6,
     for col, nid in enumerate(sel):
         for row, (period, label) in enumerate(PERIODS):
             ax = axes[row][col]
-            ax.imshow(sm[period][int(nid)], origin="lower", cmap="jet", vmin=0, vmax=1)
+            ax.imshow(sm[period][int(nid)], origin="lower", cmap=RATEMAP, vmin=0, vmax=1)
             ax.plot(*ax_a, "*", color=COLOR_A, markersize=6,
                     markeredgecolor="white", markeredgewidth=0.5)
             ax.plot(*ax_b, "*", color=COLOR_B, markersize=6,
@@ -304,7 +319,9 @@ def fig_example_cells_grid(run_dir, stem, n_examples: int = 6,
                 ax.set_ylabel(label.replace("\n", " "), fontsize=6)
             if row == 0:
                 ax.set_title(f"#{int(nid)}", fontsize=6, pad=2)
-    fig.suptitle("Example cells: place fields track the reward from A (teal) to B (orange)",
+    # Title must not name colours: it silently goes wrong the moment the
+    # palette changes. The A/B stars are identified by the panel legend.
+    fig.suptitle("",
                  fontsize=7, y=1.0)
     fig.tight_layout(pad=0.3, w_pad=0.25, h_pad=0.25)
     return save_figure(fig, stem)

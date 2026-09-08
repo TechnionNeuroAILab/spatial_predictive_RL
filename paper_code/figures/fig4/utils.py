@@ -3,19 +3,37 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
+
+# ---------------------------------------------------------------------------
+# Publication style: single source of truth in paper_code/lib/pubstyle.py.
+# Names are re-exported so existing panel code keeps importing them from here.
+# ---------------------------------------------------------------------------
+import sys as _sys
+_LIB = Path(__file__).resolve().parents[2] / "lib"
+if str(_LIB) not in _sys.path:
+    _sys.path.insert(0, str(_LIB))
+
+from pubstyle import (  # noqa: E402,F401
+    MM_TO_PT, PAGE_W, COL_SINGLE, COL_WIDE, COL_DOUBLE,
+    FS_BASE, FS_TICK, FS_SMALL, FS_PANEL, LABEL_SIZE,
+    C, OI, PHASE_COLORS,
+    COLOR_NOHEAD, COLOR_HEAD, COLOR_A, COLOR_B, COLOR_RIGID,
+    COLOR_MODEL, COLOR_DATA, COLOR_PRED, COLOR_POSTLEARN, COLOR_POSTEXT,
+    COLOR_DISTANCE, COLOR_GOALDIR, COLOR_HD, COLOR_REWARD, COLOR_MUTED,
+    RATEMAP, RATEMAP_CMAP, DIVERGING, SEQUENTIAL,
+    apply_nature_style, ensure_dir, save_figure,
+    panel_label, title, fmt_p, stat_annot, despine, arena_axes,
+    reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIGURES_DIR = Path(__file__).resolve().parent / "figures"
 PANELS_DIR = FIGURES_DIR / "panels"
 NEW_CODE = REPO_ROOT / "paper_code" / "lib"
 
-MM_TO_PT = 72.0 / 25.4
-PAGE_W = 183.0 * MM_TO_PT
 PAGE_MARGIN = 5.0 * MM_TO_PT
-LABEL_SIZE = 8.0
 
 M = 32
 HIDDEN_DIM = 512
@@ -36,8 +54,6 @@ PERIODS = [
 ]
 
 # Phase colours for tracking curves
-COLOR_A = "#2a9d8f"   # teal — reward A
-COLOR_B = "#e76f51"   # orange — reward B
 PERIOD_COLORS = {
     PERIOD_PRE: "#999999",
     PERIOD_POST_A: COLOR_A,
@@ -55,47 +71,3 @@ SKAGGS_THRESHOLD = 0.15
 # Entropy collapse gate (matches Figure 5's diagnostic; see paper_code/lib/analysis_helpers.py)
 MIN_ENTROPY = 5.5
 
-
-def apply_nature_style() -> None:
-    mpl.rcParams.update({
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-        "font.size": 7,
-        "axes.labelsize": 7,
-        "axes.titlesize": 7,
-        "xtick.labelsize": 6,
-        "ytick.labelsize": 6,
-        "legend.fontsize": 6,
-        "axes.linewidth": 0.5,
-        "xtick.major.width": 0.5,
-        "ytick.major.width": 0.5,
-        "xtick.major.size": 2.5,
-        "ytick.major.size": 2.5,
-        "lines.linewidth": 0.75,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-        "pdf.fonttype": 42,
-        "ps.fonttype": 42,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    })
-
-
-def ensure_dir(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def save_figure(fig: plt.Figure, stem: Path, dpi: int = 300) -> tuple[Path, Path]:
-    stem = Path(stem).with_suffix("")
-    ensure_dir(stem.parent)
-    png_path = stem.with_suffix(".png")
-    pdf_path = stem.with_suffix(".pdf")
-    fig.savefig(png_path, format="png", dpi=dpi, facecolor="white", edgecolor="none",
-                bbox_inches="tight", pad_inches=0.05)
-    fig.savefig(pdf_path, format="pdf", dpi=dpi, facecolor="white", edgecolor="none",
-                bbox_inches="tight", pad_inches=0.05)
-    plt.close(fig)
-    print(f"  Saved: {png_path}")
-    print(f"  Saved: {pdf_path}")
-    return png_path, pdf_path

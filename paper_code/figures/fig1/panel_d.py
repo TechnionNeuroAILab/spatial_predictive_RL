@@ -9,7 +9,7 @@ import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from sklearn.decomposition import PCA
 
-from utils import apply_nature_style
+from utils import FS_BASE, FS_SMALL, apply_nature_style
 
 apply_nature_style()
 
@@ -44,8 +44,16 @@ def _subsample(n: int, max_points: int, seed: int = 42) -> np.ndarray:
     return np.sort(rng.choice(n, size=max_points, replace=False))
 
 
-def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int = 8000):
-    """Three 3D PCA views: colour by x, y (same cmap), and theta (cyclic)."""
+def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int = 8000,
+                   width_in: float | None = None):
+    """Three 3D PCA views: colour by x, y (same cmap), and theta (cyclic).
+
+    Rendered at `width_in` (its final on-page width) so the type scale survives
+    assembly. Numeric ticks are dropped: PC units are arbitrary, they cost most
+    of the width at this size, and the panel's claim is that colour varies
+    smoothly along the manifold, not what any coordinate equals. The variance
+    explained is stated once beneath the strip instead of in nine axis labels.
+    """
     positions, theta, activations = load_phase_probe(data_dir)
     x = positions[:, 0]
     y = positions[:, 1]
@@ -61,38 +69,67 @@ def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int 
     # Map heading to [0, 1) for a cyclic colormap.
     theta_norm = (theta + np.pi) / (2.0 * np.pi)
 
-    fig = plt.figure(figsize=(7.8, 2.55))
+    w = width_in if width_in else 7.8
+    fig = plt.figure(figsize=(w, w * 0.46))
     specs = [
-        (x, XY_CMAP, "Allocentric x", (0.0, 1.0), "x"),
-        (y, XY_CMAP, "Allocentric y", (0.0, 1.0), "y"),
-        (theta_norm, THETA_CMAP, "Heading θ", (0.0, 1.0), "θ"),
+        (x, XY_CMAP, (0.0, 1.0), "Arena x"),
+        (y, XY_CMAP, (0.0, 1.0), "Arena y"),
+        (theta_norm, THETA_CMAP, (0.0, 1.0), "Heading"),
     ]
 
-    axes = []
-    for i, (color, cmap, label, (vmin, vmax), short) in enumerate(specs):
+    axes, mappables = [], []
+    for i, (color, cmap, (vmin, vmax), short) in enumerate(specs):
         ax = fig.add_subplot(1, 3, i + 1, projection="3d")
         sc = ax.scatter(
             z[:, 0], z[:, 1], z[:, 2],
             c=color, s=2, alpha=0.35, cmap=cmap,
             vmin=vmin, vmax=vmax, linewidths=0, rasterized=True,  # points; axes/text stay vector
         )
-        ax.set_xlabel(f"PC1 ({evr[0]*100:.0f}%)", fontsize=5, labelpad=-2)
-        ax.set_ylabel(f"PC2 ({evr[1]*100:.0f}%)", fontsize=5, labelpad=-2)
-        ax.set_zlabel(f"PC3 ({evr[2]*100:.0f}%)", fontsize=5, labelpad=-4)
-        ax.tick_params(labelsize=4, pad=-2)
-        ax.set_title(short, fontsize=6, pad=2)
+        mappables.append(sc)
+        ax.set_title(short, fontsize=FS_SMALL, pad=-2, loc="center")
         ax.view_init(elev=18, azim=-55)
-        cbar = fig.colorbar(sc, ax=ax, shrink=0.55, pad=0.08, fraction=0.04)
-        cbar.set_label(label, fontsize=5)
-        cbar.ax.tick_params(labelsize=4)
-        if i == 2:
-            # Label cyclic colorbar in radians at ends.
-            cbar.set_ticks([0.0, 0.5, 1.0])
-            cbar.set_ticklabels(["−π", "0", "π"])
+        ax.set_xticklabels([]); ax.set_yticklabels([]); ax.set_zticklabels([])
+        ax.tick_params(length=0)
+        ax.set_xlabel("PC1", fontsize=4.6, labelpad=-11)
+        ax.set_ylabel("PC2", fontsize=4.6, labelpad=-11)
+        ax.set_zlabel("PC3", fontsize=4.6, labelpad=-11)
+
+        # Clear the grey panes and heavy 3D gridlines: they add a lot of ink,
+        # date the figure, and compete with the point cloud that carries the
+        # actual result.
+        for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+            axis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+            axis.pane.set_edgecolor("#DDDDDD")
+            axis.pane.set_linewidth(0.4)
+            axis._axinfo["grid"].update(color="#EDEDED", linewidth=0.25)
+            axis.line.set_color("#AAAAAA")
+            axis.line.set_linewidth(0.4)
         axes.append(ax)
 
-    fig.suptitle("Phase 1 manifold (random walk)", fontsize=6, y=0.995)
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.90, bottom=0.02, wspace=0.08)
+    # Two short horizontal bars under the strip: x and y share one scale
+    # (normalised arena position), so one bar serves both; heading is cyclic and
+    # needs its own. Previously three identical vertical 0-1 bars ate ~25% of
+    # the width and their labels collided with the PC3 axis label.
+    cax1 = fig.add_axes([0.09, 0.07, 0.24, 0.026])
+    cb1 = fig.colorbar(mappables[0], cax=cax1, orientation="horizontal")
+    cb1.set_ticks([0, 1]); cb1.set_ticklabels(["0", "1"])
+    cb1.set_label("Arena x, y", fontsize=FS_SMALL, labelpad=1)
+
+    cax2 = fig.add_axes([0.63, 0.07, 0.24, 0.026])
+    cb2 = fig.colorbar(mappables[2], cax=cax2, orientation="horizontal")
+    cb2.set_ticks([0, 0.5, 1]); cb2.set_ticklabels(["−π", "0", "π"])
+    cb2.set_label("Heading", fontsize=FS_SMALL, labelpad=1)
+    for cb in (cb1, cb2):
+        cb.outline.set_visible(False)
+        cb.ax.tick_params(labelsize=FS_SMALL, size=1.0, width=0.4, pad=1.0)
+
+    # Variance explained, stated once instead of in nine axis labels. Top-right
+    # of the strip: centred at the bottom it ran straight through both colourbars.
+    fig.text(0.005, 0.995,
+             f"PC1 {evr[0]*100:.0f}% · PC2 {evr[1]*100:.0f}% · PC3 {evr[2]*100:.0f}%",
+             ha="left", va="top", fontsize=FS_SMALL, color="#6E6E6E")
+
+    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.18, wspace=0.0)
 
     stem = Path(stem)
     stem.parent.mkdir(parents=True, exist_ok=True)

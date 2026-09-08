@@ -64,7 +64,8 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 
-from utils import (  # noqa: E402
+from utils import (
+    fmt_p, stat_annot, title,  # noqa: E402
     MM_TO_PT, PAGE_W, apply_nature_style, ensure_dir, save_figure,
 )
 
@@ -294,12 +295,15 @@ def fig_model_extinction(d, stem):
     ax.set_xticklabels(PERIOD_LABELS, fontsize=5.4)
     ax.set_ylabel("mean peak distance to reward A")
     dl, de, rec = k1["delta_learn"], k1["delta_ext"], k1["recovery_pooled"]
-    ax.set_title(
-        f"Model: extinction reverses the shift\n"
-        f"learn {dl['mean']:+.3f} ({_fmt_p(dl['p'])}); "
-        f"exting. {de['mean']:+.3f} ({_fmt_p(de['p'])})\n"
-        f"recovery {rec['point']:.2f} [{rec['ci_lo']:.2f},{rec['ci_hi']:.2f}]"
-        f" (>1 = overshoot); n={k1['n_seeds']}", fontsize=5.3)
+    title(ax, "Extinction reverses the shift")
+    # Statistics inside the axes rather than as a four-line title, which read
+    # as a caption fragment and set the panel's height.
+    stat_annot(ax,
+               f"learn {dl['mean']:+.3f}  {fmt_p(dl['p'])}\n"
+               f"exting. {de['mean']:+.3f}  {fmt_p(de['p'])}\n"
+               f"recovery {rec['point']:.2f} [{rec['ci_lo']:.2f}, {rec['ci_hi']:.2f}]"
+               f"   n = {k1['n_seeds']}",
+               loc="lower left")
     _letter(fig, "b")
     fig.tight_layout(pad=0.35)
     return save_figure(fig, stem)
@@ -329,7 +333,7 @@ def fig_confront_krishnan(d, kr, stem):
     ax.set_xticklabels([f"model\n(n={len(per_seed_drop)} nets)",
                         f"Krishnan\n(n={len(kr_drop)} mice)"], fontsize=5.4)
     ax.set_ylabel("split-half reliability change (%)")
-    ax.set_title("Reliability drop under extinction\n"
+    ax.set_title("Reliability drop\n"
                  "(dots: networks / animals)", fontsize=5.7)
 
     # (ii) fraction of near-reward enrichment lost (%)
@@ -350,7 +354,7 @@ def fig_confront_krishnan(d, kr, stem):
     ax.set_xticklabels([f"model\n({model_lost:.0f}%)",
                         f"Krishnan\n({kr_lost:.0f}%)"], fontsize=5.4)
     ax.set_ylabel("near-reward enrichment lost (%)")
-    ax.set_title("Enrichment loss\n(model overshoots; data partial)",
+    ax.set_title("Near-reward enrichment lost",
                  fontsize=5.7)
     ax.set_xlim(-0.6, 1.75)
 
@@ -392,11 +396,14 @@ def fig_confront_krishnan(d, kr, stem):
                          [COLOR_MODEL, COLOR_MODEL, COLOR_DATA, COLOR_DATA]):
         tick.set_color(col)
     cc = d["k3"]["contrast_near_over_far"]
-    ax.set_title(
-        f"Proximity signal collapses (log; medians)\nmodel head "
-        f"{cc['postLearn']['median']:.1f}x$\\to${cc['postExt']['median']:.1f}x"
-        f" (n=13); DA ramp {np.median(rew_contrast):.1f}x$\\to$"
-        f"{ext_contrast_mean:.1f}x (n=7 axons)", fontsize=5.5)
+    title(ax, "Proximity signal collapses")
+    stat_annot(ax,
+               f"model head {cc['postLearn']['median']:.1f}$\\to$"
+               f"{cc['postExt']['median']:.1f}x  (n = 13)\n"
+               f"DA ramp {np.median(rew_contrast):.1f}$\\to$"
+               f"{ext_contrast_mean:.1f}x  (n = 7 axons)\n"
+               "medians, log scale",
+               loc="upper right")
     ax.set_ylabel("near/far output ratio")
 
     _letter(fig, "c")
@@ -446,7 +453,7 @@ def fig_rr_fractions(so, rr, stem):
                           label=f"data (n={len(data_rr)} sessions)")]
     ax.legend(handles=handles, fontsize=5.0, frameon=False,
               loc=(0.02, 0.60))
-    ax.set_title("Identical per-cell criterion,\nmodel and reanalysed data",
+    ax.set_title("Cell classes: model vs data",
                  fontsize=5.8)
     _letter(fig, "e")
     fig.tight_layout(pad=0.35)
@@ -492,7 +499,7 @@ def fig_latency(so, stem):
     ax.set_ylim(0, lim)
     ax.set_xlabel("lick retargeting latency (trials)")
     ax.set_ylabel("map transfer latency (trials)")
-    ax.set_title("Behaviour retargets before the map\n"
+    ax.set_title("Behaviour leads the map\n"
                  "(model: goal code re-anchors, map lags)", fontsize=5.7)
     _letter(fig, "f")
     fig.tight_layout(pad=0.35)

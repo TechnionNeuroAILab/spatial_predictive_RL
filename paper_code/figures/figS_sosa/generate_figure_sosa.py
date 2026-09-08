@@ -27,55 +27,31 @@ HERE = Path(__file__).resolve().parent
 CACHE = HERE.parents[2] / "external_data" / "sosa2025" / "cache" / "sosa_tests.json"
 FIG_STEM = HERE / "figures_supp" / "figure_sosa_supp_raw"
 
-MM_TO_PT = 72.0 / 25.4
-PAGE_W_IN = 183.0 / 25.4          # Nature double column, inches
+# ---------------------------------------------------------------------------
+# Publication style comes from paper_code/lib/pubstyle.py, like every other
+# figure. This module previously carried its own copy of apply_nature_style(),
+# its own save_figure(), and its own colour constants, which is why it was the
+# one figure the design system did not reach.
+# ---------------------------------------------------------------------------
+import sys as _sys
+_LIB = HERE.parents[1] / "lib"
+if str(_LIB) not in _sys.path:
+    _sys.path.insert(0, str(_LIB))
 
-# fixed colour assignments (project palette; teal/orange pair is CVD-safe)
-COLOR_PRE_ZONE = "#2a9d8f"        # pre-switch reward zone
-COLOR_POST_ZONE = "#e76f51"       # post-switch (new) reward zone
-COLOR_RAW = "#555555"
-COLOR_MATCHED = "#4c72b0"
-COLOR_MODEL_BAND = "#4c72b0"
+from pubstyle import (  # noqa: E402
+    MM_TO_PT, COL_DOUBLE, FS_BASE, FS_TICK, FS_SMALL, C,
+    apply_nature_style, save_figure, title, fmt_p, stat_annot, thin_colorbar,
+)
 
+PAGE_W_IN = COL_DOUBLE / 72.0     # Nature double column, inches
 
-def apply_nature_style() -> None:
-    mpl.rcParams.update({
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-        "font.size": 7,
-        "axes.labelsize": 7,
-        "axes.titlesize": 7,
-        "xtick.labelsize": 6,
-        "ytick.labelsize": 6,
-        "legend.fontsize": 6,
-        "axes.linewidth": 0.5,
-        "xtick.major.width": 0.5,
-        "ytick.major.width": 0.5,
-        "xtick.major.size": 2.5,
-        "ytick.major.size": 2.5,
-        "lines.linewidth": 0.75,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-        "pdf.fonttype": 42,
-        "ps.fonttype": 42,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    })
-
-
-def save_figure(fig: plt.Figure, stem: Path, dpi: int = 300):
-    stem = Path(stem).with_suffix("")
-    stem.parent.mkdir(parents=True, exist_ok=True)
-    png_path = stem.with_suffix(".png")
-    pdf_path = stem.with_suffix(".pdf")
-    fig.savefig(png_path, format="png", dpi=dpi, facecolor="white",
-                edgecolor="none", bbox_inches="tight", pad_inches=0.05)
-    fig.savefig(pdf_path, format="pdf", dpi=dpi, facecolor="white",
-                edgecolor="none", bbox_inches="tight", pad_inches=0.05)
-    plt.close(fig)
-    print(f"  Saved: {png_path}")
-    print(f"  Saved: {pdf_path}")
-    return png_path, pdf_path
+# Roles, not hues (see pubstyle): the zone pair is the reward A/B pair used in
+# figure 4, and the matched/model series reuse the model colour.
+COLOR_PRE_ZONE = C["reward_a"]
+COLOR_POST_ZONE = C["reward_b"]
+COLOR_RAW = C["muted"]
+COLOR_MATCHED = C["model"]
+COLOR_MODEL_BAND = C["model"]
 
 
 def panel_label(ax, letter):
@@ -112,10 +88,10 @@ def panel_a(ax, ex):
     ax.text(track_len * 0.99, sw - 1.0, "switch", ha="right", va="bottom",
             fontsize=5.5)
     ax.text(np.mean(ex["zone_pre"]), 2.2, ex["zone_pre_label"],
-            color="#1a6e63", ha="center", va="top", fontsize=6,
+            color=COLOR_PRE_ZONE, ha="center", va="top", fontsize=6,
             fontweight="bold", zorder=5)
     ax.text(np.mean(ex["zone_post"]), sw + 2.0, ex["zone_post_label"],
-            color="#b3401f", ha="center", va="top", fontsize=6,
+            color=COLOR_POST_ZONE, ha="center", va="top", fontsize=6,
             fontweight="bold", zorder=5)
     ax.set_xlabel("position (cm)")
     ax.set_ylabel("trial")

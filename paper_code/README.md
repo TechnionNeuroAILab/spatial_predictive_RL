@@ -102,10 +102,23 @@ published Source Data xlsx, which is committed.
 
 ## 3. Generate the figures
 
-One directory per figure, each with a `generate_*.py`. All accept `--no_show`.
+Everything at once, with the canonical arguments already encoded (this is the
+recommended path -- it is where the exemplar run dirs are recorded):
 
 ```bash
-python paper_code/figures/fig1/generate_figure1.py  --run_dir Repro/nohead_seed42 --no_show
+python paper_code/regenerate_all.py --list          # what it will build
+python paper_code/regenerate_all.py --jobs 8        # all 17 figures
+python paper_code/regenerate_all.py --only fig2 fig3
+```
+
+Run only ONE batch at a time: two concurrent batches write the same PDFs.
+`compare_figures.py --baseline <dir>` diffs a rebuild against a saved set of PDFs by
+rendered pixels, which is the only comparison that survives PDF timestamps.
+
+Or one directory at a time, each with a `generate_*.py`. All accept `--no_show`.
+
+```bash
+python paper_code/figures/fig1/generate_figure1.py  --run_dir Repro/multi_seed/nohead_seed0 --no_show
 python paper_code/figures/fig2/generate_figure2.py  --run_dir Repro/multi_seed/nohead_seed16 --no_show
 python paper_code/figures/fig3/generate_figure3.py  --run_dir Repro/multi_seed_head/head_seed28 --no_show
 python paper_code/figures/fig4/generate_figure4.py  --run_dir Repro/multi_seed_reloc/reloc_seed9 --no_show
@@ -126,10 +139,20 @@ python paper_code/figures/figS_reward_vector/generate_figure_reward_vector_supp.
 python paper_code/figures/figS_sosa/generate_figure_sosa.py --no_show
 ```
 
-**Pass `--run_dir` explicitly for fig2 and fig3.** Their `utils.py` `DEFAULT_RUN` points
-at a *different* run from the one the shipped exemplar was made with
-(`nohead_seed42` vs `nohead_seed16`; `head_seed0` vs `head_seed28`). The smoke test's
-`data` phase warns about this. fig4's default is correct (`reloc_seed9`).
+**Pass `--run_dir` explicitly for fig1, fig2 and fig3** -- or just use
+`regenerate_all.py`, which does it for you. Each `utils.py` `DEFAULT_RUN` points at a
+*different* run from the one the shipped exemplar was made with:
+
+| figure | DEFAULT_RUN | run that reproduces the shipped exemplar |
+|---|---|---|
+| fig1 | `Repro/nohead_seed42` | `Repro/multi_seed/nohead_seed0` |
+| fig2 | `Repro/nohead_seed42` | `Repro/multi_seed/nohead_seed16` |
+| fig3 | `Repro/multi_seed_head/head_seed0` | `Repro/multi_seed_head/head_seed28` |
+| fig4 | `Repro/multi_seed_reloc/reloc_seed9` | (correct already) |
+
+fig1's true source was previously undocumented; it was identified by re-deriving the
+panel-d neuron selection (seed 42, 8 cells) across all 24 candidate run dirs -- only
+`nohead_seed0` reproduces the shipped IDs `[509, 352, 439, 324, 222, 227, 45, 391]`.
 
 Outputs land in each figure dir's `figures/` (main) and `figures_supp/` (supplementary).
 
@@ -144,6 +167,42 @@ Explicit dest→src allowlist (never a glob — several figures have shared the 
 `figure3_raw.pdf`). The MANIFEST records source path, mtime, sha256 and the git HEAD, so
 any figure in the PDF traces back to the run that made it. The script refuses to run if a
 non-optional source is missing.
+
+## Figure design system
+
+All visual decisions live in one place, `lib/pubstyle.py`, which every figure
+directory's `utils.py` re-exports. Before it, each of the ten figure directories
+carried its own `apply_nature_style()` and its own colours, and the rate maps were
+drawn in `jet` across 37 call sites.
+
+- **Type** — TeX Gyre Heros (a Helvetica clone). Arial/Helvetica are not installed
+  here, so the previous font stack silently fell back to DejaVu Sans. 7 pt body,
+  6 pt ticks, 5.5 pt annotations, 8 pt bold panel letters.
+- **Colour** — the Okabe-Ito colourblind-safe palette, exposed by ROLE
+  (`C["pre"]`, `C["head"]`, `C["reward_a"]`, ...) so a condition keeps one colour
+  in every panel of every figure. Never name a colour in a title or label: that
+  text goes silently wrong the moment the palette changes.
+- **Rate maps** — `RATEMAP`, a white→amber→vermillion→maroon ramp, chosen by
+  rendering real sparse place fields through eight candidates as an actual 2x8
+  tile grid. Its stops are positioned (not evenly spaced) so the low third stays
+  near-white and a sparse field still reads as sparse. Monotonic in lightness, so
+  it survives greyscale printing.
+- **Panel titles name the panel; the caption carries the sentence.** `title()`
+  warns above 48 characters. Statistics go inside the axes via `stat_annot()`, or
+  above their own violin — never stacked into a multi-line title and never into a
+  tick label.
+- **Render at display size.** The assemblers contain-fit each panel PDF into its
+  slot, so a panel rendered 570 pt wide and shown in a 253 pt slot has all of its
+  type scaled to 44%. This was the single biggest source of illegible labels.
+  `fig1/utils.py:slot_width_in()` returns a panel's true on-page width; pass it as
+  `width_in=` when rendering.
+
+Helpers worth using rather than re-inventing: `arena_axes`, `reward_marker`,
+`thin_colorbar`, `hist_outline` (overlapping distributions as fill + step outline,
+instead of two alpha-blended solids that go muddy), `style_violin`, `zero_line`,
+`fmt_p` (an unavailable p-value prints nothing, not "p = n/a").
+
+Figures are deterministic: regenerating twice produces pixel-identical output.
 
 ## Figure coverage of `main_v4_reframed.tex`
 

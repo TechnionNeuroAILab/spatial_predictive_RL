@@ -9,6 +9,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.ndimage import gaussian_filter
+
+# Publication colormaps (see lib/pubstyle.py). This module already puts its own
+# directory on sys.path above, so a plain import resolves whether it is used as
+# `lib/` or imported from a figure directory.
+try:
+    from pubstyle import RATEMAP as _RATEMAP, DIVERGING as _DIVERGING, SEQUENTIAL as _SEQUENTIAL
+except ImportError:  # pragma: no cover - stand-alone use
+    _RATEMAP, _DIVERGING, _SEQUENTIAL = "magma", "coolwarm", "magma"
+
 sns.set_theme(style="ticks")
 def save_figure(fig, save_path, no_show=False, despine=True):
     """Despine, then save the figure as BOTH .png and .pdf"""
@@ -91,7 +100,7 @@ def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title
             (axes[row_gc, col], rm_gc, skaggs_gc),
         ]:
             ax.imshow(smooth_and_norm(rm_src[nid]), origin="lower",
-                      cmap="jet", vmin=0, vmax=1)
+                      cmap=_RATEMAP, vmin=0, vmax=1)
             ax.plot(rx, ry, "w*", markersize=5)
             ax.axis("off")
             ax.set_facecolor("black")
@@ -111,7 +120,7 @@ def fig_occupancy(occ_rw, occ_gc, reward_bin, save_path=None, no_show=False):
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
     rx, ry = reward_bin
     for ax, occ in zip(axes, [occ_rw, occ_gc]):
-        im = ax.imshow(occ.T, origin="lower", cmap="inferno", aspect="equal")
+        im = ax.imshow(occ.T, origin="lower", cmap=_SEQUENTIAL, aspect="equal")
         ax.plot(rx * occ.shape[0] / occ.shape[0],
                 ry * occ.shape[1] / occ.shape[1], "c*", markersize=16)
         ax.axis("off")
@@ -170,7 +179,7 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", 
         nid = top_idx[i]
         ax = fig.add_subplot(10, 10, i + 1)
         rm = smooth_and_norm(rate_maps[nid])
-        ax.imshow(rm, origin="lower", cmap="jet", interpolation="gaussian", vmin=0, vmax=1)
+        ax.imshow(rm, origin="lower", cmap=_RATEMAP, interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=4)
         ax.set_xticks([]); ax.set_yticks([])
         ax.set_aspect("equal")
@@ -309,7 +318,7 @@ def fig_100cells_random(rate_maps, reward_bin, mean_rate_threshold=0.01,n_show=1
     for i, nid in enumerate(sel):
         ax = fig.add_subplot(10, 10, i + 1)
         rm = smooth_and_norm(rate_maps[nid])
-        ax.imshow(rm, origin="lower", cmap="jet",
+        ax.imshow(rm, origin="lower", cmap=_RATEMAP,
                   interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=4)
         ax.set_xticks([]); ax.set_yticks([])
@@ -344,7 +353,7 @@ def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_
         rm_c, occ_c = build_rate_maps(df_b, df_a, m, hidden_dim)
         for col, nid in enumerate(sel):
             ax = axes[row][col]
-            ax.imshow(smooth_and_norm(rm_c[nid]), origin="lower",cmap="jet", vmin=0, vmax=1)
+            ax.imshow(smooth_and_norm(rm_c[nid]), origin="lower",cmap=_RATEMAP, vmin=0, vmax=1)
             ax.plot(rx, ry, "w*", markersize=5)
             ax.axis("off")
             ax.set_facecolor("black")
@@ -374,7 +383,7 @@ def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin,s
             if col < len(labels):
                 rm = cycles[labels[col]][0]
                 ax.imshow(smooth_and_norm(rm[neuron_id]), origin="lower",
-                          cmap="jet", vmin=0, vmax=1)
+                          cmap=_RATEMAP, vmin=0, vmax=1)
                 ax.plot(rx, ry, "w*", markersize=5)
             ax.set_xticks([]); ax.set_yticks([])
             ax.set_facecolor("black")
@@ -410,7 +419,7 @@ def fig_drift_matrix(goal_cycles, skaggs_gc, n_cells=100,save_path=None, no_show
     disp = np.linalg.norm(centres - centres[0:1], axis=2).T# (n_cells, n_cycles)
     disp = disp[np.argsort(disp[:, -1])[::-1]]# sort rows by final drift
     fig, ax = plt.subplots(figsize=(5.5, 8))
-    im = ax.imshow(disp, aspect="auto", cmap="magma", origin="upper",
+    im = ax.imshow(disp, aspect="auto", cmap=_SEQUENTIAL, origin="upper",
                    vmin=0, vmax=np.nanpercentile(disp, 99))
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels([f"C{_cycle_num(l)}" for l in labels], fontsize=11)
@@ -445,7 +454,7 @@ def fig_drift_rdm(goal_cycles, skaggs_gc, n_cells=100, save_path=None, no_show=F
             mat[i, j] = np.linalg.norm(centres[i] - centres[j], axis=1).mean()
 
     fig, ax = plt.subplots(figsize=(6.5, 5.5))
-    im = ax.imshow(mat, cmap="magma", origin="upper", vmin=0)
+    im = ax.imshow(mat, cmap=_SEQUENTIAL, origin="upper", vmin=0)
     ticks = [f"C{_cycle_num(l)}" for l in labels]
     ax.set_xticks(range(nc)); ax.set_xticklabels(ticks, fontsize=11)
     ax.set_yticks(range(nc)); ax.set_yticklabels(ticks, fontsize=11)
@@ -490,7 +499,7 @@ def fig_drift_rdm_10(rw_cycles, goal_cycles, skaggs_gc, n_cells=100,save_path=No
 
     ticks = [s[0] for s in series]
     fig, ax = plt.subplots(figsize=(8.5, 7.5))
-    im = ax.imshow(mat, cmap="magma", origin="upper", vmin=0)
+    im = ax.imshow(mat, cmap=_SEQUENTIAL, origin="upper", vmin=0)
     ax.set_xticks(range(nt)); ax.set_xticklabels(ticks, fontsize=9, rotation=90)
     ax.set_yticks(range(nt)); ax.set_yticklabels(ticks, fontsize=9)
     ax.set_xlabel("Cycle · phase  (P = prediction, R = RL)", fontsize=11)

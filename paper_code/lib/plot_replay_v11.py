@@ -29,6 +29,14 @@ from plot_goal_directed_maps import (
     field_center_of_mass, save_figure,
 )
 
+# Publication colormaps (see lib/pubstyle.py). This module puts its own
+# directory on sys.path above, so a plain import resolves either way.
+try:
+    from pubstyle import RATEMAP as _RATEMAP, DIVERGING as _DIVERGING, SEQUENTIAL as _SEQUENTIAL
+except ImportError:  # pragma: no cover - stand-alone use
+    _RATEMAP, _DIVERGING, _SEQUENTIAL = "magma", "coolwarm", "magma"
+
+
 def load_maps(data_dir, period, m, hidden_dim):
     beh_path = os.path.join(data_dir, f"df_behavior_{period}.pkl")
     act_path = os.path.join(data_dir, f"df_activations_{period}.pkl")
@@ -69,7 +77,7 @@ def fig_replay_grid(rm_pre, rm_post, rank_score, reward_bin, n_cells=20,save_pat
         row_post = row_pre + nrows_per
         col = i % ncols
         for ax, rm in [(axes[row_pre, col], rm_pre), (axes[row_post, col], rm_post)]:
-            ax.imshow(smooth_and_norm(rm[nid]), origin="lower", cmap="jet", vmin=0, vmax=1)
+            ax.imshow(smooth_and_norm(rm[nid]), origin="lower", cmap=_RATEMAP, vmin=0, vmax=1)
             ax.plot(rx, ry, "w*", markersize=5)
             ax.set_xticks([]); ax.set_yticks([])
             ax.set_facecolor("black")
@@ -95,7 +103,7 @@ def _draw_map_grid(rm, ids, reward_bin, title, save_path, no_show):
     fig.suptitle(title, fontsize=14, y=0.995)
     for i, nid in enumerate(ids):
         ax = fig.add_subplot(nrows, ncols, i + 1)
-        ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower", cmap="jet",
+        ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower", cmap=_RATEMAP,
                   interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=5)
         ax.set_xticks([]); ax.set_yticks([])
@@ -143,13 +151,13 @@ def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_
     for col, nid in enumerate(ids):
         # pre
         ax = axes[0, col]
-        ax.imshow(smooth_and_norm(rm_pre[nid]), origin="lower", cmap="jet",interpolation="gaussian", vmin=0, vmax=1)
+        ax.imshow(smooth_and_norm(rm_pre[nid]), origin="lower", cmap=_RATEMAP,interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=6)
         ax.set_xticks([]); ax.set_yticks([]); ax.set_aspect("equal")
         ax.set_title(f"#{nid}", fontsize=7)
         # post + movement arrow (centres are in [0,1]; scale to bins)
         ax = axes[1, col]
-        ax.imshow(smooth_and_norm(rm_post[nid]), origin="lower", cmap="jet",
+        ax.imshow(smooth_and_norm(rm_post[nid]), origin="lower", cmap=_RATEMAP,
                   interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=6)
         p0 = np.asarray(c_pre[nid]) * m

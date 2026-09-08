@@ -2,22 +2,40 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
+
+# ---------------------------------------------------------------------------
+# Publication style: single source of truth in paper_code/lib/pubstyle.py.
+# Names are re-exported so existing panel code keeps importing them from here.
+# ---------------------------------------------------------------------------
+import sys as _sys
+_LIB = Path(__file__).resolve().parents[2] / "lib"
+if str(_LIB) not in _sys.path:
+    _sys.path.insert(0, str(_LIB))
+
+from pubstyle import (  # noqa: E402,F401
+    MM_TO_PT, PAGE_W, COL_SINGLE, COL_WIDE, COL_DOUBLE,
+    FS_BASE, FS_TICK, FS_SMALL, FS_PANEL, LABEL_SIZE,
+    C, OI, PHASE_COLORS,
+    COLOR_NOHEAD, COLOR_HEAD, COLOR_A, COLOR_B, COLOR_RIGID,
+    COLOR_MODEL, COLOR_DATA, COLOR_PRED, COLOR_POSTLEARN, COLOR_POSTEXT,
+    COLOR_DISTANCE, COLOR_GOALDIR, COLOR_HD, COLOR_REWARD, COLOR_MUTED,
+    RATEMAP, RATEMAP_CMAP, DIVERGING, SEQUENTIAL,
+    apply_nature_style, ensure_dir, save_figure,
+    panel_label, title, fmt_p, stat_annot, despine, arena_axes,
+    reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIGURES_DIR = Path(__file__).resolve().parent / "figures"
 PANELS_DIR = FIGURES_DIR / "panels"
 
 # Nature double-column width (183 mm) in matplotlib points.
-MM_TO_PT = 72.0 / 25.4
-PAGE_W = 183.0 * MM_TO_PT
 GRID_COLS = 4
 GRID_GAP = 2.0 * MM_TO_PT
 ROW_GAP = 2.0 * MM_TO_PT  # small consistent white gap between rows
 PAGE_MARGIN = 1.0 * MM_TO_PT
-LABEL_SIZE = 8.0
 TITLE_SIZE = 6.0  # panel title font (sans-serif, matches apply_nature_style)
 TITLE_H = 9.0  # points reserved above each row for panel letters/titles
 TITLE_LINE_H = 7.0  # extra points per additional title line (multi-line titles)
@@ -28,14 +46,41 @@ PAGE_H = 3 * 56.0 * MM_TO_PT + 2 * ROW_GAP + 2 * PAGE_MARGIN
 
 # Composite layout: (panel_key, row, col, colspan)
 # a = architecture; b = FoV; c = PCA 3D; d = remapping; e = peak; f = COM
+# Row 1 gives panel b two columns instead of one: its content is ~300 pt wide,
+# so a single 125 pt column scaled it to ~42% and its labels fell below the
+# 5 pt legibility floor. Panel c keeps enough width for three 3D views now that
+# two of its three redundant colourbars are gone.
 FIGURE_LAYOUT = [
     ("a", 0, 0, 4),
-    ("b", 1, 0, 1),
-    ("c", 1, 1, 3),
+    ("b", 1, 0, 2),
+    ("c", 1, 2, 2),
     ("d", 2, 0, 2),
     ("e", 2, 2, 1),
     ("f", 2, 3, 1),
 ]
+
+# Per-row height caps (points). Row 0 is the architecture schematic.
+ROW_MAX_H = {0: 150.0}
+
+
+def slot_width_pt(key: str) -> float:
+    """Final on-page width of a panel's slot, in points.
+
+    Panels must be RENDERED at the width they are DISPLAYED at. The assembler
+    contain-fits each panel PDF into its slot, so a panel rendered 570 pt wide
+    and shown in a 253 pt slot has all of its type scaled to 44% -- which is how
+    7 pt labels ended up at ~3 pt on the page. Renderers take their figsize from
+    this function so the type scale survives assembly.
+    """
+    col_w = (PAGE_W - 2 * PAGE_MARGIN - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS
+    for k, _row, _col, colspan in FIGURE_LAYOUT:
+        if k == key:
+            return colspan * col_w + (colspan - 1) * GRID_GAP
+    return col_w
+
+
+def slot_width_in(key: str) -> float:
+    return slot_width_pt(key) / 72.0
 PANEL_ORDER = ["a", "b", "c", "d", "e", "f"]
 
 # Short titles drawn next to the panel letters in the assembled composite.
@@ -49,7 +94,6 @@ PANEL_TITLES = {
 }
 
 # Perceptually uniform colormap for rate maps (Nature-friendly).
-RATEMAP_CMAP = "inferno"
 
 M = 32
 HIDDEN_DIM = 512
@@ -75,51 +119,6 @@ OBJECT_TYPE_COLORS = [
     (0.17, 0.63, 0.17),  # type 2 — C2
 ]
 DIST_RAY_COLOR = (0.55, 0.34, 0.75)
-
-
-def apply_nature_style() -> None:
-    """Matplotlib defaults aligned with Nature figure guidelines."""
-    mpl.rcParams.update({
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-        "font.size": 7,
-        "axes.labelsize": 7,
-        "axes.titlesize": 7,
-        "xtick.labelsize": 6,
-        "ytick.labelsize": 6,
-        "legend.fontsize": 6,
-        "axes.linewidth": 0.5,
-        "xtick.major.width": 0.5,
-        "ytick.major.width": 0.5,
-        "xtick.major.size": 2.5,
-        "ytick.major.size": 2.5,
-        "lines.linewidth": 0.75,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-        "pdf.fonttype": 42,
-        "ps.fonttype": 42,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    })
-
-
-def ensure_dir(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def save_figure(fig: plt.Figure, stem: Path, dpi: int = 300) -> tuple[Path, Path]:
-    """Save figure as PNG and PDF; stem may be with or without suffix."""
-    stem = stem.with_suffix("")
-    ensure_dir(stem.parent)
-    png_path = stem.with_suffix(".png")
-    pdf_path = stem.with_suffix(".pdf")
-    fig.savefig(png_path, format="png", dpi=dpi, facecolor="white", edgecolor="none", bbox_inches="tight")
-    fig.savefig(pdf_path, format="pdf", dpi=dpi, facecolor="white", edgecolor="none", bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Saved: {png_path}")
-    print(f"  Saved: {pdf_path}")
-    return png_path, pdf_path
 
 
 def png_to_pdf(png_path: Path, pdf_path: Path) -> None:

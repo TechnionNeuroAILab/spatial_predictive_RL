@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 
 from utils import (
+    C, FS_BASE, FS_SMALL, FS_TICK, arena_axes, fmt_p, hist_outline, reward_marker, stat_annot, style_violin, thin_colorbar, title, zero_line,
+    RATEMAP,
     PHASE_A,
     PHASE_B,
     PHASE_C_POST,
@@ -176,46 +178,67 @@ def fig_replay_remap_grid(
     neuron_ids,
     reward_bin,
     stem,
-    ylabel_top: str = "C: pred\n(frozen traj)",
-    ylabel_bottom: str = "C: postrl\n(same traj)",
-    cmap: str = "jet",
+    ylabel_top: str = "Pre-RL",
+    ylabel_bottom: str = "Post-RL",
+    cmap=RATEMAP,
     title: str | None = None,
 ):
-    """Panel a — remapping grid (Fig. 1d / 2a / 3a style)."""
+    """Panel a — remapping grid (Fig. 1d / 2a / 3a style).
+
+    Panel titles name the panel; the sentence explaining what the grid shows
+    belongs in the caption, so `title` defaults to nothing.
+    """
     n = len(neuron_ids)
     rx, ry = reward_bin
-    fig, axes = plt.subplots(2, n, figsize=(n * 1.05, 2.2), squeeze=False)
+    fig, axes = plt.subplots(2, n, figsize=(n * 1.05, 2.05), squeeze=False)
+    im = None
     for col, nid in enumerate(neuron_ids):
         for row, rm in ((0, rm_pre), (1, rm_post)):
             ax = axes[row][col]
-            ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower", cmap=cmap, vmin=0, vmax=1)
-            ax.plot(rx, ry, "w*", markersize=3, markeredgewidth=0.3, markeredgecolor="0.2")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_aspect("equal")
-            for spine in ax.spines.values():
-                spine.set_linewidth(0.4)
+            im = ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower",
+                           cmap=cmap, vmin=0, vmax=1)
+            arena_axes(ax)
+            reward_marker(ax, rx, ry, size=3.6)
             if row == 0:
-                ax.set_title(str(nid), fontsize=6, pad=1)
-    axes[0][0].set_ylabel(ylabel_top, fontsize=6)
-    axes[1][0].set_ylabel(ylabel_bottom, fontsize=6)
-    if title is None:
-        title = "Frozen replay (Phase C): same cells as Fig. 1d — identical trajectory, pre- vs post-RL weights"
-    fig.suptitle(title, fontsize=6, y=1.02)
-    plt.tight_layout(pad=0.3, w_pad=0.15, h_pad=0.25)
+                ax.set_title(str(nid), fontsize=FS_SMALL, pad=1.5,
+                             color=C["muted"], loc="center")
+    # Row identity, plain language, horizontal so it is readable at final size.
+    for ax, lbl in ((axes[0][0], ylabel_top), (axes[1][0], ylabel_bottom)):
+        ax.set_ylabel(lbl, fontsize=FS_TICK, rotation=90, va="center", labelpad=3)
+    if title:
+        fig.suptitle(title, fontsize=FS_BASE, y=1.015, x=0.005, ha="left")
+    plt.tight_layout(pad=0.25, w_pad=0.12, h_pad=0.18)
+    if im is not None:                      # one shared scale bar for the grid
+        thin_colorbar(fig, im, axes[0][n - 1], label="Rate",
+                      ticklabels=("0", "max"), shrink=0.85, pad=0.016,
+                      width=0.008)
     return save_figure(fig, stem)
 
 
-def _draw_arena(ax, reward_pos, title: str):
+def _draw_arena(ax, reward_pos, title_text: str, show_axes: bool = False):
+    """Arena panel for field-centre clouds.
+
+    `show_axes` puts arena coordinates on the first panel of a row: the
+    previous version drew bare L-shaped spines with no scale at all, so the
+    reader could not tell the extent of the box.
+    """
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_aspect("equal")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    for spine in ax.spines.values():
-        spine.set_linewidth(0.6)
-    ax.plot(reward_pos[0], reward_pos[1], "*", color="crimson", markersize=7, zorder=5)
-    ax.set_title(title, fontsize=6, pad=2)
+    # A closed box on every arena panel: the arena has a real extent, and the
+    # default top/right-off rule would leave some panels boxed and others an
+    # L-shape depending on whether they carry ticks.
+    for side, spine in ax.spines.items():
+        spine.set_visible(True)
+        spine.set_linewidth(0.5)
+        spine.set_color("#B0B0B0")
+    if show_axes:
+        ax.set_xticks([0, 0.5, 1]); ax.set_yticks([0, 0.5, 1])
+        ax.tick_params(labelsize=FS_SMALL, pad=1.5)
+    else:
+        ax.set_xticks([]); ax.set_yticks([])
+    reward_marker(ax, reward_pos[0], reward_pos[1], size=7.0)
+    title(ax, title_text)
 
 
 def fig_centers_abc(phases: dict, reward_pos, ids: np.ndarray, stem):
@@ -225,17 +248,23 @@ def fig_centers_abc(phases: dict, reward_pos, ids: np.ndarray, stem):
     com_b = phases["B"]["com"][ids]
     com_c = phases["C_post"]["com"][ids]
 
-    fig, axes = plt.subplots(1, 3, figsize=(5.4, 1.45))
+    fig, axes = plt.subplots(1, 3, figsize=(5.4, 1.55))
     specs = [
-        (axes[0], com_a, PHASE_COLORS["A"], f"A  prediction\n(n={len(ids)})"),
-        (axes[1], com_b, PHASE_COLORS["B"], f"B  RL policy\n(n={len(ids)})"),
-        (axes[2], com_c, PHASE_COLORS["C_post"], f"C  frozen postrl\n(n={len(ids)})"),
+        (axes[0], com_a, PHASE_COLORS["A"], "Prediction"),
+        (axes[1], com_b, PHASE_COLORS["B"], "RL policy"),
+        (axes[2], com_c, PHASE_COLORS["C_post"], "Frozen post-RL"),
     ]
-    for ax, com, color, title in specs:
-        _draw_arena(ax, R, title)
-        ax.scatter(com[:, 0], com[:, 1], s=3, alpha=0.35, c=color, linewidths=0, rasterized=True)
-    fig.suptitle("Field centres (COM) across phases", fontsize=6.5, y=1.02)
-    fig.tight_layout(pad=0.35, w_pad=0.35)
+    for i, (ax, com, colour, ttl) in enumerate(specs):
+        _draw_arena(ax, R, ttl, show_axes=(i == 0))
+        ax.scatter(com[:, 0], com[:, 1], s=3.2, alpha=0.42, c=colour,
+                   linewidths=0, rasterized=True)
+    # n is a property of the cell set, not of each panel: state it once, and
+    # OUTSIDE the arena box so it cannot sit on top of the frame or the points.
+    axes[0].set_xlabel("Arena x", labelpad=1.5)
+    axes[0].set_ylabel("Arena y", labelpad=1.5)
+    axes[2].text(1.0, -0.06, f"n = {len(ids)} cells", transform=axes[2].transAxes,
+                 ha="right", va="top", fontsize=FS_SMALL, color=C["muted"])
+    fig.tight_layout(pad=0.3, w_pad=0.3)
     return save_figure(fig, stem)
 
 
@@ -245,31 +274,32 @@ def fig_delta_violins(stats: dict, stem):
     delta_ab = np.asarray(stats["delta_com_AB"], dtype=float)
     delta_ac = np.asarray(stats["delta_com_AC"], dtype=float)
 
-    fig, ax = plt.subplots(figsize=(2.1, 1.6))
-    data = [delta_ab, delta_ac]
-    parts = ax.violinplot(
-        data, positions=[1, 2], showmeans=True, showmedians=False, showextrema=True,
-    )
-    for i, body in enumerate(parts["bodies"]):
-        body.set_facecolor(["#E69F00", "#009E73"][i])
-        body.set_alpha(0.65)
-        body.set_edgecolor("0.2")
-    for key in ("cbars", "cmins", "cmaxes", "cmeans"):
-        if key in parts:
-            parts[key].set_color("0.25")
-            parts[key].set_linewidth(0.8)
-
-    ax.axhline(0, color="0.35", lw=0.7, ls="--")
+    fig, ax = plt.subplots(figsize=(2.35, 1.8))
+    spec = ((1, delta_ab, "policy", stats["com_mean_delta_AB"], stats["com_frac_toward_AB"]),
+            (2, delta_ac, "frozen_post", stats["com_mean_delta_AC"], stats["com_frac_toward_AC"]))
+    for pos, vals, role, mean_d, frac in spec:
+        style_violin(ax.violinplot([vals], positions=[pos], widths=0.72,
+                                   showmeans=True, showmedians=False,
+                                   showextrema=True), C[role])
+    zero_line(ax)
     ax.set_xticks([1, 2])
-    ax.set_xticklabels(["A→B\n(policy)", "C:pre→post\n(frozen replay)"])
-    ax.set_ylabel(r"$\Delta$ COM distance to reward")
-    ax.set_title(
-        f"Distance change\n"
-        f"A→B {stats['com_mean_delta_AB']:+.3f} ({100 * stats['com_frac_toward_AB']:.0f}% toward)\n"
-        f"C:pre→post {stats['com_mean_delta_AC']:+.3f} ({100 * stats['com_frac_toward_AC']:.0f}% toward)  [weight-only]",
-        fontsize=5.5, pad=2,
-    )
-    fig.tight_layout(pad=0.35)
+    ax.set_xticklabels(["Policy\nA→B", "Frozen replay\npre→post"])
+    ax.set_xlim(0.45, 2.55)
+    ax.set_ylabel(r"$\Delta$ distance to reward")
+
+    # Each violin is annotated ABOVE ITS OWN BODY. A single stacked block in the
+    # corner both collided with the violins and left it ambiguous which number
+    # belonged to which distribution.
+    lo, hi = ax.get_ylim()
+    ax.set_ylim(lo, hi + 0.34 * (hi - lo))
+    for pos, vals, role, mean_d, frac in spec:
+        top = float(np.nanmax(vals)) if len(vals) else 0.0
+        ax.text(pos, top + 0.06 * (hi - lo),
+                f"{mean_d:+.3f}\n{100 * frac:.0f}% toward",
+                ha="center", va="bottom", fontsize=FS_SMALL, color=C["muted"],
+                linespacing=1.3)
+    title(ax, "Field-centre shift")
+    fig.tight_layout(pad=0.3)
     return save_figure(fig, stem)
 
 
@@ -316,45 +346,34 @@ def fig_distance_histograms(stats: dict, stem):
     ) * 1.05
     edges = np.linspace(0.0, hi, 21)
 
-    fig, axes = plt.subplots(1, 2, figsize=(6.2, 1.35))
+    fig, axes = plt.subplots(1, 2, figsize=(6.2, 1.5))
 
-    # Left: C:pre->post COM (frozen replay -- weight change only, no occupancy change).
-    axes[0].hist(d_com_c_pre, bins=edges, color=PHASE_COLORS["C_pre"], alpha=0.55, label="C pre-RL (frozen)")
-    axes[0].hist(d_com_c_post, bins=edges, color=PHASE_COLORS["C_post"], alpha=0.55, label="C post-RL (frozen, same traj)")
-    if len(d_com_c_pre):
-        axes[0].axvline(float(np.mean(d_com_c_pre)), color=PHASE_COLORS["C_pre"], ls="--", lw=0.9)
-    if len(d_com_c_post):
-        axes[0].axvline(float(np.mean(d_com_c_post)), color=PHASE_COLORS["C_post"], ls="--", lw=0.9)
-    axes[0].set_xlabel("COM distance to reward")
-    axes[0].set_ylabel("Neurons")
-    axes[0].set_title(
-        f"C:pre→post COM (frozen replay)\n"
-        f"mean Δd = {stats['com_mean_delta_AC']:+.3f}, "
-        f"{100 * stats['com_frac_toward_AC']:.0f}% toward  {_fmt_p(p_ac)}",
-        fontsize=6, pad=2,
-    )
-    axes[0].legend(frameon=False, loc="upper right")
+    # Two overlapping distributions per panel: light fill + crisp step outline.
+    # Solid alpha-blended bars (the previous style) go muddy grey-brown where
+    # they overlap and neither distribution stays readable.
+    panels = [
+        (axes[0], "Frozen replay (weights only)",
+         [(d_com_c_pre, "C_pre", "Pre-RL"), (d_com_c_post, "C_post", "Post-RL")],
+         stats["com_mean_delta_AC"], stats["com_frac_toward_AC"], p_ac),
+        (axes[1], "RL policy (exploration)",
+         [(d_com_a, "A", "Prediction"), (d_com_b, "B", "RL policy")],
+         stats["com_mean_delta_AB"], stats["com_frac_toward_AB"], p_ab),
+    ]
+    for ax, ttl, series, mean_d, frac, pval in panels:
+        for vals, role, lbl in series:
+            hist_outline(ax, vals, edges, PHASE_COLORS[role], label=lbl)
+            if len(vals):
+                ax.axvline(float(np.mean(vals)), color=PHASE_COLORS[role],
+                           ls=(0, (2.5, 2)), lw=0.7, zorder=1)
+        ax.set_xlabel("Field-centre distance to reward")
+        ax.set_ylabel("Cells")
+        title(ax, ttl)
+        ax.legend(loc="upper right", bbox_to_anchor=(1.0, 1.0))
+        # Stats bottom-right so they cannot collide with the legend (the
+        # previous layout overlapped legend text with a `p = n/a` annotation).
+        stat_annot(ax, f"$\\Delta$d = {mean_d:+.3f}   {100 * frac:.0f}% toward\n"
+                       f"{fmt_p(pval if np.isfinite(pval) else None)}",
+                   loc="lower right")
 
-    # Right: A–B COM (policy / exploration).
-    axes[1].hist(d_com_a, bins=edges, color=PHASE_COLORS["A"], alpha=0.55, label="A prediction")
-    axes[1].hist(d_com_b, bins=edges, color=PHASE_COLORS["B"], alpha=0.55, label="B RL policy")
-    if len(d_com_a):
-        axes[1].axvline(float(np.mean(d_com_a)), color=PHASE_COLORS["A"], ls="--", lw=0.9)
-    if len(d_com_b):
-        axes[1].axvline(float(np.mean(d_com_b)), color=PHASE_COLORS["B"], ls="--", lw=0.9)
-    axes[1].set_xlabel("COM distance to reward")
-    axes[1].set_ylabel("Neurons")
-    axes[1].set_title(
-        f"A–B COM (policy / exploration)\n"
-        f"mean Δd = {stats['com_mean_delta_AB']:+.3f}, "
-        f"{100 * stats['com_frac_toward_AB']:.0f}% toward  {_fmt_p(p_ab)}",
-        fontsize=6, pad=2,
-    )
-    axes[1].legend(frameon=False, loc="upper right")
-
-    fig.suptitle(
-        "COM distance to reward — C:pre→post frozen replay (left) vs A–B RL policy (right)",
-        fontsize=6, y=1.02,
-    )
-    fig.tight_layout(pad=0.35, w_pad=0.4)
+    fig.tight_layout(pad=0.3, w_pad=0.4)
     return save_figure(fig, stem)

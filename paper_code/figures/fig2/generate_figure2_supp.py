@@ -294,7 +294,10 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
         cw = (PAGE_W - 2 * MARGIN - (ncols - 1) * GAP) / ncols
         return max((sizes[k][1] * (cw / max(sizes[k][0], 1e-6)) for k in keys), default=0.0)
 
-    rows_def = [("a", "b"), ("c", "d"), ("e",)]
+    # Panel e shared a row with c and d instead of sitting alone on a
+    # full-width row: rendered ~2.4 in and displayed at ~7.1 in, its type
+    # came out ~3x larger than every other panel on the page.
+    rows_def = [("a", "b"), ("c", "d", "e")]
     row_keys = [[k for k in row if k in panel_pdfs] for row in rows_def]
     row_keys = [r for r in row_keys if r]
     rhs = [row_height(r) for r in row_keys]

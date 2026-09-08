@@ -32,6 +32,7 @@ from rate_maps import (
     smooth_and_norm,
 )
 from utils import (
+    RATEMAP,
     DEFAULT_ARCHITECTURE,
     DEFAULT_ARCHITECTURE_PNG,
     DEFAULT_REWARD,
@@ -49,6 +50,8 @@ from utils import (
     PANEL_TITLES,
     PANELS_DIR,
     ROW_GAP,
+    ROW_MAX_H,
+    slot_width_in,
     TITLE_H,
     TITLE_LINE_H,
     TITLE_SIZE,
@@ -146,6 +149,13 @@ def _panel_slot_geometry(panel_sizes: dict[str, tuple[float, float]]):
         iw, ih = panel_sizes[key]
         slot_w = colspan * col_w + (colspan - 1) * GRID_GAP
         fitted = ih * (slot_w / max(iw, 1e-6))
+        # Cap a row's height. Panel a is a wide schematic that, fitted to the
+        # full page width, claimed ~36% of the figure and squeezed every panel
+        # carrying data. Capped, it is contain-fitted (scaled down, centred)
+        # instead of setting the height of the whole figure.
+        cap = ROW_MAX_H.get(row)
+        if cap is not None:
+            fitted = min(fitted, cap)
         row_heights[row] = max(row_heights[row], fitted)
         n_lines = PANEL_TITLES.get(key, "").count("\n") + 1
         title_strips[row] = max(title_strips[row], TITLE_H + (n_lines - 1) * TITLE_LINE_H)
@@ -340,7 +350,7 @@ def render_top_skaggs(df_beh, df_act, reward_bin, stem, m=32, hidden_dim=512, n_
         rm = gaussian_filter(rate_maps[i], sigma=1.5)
         if rm.max() > 0:
             rm = (rm - rm.min()) / (rm.max() - rm.min())
-        ax.imshow(rm, origin="lower", cmap="jet", vmin=0, vmax=1)
+        ax.imshow(rm, origin="lower", cmap=RATEMAP, vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=4)
         ax.set_title(f"{nid}  {df_skaggs.loc[nid, 'skaggs_score']:.3f}", fontsize=6)
         ax.axis("off")
@@ -416,7 +426,8 @@ def generate_all(args):
 
     if "c" in args.panels:
         print("Panel c (PCA cognitive map, 3D)...")
-        _, pdf = render_panel_d(data_dir, panels_dir / "panel_c", tuple(reward_pos))
+        _, pdf = render_panel_d(data_dir, panels_dir / "panel_c", tuple(reward_pos),
+                                width_in=slot_width_in("c"))
         panel_pdfs["c"] = pdf
 
     if args.panels & {"d", "e", "f", "h", "legacy_f", "legacy_g"}:
@@ -433,7 +444,7 @@ def generate_all(args):
         goal_cycles = load_cycle_rate_maps(str(data_dir), M, HIDDEN_DIM, probe_type="goal")
 
         if "d" in args.panels:
-            print("Panel d (random active cells, cycle 1 before/after RL, jet)...")
+            print("Panel d (random active cells, cycle 1 before/after RL)...")
             rw_key = next(k for k in rw_cycles if "cycle_1" in k and "goal" not in k)
             goal_key = next(k for k in goal_cycles if "cycle_1" in k)
             rm_c1 = rw_cycles[rw_key][0]
@@ -450,7 +461,8 @@ def generate_all(args):
                 stem=panels_dir / "panel_d",
                 ylabel_top="Before RL",
                 ylabel_bottom="After RL",
-                cmap="jet",
+                cmap=RATEMAP,
+                width_in=slot_width_in("d"),
             )
             panel_pdfs["d"] = pdf
 
@@ -497,6 +509,7 @@ def generate_all(args):
                 _, pdf = fig_dist_histogram(
                     stats["peak_before"], stats["peak_after"],
                     stem=panels_dir / "panel_e",
+                    width_in=slot_width_in("e"),
                     title="Field peak",
                     label_before="Prediction",
                     label_after="Goal policy",
@@ -508,6 +521,7 @@ def generate_all(args):
                 _, pdf = fig_dist_histogram(
                     stats["com_before"], stats["com_after"],
                     stem=panels_dir / "panel_f",
+                    width_in=slot_width_in("f"),
                     title="Centre of mass",
                     label_before="Prediction",
                     label_after="Goal policy",
@@ -520,7 +534,7 @@ def generate_all(args):
             _, pdf = fig_pred_vs_rl_cycle1_many(
                 rw_cycles, goal_cycles, neuron_ids, reward_bin,
                 stem=panels_dir / "panel_h",
-                cmap="jet",
+                cmap=RATEMAP,
             )
             panel_pdfs["h"] = pdf
 

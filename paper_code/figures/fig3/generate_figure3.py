@@ -41,6 +41,7 @@ from analysis import (
     shared_place_cell_ids,
 )
 from utils import (
+    RATEMAP,
     DEFAULT_REWARD,
     DEFAULT_RUN,
     FIGURE_LAYOUT,
@@ -214,8 +215,9 @@ def generate_all(args):
         _, pdf = fig_replay_remap_grid(
             phases["C_pre"]["rm"], phases["C_post"]["rm"], neuron_ids, reward_bin,
             stem=panels_dir / "panel_a",
-            cmap="jet",
-            title="Frozen replay (Phase C): reward-prediction head ON — fields shift toward reward",
+            cmap=RATEMAP,
+            # No sentence title: it collided with the panel letter and is
+            # caption material. The head-ON condition is stated in the caption.
         )
         panel_pdfs["a"] = pdf
 

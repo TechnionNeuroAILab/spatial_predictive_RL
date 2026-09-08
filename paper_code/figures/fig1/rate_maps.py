@@ -10,7 +10,15 @@ import pandas as pd
 from scipy.ndimage import gaussian_filter
 from scipy.stats import wilcoxon as _wilcoxon
 
-from utils import RATEMAP_CMAP, apply_nature_style, save_figure
+from utils import FS_SMALL, FS_TICK, arena_axes, reward_marker, thin_colorbar, C, fmt_p, hist_outline, stat_annot, RATEMAP_CMAP, apply_nature_style, save_figure
+
+import sys as _sys
+from pathlib import Path as _Path
+_LIB = _Path(__file__).resolve().parents[2] / "lib"
+if str(_LIB) not in _sys.path:
+    _sys.path.insert(0, str(_LIB))
+from pubstyle import RATEMAP as _RATEMAP, DIVERGING as _DIVERGING, SEQUENTIAL as _SEQUENTIAL  # noqa: E402
+
 
 apply_nature_style()
 
@@ -136,12 +144,13 @@ def analyse_peak_com_distances(
 
 
 def _fmt_p(p: float) -> str:
-    """Format a p-value for figure annotation."""
-    if not np.isfinite(p):
-        return "p = n/a"
-    if p < 0.001:
-        return f"p = {p:.1e}"
-    return f"p = {p:.3f}"
+    """Format a p-value for figure annotation.
+
+    An unavailable p-value prints NOTHING. The previous version rendered the
+    literal "p = n/a" onto the panel, which both looks unfinished and, because
+    it was drawn in the same corner as the legend, overlapped the legend text.
+    """
+    return fmt_p(p if np.isfinite(p) else None)
 
 
 def fig_dist_histogram(
@@ -151,11 +160,12 @@ def fig_dist_histogram(
     title: str,
     xlabel: str = "Distance to reward",
     bins: int = 20,
-    color_before: str = "#4C72B0",
-    color_after: str = "#C44E52",
+    color_before: str = C["pre"],
+    color_after: str = C["policy"],
     label_before: str = "Prediction",
     label_after: str = "Goal policy",
     wilcoxon_p: float = float("nan"),
+    width_in: float | None = None,
 ):
     """Overlay before/after histograms of distance-to-reward for one metric.
 
@@ -178,23 +188,24 @@ def fig_dist_histogram(
     hi = max(hi * 1.05, 0.15)
     edges = np.linspace(lo, hi, bins + 1)
 
-    fig, ax = plt.subplots(figsize=(2.6, 1.9))
-    ax.hist(d_before, bins=edges, color=color_before, alpha=0.55, label=label_before, density=False)
-    ax.hist(d_after, bins=edges, color=color_after, alpha=0.55, label=label_after, density=False)
+    w = width_in if width_in else 2.6
+    fig, ax = plt.subplots(figsize=(w, w * 0.73))
+    hist_outline(ax, d_before, edges, color_before, label=label_before)
+    hist_outline(ax, d_after, edges, color_after, label=label_after)
     if len(d_before):
-        ax.axvline(float(np.mean(d_before)), color=color_before, ls="--", lw=0.9)
+        ax.axvline(float(np.mean(d_before)), color=color_before,
+                   ls=(0, (2.5, 2)), lw=0.7, zorder=1)
     if len(d_after):
-        ax.axvline(float(np.mean(d_after)), color=color_after, ls="--", lw=0.9)
-    # Annotate with Wilcoxon p-value (paired test; > 5 cells required)
-    ax.text(
-        0.97, 0.97, _fmt_p(wilcoxon_p),
-        transform=ax.transAxes, ha="right", va="top",
-        fontsize=5, color="0.3",
-    )
+        ax.axvline(float(np.mean(d_after)), color=color_after,
+                   ls=(0, (2.5, 2)), lw=0.7, zorder=1)
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("Neurons")
-    ax.set_title(title, pad=2)
-    ax.legend(frameon=False, loc="upper right")
+    ax.set_ylabel("Cells")
+    # NB: the `title` parameter shadows pubstyle's title() helper here, so set
+    # it directly with the same left-aligned convention.
+    ax.set_title(title, loc="left", pad=3)
+    ax.legend(loc="upper right")
+    # p-value bottom-right, so it cannot collide with the upper-right legend.
+    stat_annot(ax, _fmt_p(wilcoxon_p), loc="lower right")
     fig.tight_layout(pad=0.35)
     return save_figure(fig, stem)
 
@@ -262,7 +273,7 @@ def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin, 
             ax = axes[row][col]
             if col < len(labels):
                 rm = cycles[labels[col]][0]
-                ax.imshow(smooth_and_norm(rm[neuron_id]), origin="lower", cmap="jet", vmin=0, vmax=1)
+                ax.imshow(smooth_and_norm(rm[neuron_id]), origin="lower", cmap=_RATEMAP, vmin=0, vmax=1)
                 ax.plot(rx, ry, "w*", markersize=5)
             ax.set_xticks([])
             ax.set_yticks([])
@@ -289,7 +300,8 @@ def fig_pred_vs_rl_cycle1_many(
     stem=None,
     ylabel_top: str = "Before RL",
     ylabel_bottom: str = "After RL",
-    cmap: str = "jet",
+    cmap=_RATEMAP,
+    width_in: float | None = None,
 ):
     """Many neurons: row 0 = cycle_1 RW probe, row 1 = cycle_1 goal probe."""
     rw_key = next((k for k in rw_cycles if cycle_num(k) == 1 and "goal" not in k), None)
@@ -299,23 +311,30 @@ def fig_pred_vs_rl_cycle1_many(
 
     n = len(neuron_ids)
     rx, ry = reward_bin
-    fig, axes = plt.subplots(2, n, figsize=(n * 1.05, 2.2), squeeze=False)
+    # Rendered at final on-page width so the cell IDs and row labels keep their
+    # type size through assembly.
+    w = width_in if width_in else n * 1.05
+    # Maps are square: n across means each is w/n wide, so two rows need
+    # 2*w/n of height, plus a strip for the cell IDs and row labels.
+    fig, axes = plt.subplots(2, n, figsize=(w, 2.0 * w / n + 0.30), squeeze=False)
+    im = None
     for col, nid in enumerate(neuron_ids):
         for row, cycles, key in ((0, rw_cycles, rw_key), (1, goal_cycles, goal_key)):
             ax = axes[row][col]
             rm = cycles[key][0]
-            ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower", cmap=cmap, vmin=0, vmax=1)
-            ax.plot(rx, ry, "w*", markersize=3, markeredgewidth=0.3, markeredgecolor="0.2")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_aspect("equal")
-            for spine in ax.spines.values():
-                spine.set_linewidth(0.4)
+            im = ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower",
+                           cmap=cmap, vmin=0, vmax=1)
+            arena_axes(ax)
+            reward_marker(ax, rx, ry, size=3.4)
             if row == 0:
-                ax.set_title(str(nid), fontsize=5, pad=1)
-    axes[0][0].set_ylabel(ylabel_top, fontsize=6)
-    axes[1][0].set_ylabel(ylabel_bottom, fontsize=6)
-    plt.tight_layout(pad=0.3, w_pad=0.15, h_pad=0.2)
+                ax.set_title(str(nid), fontsize=FS_SMALL, pad=1.5,
+                             color=C["muted"], loc="center")
+    axes[0][0].set_ylabel(ylabel_top, fontsize=FS_TICK, labelpad=3)
+    axes[1][0].set_ylabel(ylabel_bottom, fontsize=FS_TICK, labelpad=3)
+    plt.tight_layout(pad=0.25, w_pad=0.12, h_pad=0.18)
+    if im is not None:
+        thin_colorbar(fig, im, axes[0][n - 1], label="Rate",
+                      ticklabels=("0", "max"), shrink=0.85, pad=0.016, width=0.008)
     if stem is not None:
         return save_figure(fig, stem)
     plt.close(fig)

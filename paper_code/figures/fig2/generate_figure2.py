@@ -36,6 +36,7 @@ from analysis import (
     shared_place_cell_ids,
 )
 from utils import (
+    RATEMAP,
     DEFAULT_REWARD,
     DEFAULT_RUN,
     FIGURE_LAYOUT,
@@ -210,7 +211,7 @@ def generate_all(args):
         _, pdf = fig_replay_remap_grid(
             phases["C_pre"]["rm"], phases["C_post"]["rm"], neuron_ids, reward_bin,
             stem=panels_dir / "panel_a",
-            cmap="jet",
+            cmap=RATEMAP,
         )
         panel_pdfs["a"] = pdf
 
