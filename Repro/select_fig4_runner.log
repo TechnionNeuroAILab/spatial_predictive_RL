@@ -1,0 +1,214 @@
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+[reward_relocation_maps] 86 cells passed strict tracking gates; selecting 8 exemplars (best first).
+[reward_relocation_maps] example cells: [493, 60, 131, 79, 111, 125, 96, 153]
+  saved -> /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_a_reloc/reward_relocation_example_cells.png
+  saved -> /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_a_reloc/reward_relocation_field_density.png
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+Panel a (example tracking cells)...
+Loading relocation states...
+  Shift toward A (pre→postA): mean=-0.1387  frac=71%  p=6.5e-27
+  Shift toward B (postA→postB): mean=-0.3453  frac=88%  p=2.6e-67
+Panel b (field-centre scatter, three periods)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_b.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_b.pdf
+Panel c (tracking curves — distances to A and B)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_c.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_c.pdf
+Panel d (shift violins)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_d.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/panels/panel_d.pdf
+Assembling vector composite PDF...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/figure4_raw.pdf
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures/figure4_raw.png
+
+Done.
+  Figures: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures
+  Run dir: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed7
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
+Loading 10 relocation seeds from /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc ...
+  seed 0: →A=65%  →B=43%  pA=3.9e-17  pB=6.4e-01
+  seed 1: →A=52%  →B=44%  pA=3.3e-01  pB=8.4e-01
+  seed 2: →A=69%  →B=33%  pA=7.6e-21  pB=1.8e-05
+  seed 3: →A=66%  →B=39%  pA=4.8e-20  pB=1.7e-14
+  seed 4: →A=62%  →B=61%  pA=1.7e-07  pB=1.9e-11
+  seed 5: →A=69%  →B=59%  pA=8.6e-25  pB=4.4e-07
+  seed 6: →A=51%  →B=53%  pA=1.2e-01  pB=5.9e-03
+  seed 7: →A=71%  →B=88%  pA=6.5e-27  pB=2.6e-67
+  seed 8: →A=48%  →B=54%  pA=7.3e-01  pB=1.5e-01
+  seed 9: →A=57%  →B=52%  pA=1.7e-06  pB=3.8e-04
+
+Supp panel a (fraction toward A per seed)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_a.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_a.pdf
+Supp panel b (fraction toward B per seed)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_b.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_b.pdf
+Supp panel c (pooled violin)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_c.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_c.pdf
+Supp panel d (tracking scatter)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_d.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/panels/panel_d.pdf
+
+Assembling supplementary figure PDF...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/figure4_supp_raw.pdf
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp/figure4_supp_raw.png
+
+Done. Outputs: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 4/figures_supp
+Scoring relocation seeds by tracking quality (harmonic mean frac→A, frac→B)...
+  seed= 0  score=0.516  →A: 65% (Δ=-0.054, p=3.9e-17)  →B: 43% (Δ=+0.008, p=6.4e-01)
+  seed= 1  score=0.474  →A: 52% (Δ=-0.001, p=3.3e-01)  →B: 44% (Δ=-0.003, p=8.4e-01)
+  seed= 2  score=0.447  →A: 69% (Δ=-0.092, p=7.6e-21)  →B: 33% (Δ=+0.045, p=1.8e-05)
+  seed= 3  score=0.492  →A: 66% (Δ=-0.069, p=4.8e-20)  →B: 39% (Δ=+0.116, p=1.7e-14)
+  seed= 4  score=0.613  →A: 62% (Δ=-0.043, p=1.7e-07)  →B: 61% (Δ=-0.075, p=1.9e-11)
+  seed= 5  score=0.636  →A: 69% (Δ=-0.067, p=8.6e-25)  →B: 59% (Δ=-0.049, p=4.4e-07)
+  seed= 6  score=0.517  →A: 51% (Δ=-0.020, p=1.2e-01)  →B: 53% (Δ=-0.027, p=5.9e-03)
+  seed= 7  score=0.787  →A: 71% (Δ=-0.139, p=6.5e-27)  →B: 88% (Δ=-0.345, p=2.6e-67)
+  seed= 8  score=0.509  →A: 48% (Δ=+0.013, p=7.3e-01)  →B: 54% (Δ=+0.071, p=1.5e-01)
+  seed= 9  score=0.543  →A: 57% (Δ=-0.028, p=1.7e-06)  →B: 52% (Δ=-0.013, p=3.8e-04)
+
+Ranking (best first by tracking score):
+  #1  seed= 7  score=0.787  →A=71%  →B=88% ← BEST
+  #2  seed= 5  score=0.636  →A=69%  →B=59%
+  #3  seed= 4  score=0.613  →A=62%  →B=61%
+  #4  seed= 9  score=0.543  →A=57%  →B=52%
+  #5  seed= 6  score=0.517  →A=51%  →B=53%
+  #6  seed= 0  score=0.516  →A=65%  →B=43%
+  #7  seed= 8  score=0.509  →A=48%  →B=54%
+  #8  seed= 3  score=0.492  →A=66%  →B=39%
+  #9  seed= 1  score=0.474  →A=52%  →B=44%
+  #10  seed= 2  score=0.447  →A=69%  →B=33%
+
+Best seed: 7  (score=0.787)
+
+Saving aggregate stats...
+  Saved: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/aggregate/fig4_multi_seed_summary.json
+
+Auto-regenerating Figure 4 with best seed (7)...
+Figure 4 regenerated.
+Auto-regenerating Supplementary Figure 4 (10-seed tracking stats)...
+Supplementary Figure 4 regenerated.
+
+Aggregate summary (relocation):
+  Seeds evaluated:    10
+  Frac toward A:      61.0% ± 8.5%
+  Frac toward B:      52.5% ± 15.3%
+  Mean ΔdA (pooled):  -0.0501
+  Mean ΔdB (pooled):  -0.0303

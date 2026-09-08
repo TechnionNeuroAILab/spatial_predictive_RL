@@ -1,0 +1,148 @@
+{
+  "head": [
+    {
+      "com_frac_toward": 0.44541484716157204,
+      "com_mean_delta": 0.00090880586180209,
+      "lr": 2e-06,
+      "n_active": 458,
+      "peak_frac_toward": 0.15938864628820962,
+      "peak_mean_delta": -0.0036814881963128333,
+      "skaggs_mean_post": 1.963551843863201
+    },
+    {
+      "com_frac_toward": 0.3951965065502183,
+      "com_mean_delta": 0.008810679633078628,
+      "lr": 1e-05,
+      "n_active": 458,
+      "peak_frac_toward": 0.30131004366812225,
+      "peak_mean_delta": 0.0007272386123563861,
+      "skaggs_mean_post": 2.0231567694425308
+    },
+    {
+      "com_frac_toward": 0.5492341356673961,
+      "com_mean_delta": -0.02433419838012006,
+      "lr": 5e-05,
+      "n_active": 457,
+      "peak_frac_toward": 0.6717724288840262,
+      "peak_mean_delta": -0.12283849277876903,
+      "skaggs_mean_post": 2.033663565680488
+    },
+    {
+      "com_frac_toward": 0.3682983682983683,
+      "com_mean_delta": 0.07831227882792857,
+      "lr": 0.0001,
+      "n_active": 429,
+      "peak_frac_toward": 0.42657342657342656,
+      "peak_mean_delta": 0.012603026791922958,
+      "skaggs_mean_post": 4.091412635338042
+    },
+    {
+      "com_frac_toward": 0.3915343915343915,
+      "com_mean_delta": 0.03620783617826264,
+      "lr": 0.0003,
+      "n_active": 378,
+      "peak_frac_toward": 0.40476190476190477,
+      "peak_mean_delta": 0.009553275711973215,
+      "skaggs_mean_post": 4.142721581977812
+    }
+  ],
+  "head_root": "New_Results_v3/dose_sweep_lr",
+  "nohead": [
+    {
+      "com_frac_toward": 0.7445414847161572,
+      "com_mean_delta": -0.006886674742384615,
+      "lr": 2e-06,
+      "n_active": 458,
+      "peak_frac_toward": 0.24890829694323144,
+      "peak_mean_delta": -0.006590999506328859,
+      "skaggs_mean_post": 1.9384488329318341
+    },
+    {
+      "com_frac_toward": 0.6761487964989059,
+      "com_mean_delta": -0.012990776512039165,
+      "lr": 1e-05,
+      "n_active": 457,
+      "peak_frac_toward": 0.4310722100656455,
+      "peak_mean_delta": -0.0229501794592413,
+      "skaggs_mean_post": 1.910178950698338
+    },
+    {
+      "com_frac_toward": 0.5960698689956332,
+      "com_mean_delta": -0.04941201761283093,
+      "lr": 5e-05,
+      "n_active": 458,
+      "peak_frac_toward": 0.5764192139737991,
+      "peak_mean_delta": -0.012950724777908651,
+      "skaggs_mean_post": 1.3476261239449232
+    },
+    {
+      "com_frac_toward": 0.3045267489711934,
+      "com_mean_delta": 0.09951149860515376,
+      "lr": 0.0001,
+      "n_active": 243,
+      "peak_frac_toward": 0.5761316872427984,
+      "peak_mean_delta": -0.052300046295061096,
+      "skaggs_mean_post": 5.659647288255115
+    },
+    {
+      "com_frac_toward": 0.2874617737003058,
+      "com_mean_delta": 0.10242448121760937,
+      "lr": 0.0003,
+      "n_active": 327,
+      "peak_frac_toward": 0.36085626911314983,
+      "peak_mean_delta": 0.04461140892731974,
+      "skaggs_mean_post": 4.754056068296295
+    }
+  ],
+  "nohead_root": "New_Results_v3/dose_sweep_lr_nohead",
+  "reward_pos": [
+    0.3,
+    0.3
+  ],
+  "script": "dose_response_comparison.py",
+  "shared_lrs": [
+    2e-06,
+    1e-05,
+    5e-05,
+    0.0001,
+    0.0003
+  ],
+  "significance": [
+    {
+      "fdr_p_com": 2.5701471426271677e-31,
+      "fdr_p_peak": 0.003482325273036899,
+      "lr": 2e-06,
+      "raw_p_com": 2.5701471426271677e-32,
+      "raw_p_peak": 0.0024376276911258292
+    },
+    {
+      "fdr_p_com": 1.0359778843665761e-22,
+      "fdr_p_peak": 5.064863869193891e-06,
+      "lr": 1e-05,
+      "raw_p_com": 2.0719557687331522e-23,
+      "raw_p_peak": 2.025945547677556e-06
+    },
+    {
+      "fdr_p_com": 0.09714661891599834,
+      "fdr_p_peak": 2.5951429277984193e-11,
+      "lr": 5e-05,
+      "raw_p_com": 0.0874319570243985,
+      "raw_p_peak": 7.785428783395258e-12
+    },
+    {
+      "fdr_p_com": 0.1300035853848983,
+      "fdr_p_peak": 0.0002310592017016059,
+      "lr": 0.0001,
+      "raw_p_com": 0.1300035853848983,
+      "raw_p_peak": 0.00013863552102096353
+    },
+    {
+      "fdr_p_com": 3.177246818123534e-05,
+      "fdr_p_peak": 0.03515753890304633,
+      "lr": 0.0003,
+      "raw_p_com": 1.588623409061767e-05,
+      "raw_p_peak": 0.028126031122437063
+    }
+  ],
+  "skaggs_threshold": 0.15
+}

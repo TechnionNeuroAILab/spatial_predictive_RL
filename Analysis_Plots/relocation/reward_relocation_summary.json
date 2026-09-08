@@ -1,0 +1,42 @@
+{
+  "metric": "peak",
+  "per_state": {
+    "replay_reloc_postA": {
+      "mean_dist_to_A": 0.5259345495017325,
+      "mean_dist_to_B": 0.5278841345526746,
+      "n_place": 472
+    },
+    "replay_reloc_postB": {
+      "mean_dist_to_A": 0.32574062936315495,
+      "mean_dist_to_B": 0.8635317525748454,
+      "n_place": 512
+    },
+    "replay_reloc_pred": {
+      "mean_dist_to_A": 0.5339522305996697,
+      "mean_dist_to_B": 0.5521124508919008,
+      "n_place": 469
+    }
+  },
+  "reward_A": [
+    0.3,
+    0.3
+  ],
+  "reward_B": [
+    0.7,
+    0.7
+  ],
+  "run_dir": "New_Results_v3/reward_relocation",
+  "script": "reward_relocation_analysis.py",
+  "shift_toward_A_pre_to_postA": {
+    "frac_toward": 0.5399159663865546,
+    "mean_delta": -0.007119726327367383,
+    "n": 476,
+    "wilcoxon_p": 4.029242969611345e-05
+  },
+  "shift_toward_B_postA_to_postB": {
+    "frac_toward": 0.123046875,
+    "mean_delta": 0.3012750967568263,
+    "n": 512,
+    "wilcoxon_p": 1.1939939316869634e-73
+  }
+}

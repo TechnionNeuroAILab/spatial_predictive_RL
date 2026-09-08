@@ -1,0 +1,146 @@
+
+Queued 20 jobs across 2 GPU(s): [0, 1]
+  Fig4/seed0
+  Fig4/seed1
+  Fig4/seed2
+  Fig4/seed3
+  Fig4/seed4
+  Fig4/seed5
+  Fig4/seed6
+  Fig4/seed7
+  Fig4/seed8
+  Fig4/seed9
+  Fig3/seed0
+  Fig3/seed1
+  Fig3/seed2
+  Fig3/seed3
+  Fig3/seed4
+  Fig3/seed5
+  Fig3/seed6
+  Fig3/seed7
+  Fig3/seed8
+  Fig3/seed9
+
+==============================================================
+  START  Fig4/seed0 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed0_runner.log
+==============================================================
+
+==============================================================
+  START  Fig4/seed1 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed1_runner.log
+==============================================================
+  OK  Fig4/seed0 → GPU0
+
+==============================================================
+  START  Fig4/seed2 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed2_runner.log
+==============================================================
+  OK  Fig4/seed1 → GPU1
+
+==============================================================
+  START  Fig4/seed3 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed3_runner.log
+==============================================================
+  OK  Fig4/seed2 → GPU0
+
+==============================================================
+  START  Fig4/seed4 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed4_runner.log
+==============================================================
+  OK  Fig4/seed3 → GPU1
+
+==============================================================
+  START  Fig4/seed5 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed5_runner.log
+==============================================================
+  OK  Fig4/seed4 → GPU0
+
+==============================================================
+  START  Fig4/seed6 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed6_runner.log
+==============================================================
+  OK  Fig4/seed5 → GPU1
+
+==============================================================
+  START  Fig4/seed7 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed7_runner.log
+==============================================================
+  OK  Fig4/seed6 → GPU0
+
+==============================================================
+  START  Fig4/seed8 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed8_runner.log
+==============================================================
+  OK  Fig4/seed7 → GPU1
+
+==============================================================
+  START  Fig4/seed9 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc/reloc_seed9_runner.log
+==============================================================
+  OK  Fig4/seed8 → GPU0
+
+==============================================================
+  START  Fig3/seed0 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed0_runner.log
+==============================================================
+  OK  Fig4/seed9 → GPU1
+
+==============================================================
+  START  Fig3/seed1 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed1_runner.log
+==============================================================
+  OK  Fig3/seed0 → GPU0
+
+==============================================================
+  START  Fig3/seed2 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed2_runner.log
+==============================================================
+  OK  Fig3/seed1 → GPU1
+
+==============================================================
+  START  Fig3/seed3 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed3_runner.log
+==============================================================
+  OK  Fig3/seed2 → GPU0
+
+==============================================================
+  START  Fig3/seed4 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed4_runner.log
+==============================================================
+  OK  Fig3/seed3 → GPU1
+
+==============================================================
+  START  Fig3/seed5 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed5_runner.log
+==============================================================
+  OK  Fig3/seed4 → GPU0
+
+==============================================================
+  START  Fig3/seed6 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed6_runner.log
+==============================================================
+  OK  Fig3/seed5 → GPU1
+
+==============================================================
+  START  Fig3/seed7 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed7_runner.log
+==============================================================
+  OK  Fig3/seed6 → GPU0
+
+==============================================================
+  START  Fig3/seed8 → GPU0
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed8_runner.log
+==============================================================
+  OK  Fig3/seed7 → GPU1
+
+==============================================================
+  START  Fig3/seed9 → GPU1
+  log → /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed9_runner.log
+==============================================================
+  OK  Fig3/seed8 → GPU0
+  OK  Fig3/seed9 → GPU1
+
+==============================================================
+All jobs finished.  Head outputs: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head
+                    Reloc outputs: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_reloc

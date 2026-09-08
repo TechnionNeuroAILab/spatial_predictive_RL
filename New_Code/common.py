@@ -13,6 +13,32 @@ import pandas as pd
 
 DEFAULT_REWARD = np.array([0.5, 0.5], dtype=float)
 
+
+def load_goal_position(
+    data_dir: "str | Path",
+    goal_file: str = "goal_position.npy",
+    reward_x: float = float(DEFAULT_REWARD[0]),
+    reward_y: float = float(DEFAULT_REWARD[1]),
+) -> "tuple[np.ndarray, str]":
+    """Load reward/goal position from a .npy file, falling back to CLI args.
+
+    Returns
+    -------
+    goal : np.ndarray, shape (2,)
+        [x, y] of the goal/reward in arena coordinates.
+    source : str
+        Human-readable description of where the value came from.
+
+    This function is duplicated in many New_Code scripts.  Import from here
+    instead of redefining locally.
+    """
+    p = Path(data_dir) / goal_file
+    if p.exists():
+        arr = np.asarray(np.load(p), dtype=float).reshape(-1)
+        if arr.size >= 2:
+            return np.array([float(arr[0]), float(arr[1])], dtype=float), str(p)
+    return np.array([float(reward_x), float(reward_y)], dtype=float), "fallback_args"
+
 def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)

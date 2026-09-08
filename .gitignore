@@ -10,3 +10,34 @@ __pycache__/
 .ipynb_checkpoints/
 New_Results_v2/**/data/
 New_Results_v2/**/checkpoints/
+
+# --- run-output trees (regenerable via README / paper-repro commands) ---
+# *.pkl / *.pt / checkpoints/ above already exclude the bulk (hundreds of GB of
+# raw activity/weights). These add the per-run diagnostic PNGs each training
+# script dumps automatically -- NOT the assembled paper figures, which live
+# under code_analysis/**/figures and paper/paper_figures and stay tracked.
+Repro/**/*.png
+New_Results/**/*.png
+New_Results_v2/**/*.png
+New_Results_v3/**/*.png
+old_code/**/*.png
+Results/**/*.png
+
+# Legacy/superseded run trees kept on disk for provenance only -- do not
+# track (New_Results_v3/ and Repro/ are current/canonical and NOT listed
+# here; their heavy files are already excluded above by extension).
+/New_Results/
+/New_Results_v2/
+/Results/
+/old_code/
+
+# external_data/: keep our own cache/figures + small scripts, drop the raw
+# NWB recordings and the vendored third-party analysis repos (each has its
+# own nested .git and its own license/versioning).
+external_data/sosa2025/nwb/
+external_data/*/code_krishnan/
+external_data/sosa2025/code_sosa/
+
+# paper/ is a separately Overleaf-synced git repo (its own remote/history,
+# see README) -- not tracked inside this repo.
+/paper/

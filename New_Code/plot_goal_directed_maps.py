@@ -126,7 +126,8 @@ def fig_ori(rm_rw, skaggs_rw, rm_gc, skaggs_gc, reward_pos, threshold=0.05, save
         place_ids = np.where(sk >= threshold)[0]
         if len(place_ids) == 0:
             return np.empty((0, 2))
-        return np.array([field_center_of_mass(rm[nid]) for nid in place_ids])
+        # Smooth before computing COM to match the peak pipeline (removes noisy-bin bias)
+        return np.array([field_center_of_mass(smooth_and_norm(rm[nid])) for nid in place_ids])
     c_rw = centres(rm_rw, skaggs_rw)
     c_gc = centres(rm_gc, skaggs_gc)
     d_rw = np.linalg.norm(c_rw - reward_pos, axis=1) if len(c_rw) else np.array([])

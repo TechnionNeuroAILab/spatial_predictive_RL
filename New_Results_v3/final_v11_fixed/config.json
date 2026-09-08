@@ -1,0 +1,28 @@
+{
+  "activation": "SparseBiasReLU",
+  "checkpoint_every": 5000,
+  "controller_learning_rate": 0.0001,
+  "device": "cuda",
+  "fixed_goal": true,
+  "interleave_epochs": 60,
+  "interleave_lr": 0.0001,
+  "max_episodes": 5000,
+  "max_steps": 100,
+  "n_cycles": 5,
+  "n_trials": 1000,
+  "no_goal_vec": false,
+  "output_dir": "New_Results_v3/final_v11_fixed",
+  "phase1_epochs": 100,
+  "pred_loss_weight": 0.7,
+  "replay_cycle": 1,
+  "reward_pos": [
+    0.5,
+    0.5
+  ],
+  "reward_pred_head": false,
+  "reward_pred_sigma": 0.15,
+  "reward_pred_weight": 0.3,
+  "rnn_rl_learning_rate": 2e-06,
+  "seed": 42,
+  "timesteps": 100
+}

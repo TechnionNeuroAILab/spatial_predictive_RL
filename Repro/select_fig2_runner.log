@@ -1,0 +1,265 @@
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 1/rate_maps.py:42: RuntimeWarning: invalid value encountered in divide
+  ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
+Loading phases A / B / C ...
+Panel a (frozen-replay remapping; same cells as Fig. 1d)...
+  Neuron ids (Fig. 1d match): [509, 352, 439, 324, 222, 227, 45, 391]
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_a.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_a.pdf
+  Shared place cells (A∩B∩C): n=432 (Skaggs ≥ 0.05)
+  A→B: COM Δd=-0.101 (85% toward)
+  A→C: COM Δd=+0.011 (54% toward)
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/phase_abc_summary.json
+Panel b (COM centres A / B / C)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_b.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_b.pdf
+Panel c (Δd violins A→B and A→C)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_c.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_c.pdf
+Panel d (distance histograms A–B and A–C)...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_d.png
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/panels/panel_d.pdf
+Assembling vector composite PDF...
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/figure2_raw.pdf
+  Saved: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures/figure2_raw.png
+
+Done.
+  Figures: /home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures
+  Run dir: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/nohead_seed0
+Scoring seeds by COM uniformity (Phase A spatial entropy)...
+  seed= 0  n=432  entropy=2.733  Δd(A→B)=-0.101  frac_toward=85%
+  seed= 1  n=429  entropy=2.391  Δd(A→B)=-0.013  frac_toward=59%
+  seed= 2  n=442  entropy=2.533  Δd(A→B)=-0.000  frac_toward=54%
+  seed= 3  n=426  entropy=2.553  Δd(A→B)=-0.033  frac_toward=56%
+  seed= 4  n=484  entropy=1.441  Δd(A→B)=+0.012  frac_toward=48%
+  seed= 5  n=482  entropy=2.635  Δd(A→B)=-0.030  frac_toward=66%
+  seed= 6  n=305  entropy=1.903  Δd(A→B)=-0.075  frac_toward=77%
+  seed= 7  n=406  entropy=2.597  Δd(A→B)=-0.035  frac_toward=64%
+  seed= 8  n=377  entropy=2.023  Δd(A→B)=-0.121  frac_toward=85%
+  seed= 9  n=411  entropy=2.165  Δd(A→B)=-0.064  frac_toward=68%
+  seed=10  n=454  entropy=2.535  Δd(A→B)=-0.058  frac_toward=67%
+  seed=11  n=475  entropy=2.700  Δd(A→B)=-0.012  frac_toward=54%
+  seed=12  n=415  entropy=2.392  Δd(A→B)=+0.003  frac_toward=52%
+  seed=13  n=445  entropy=2.438  Δd(A→B)=-0.067  frac_toward=69%
+  seed=14  n=409  entropy=1.715  Δd(A→B)=-0.056  frac_toward=60%
+  seed=15  n=406  entropy=1.117  Δd(A→B)=-0.309  frac_toward=97%
+  seed=16  n=451  entropy=2.659  Δd(A→B)=-0.048  frac_toward=67%
+  seed=17  n=486  entropy=2.326  Δd(A→B)=-0.103  frac_toward=75%
+  seed=18  n=436  entropy=2.526  Δd(A→B)=-0.054  frac_toward=70%
+  seed=19  n=428  entropy=2.421  Δd(A→B)=-0.092  frac_toward=81%
+
+Ranking (best first by COM spatial entropy):
+  #1  seed= 0  entropy=2.733  n_cells=432  Δd=-0.101 ← BEST
+  #2  seed=11  entropy=2.700  n_cells=475  Δd=-0.012
+  #3  seed=16  entropy=2.659  n_cells=451  Δd=-0.048
+  #4  seed= 5  entropy=2.635  n_cells=482  Δd=-0.030
+  #5  seed= 7  entropy=2.597  n_cells=406  Δd=-0.035
+  #6  seed= 3  entropy=2.553  n_cells=426  Δd=-0.033
+  #7  seed=10  entropy=2.535  n_cells=454  Δd=-0.058
+  #8  seed= 2  entropy=2.533  n_cells=442  Δd=-0.000
+  #9  seed=18  entropy=2.526  n_cells=436  Δd=-0.054
+  #10  seed=13  entropy=2.438  n_cells=445  Δd=-0.067
+  #11  seed=19  entropy=2.421  n_cells=428  Δd=-0.092
+  #12  seed=12  entropy=2.392  n_cells=415  Δd=+0.003
+  #13  seed= 1  entropy=2.391  n_cells=429  Δd=-0.013
+  #14  seed=17  entropy=2.326  n_cells=486  Δd=-0.103
+  #15  seed= 9  entropy=2.165  n_cells=411  Δd=-0.064
+  #16  seed= 8  entropy=2.023  n_cells=377  Δd=-0.121
+  #17  seed= 6  entropy=1.903  n_cells=305  Δd=-0.075
+  #18  seed=14  entropy=1.715  n_cells=409  Δd=-0.056
+  #19  seed= 4  entropy=1.441  n_cells=484  Δd=+0.012
+  #20  seed=15  entropy=1.117  n_cells=406  Δd=-0.309
+
+Best seed: 0  (entropy=2.733, n=432)
+
+Saving aggregate stats...
+  Saved: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/aggregate/fig2_multi_seed_summary.json
+
+Generating aggregate panels...
+  Saved: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/aggregate/panel_e_aggregate_strip.pdf
+  Saved: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/aggregate/panel_e_aggregate_violin.pdf
+
+============================================================
+To regenerate Figure 2 with the best seed (0), run:
+
+    cd /home/stefano/projects/spatial_predictive_RL
+    python "code_analysis/figure 2/generate_figure2.py" \
+        --run_dir "/home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/nohead_seed0" \
+        --output_dir "/home/stefano/projects/spatial_predictive_RL/code_analysis/figure 2/figures" \
+        --reward_pos 0.3 0.3 \
+        --no_show
+
+Aggregate panels are in:
+    /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/aggregate
+
+Aggregate summary JSON:
+    /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/aggregate/fig2_multi_seed_summary.json
+============================================================
+
+Auto-regenerating Figure 2 with best seed...
+Figure 2 regenerated.
+
+Aggregate summary:
+  Seeds evaluated:      20
+  Pooled cell-pairs:    8599
+  Pooled mean Δd(A→B):  -0.0611
+  Per-seed mean Δd:     -0.0629 ± 0.0688
+  Frac toward reward:   67.6% ± 12.8%
+  Wilcoxon p (vs 0):    0.0000

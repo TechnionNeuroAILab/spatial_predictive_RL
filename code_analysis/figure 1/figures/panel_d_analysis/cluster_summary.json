@@ -1,0 +1,188 @@
+{
+  "n_timesteps": 50000,
+  "pca_explained_variance_ratio": [
+    0.3176349401473999,
+    0.11801460385322571
+  ],
+  "adjusted_rand_index": {
+    "kmeans_vs_x_tertile": -3.669499958976391e-05,
+    "kmeans_vs_wall_proximity": -1.6376605228586934e-05,
+    "kmeans_vs_pc1_tertile": 0.9998799981999519,
+    "x_tertile_vs_wall_proximity": 0.1421641347126515,
+    "x_tertile_vs_pc1_tertile": -3.659407942705009e-05
+  },
+  "silhouette_k2": 0.6663537621498108,
+  "silhouette_k3": 0.8453353047370911,
+  "silhouette_k4": 0.7373234629631042,
+  "ridge_r2": {
+    "xy_pc1_r2": 0.00017979630463236252,
+    "xy_pc2_r2": 0.001027376424380977,
+    "xy_theta_pc1_r2": 0.00014981881635973694,
+    "xy_theta_pc2_r2": 0.0009504386631198792,
+    "xy_obs_pc1_r2": -0.00027204622326795216,
+    "xy_obs_pc2_r2": 0.00554325456926319,
+    "obs_only_pc1_r2": -0.00040508508682250975,
+    "obs_only_pc2_r2": 0.004417645931243897
+  },
+  "top5_by_partition": {
+    "kmeans": [
+      {
+        "variable": "obs_13",
+        "eta_squared": 0.00010145459136314462,
+        "mutual_info": 0.0004362159549002046
+      },
+      {
+        "variable": "obs_15",
+        "eta_squared": 9.758047104288044e-05,
+        "mutual_info": 0.0003993393026950337
+      },
+      {
+        "variable": "obs_03",
+        "eta_squared": 8.613169116042312e-05,
+        "mutual_info": 0.00024612536509170137
+      },
+      {
+        "variable": "obs_12",
+        "eta_squared": 8.570395649677431e-05,
+        "mutual_info": 0.00046647163811528564
+      },
+      {
+        "variable": "obs_05",
+        "eta_squared": 7.74153811866202e-05,
+        "mutual_info": 0.0004586860308008747
+      }
+    ],
+    "x_tertile": [
+      {
+        "variable": "x",
+        "eta_squared": 0.8745605830275363,
+        "mutual_info": 1.037175870046825
+      },
+      {
+        "variable": "spatial_bin",
+        "eta_squared": 0.8745605830275363,
+        "mutual_info": 1.0460944992501755
+      },
+      {
+        "variable": "local_density",
+        "eta_squared": 0.3548039727326247,
+        "mutual_info": 0.2696299446811354
+      },
+      {
+        "variable": "dist_reward",
+        "eta_squared": 0.2732270464521804,
+        "mutual_info": 0.19787207460232764
+      },
+      {
+        "variable": "dist_center",
+        "eta_squared": 0.2732270464521804,
+        "mutual_info": 0.19787207460232764
+      }
+    ],
+    "pc1_tertile": [
+      {
+        "variable": "obs_13",
+        "eta_squared": 0.00010217312643060046,
+        "mutual_info": 0.00043576634472237226
+      },
+      {
+        "variable": "obs_15",
+        "eta_squared": 9.684469412693686e-05,
+        "mutual_info": 0.0003983272709691565
+      },
+      {
+        "variable": "obs_03",
+        "eta_squared": 8.525050426205789e-05,
+        "mutual_info": 0.00024592089645460115
+      },
+      {
+        "variable": "obs_12",
+        "eta_squared": 8.482693140475615e-05,
+        "mutual_info": 0.00046834265338624643
+      },
+      {
+        "variable": "obs_05",
+        "eta_squared": 7.770151225901824e-05,
+        "mutual_info": 0.00045881192235700804
+      }
+    ],
+    "wall_proximity": [
+      {
+        "variable": "x",
+        "eta_squared": 0.5155723023238289,
+        "mutual_info": 0.6389913177987661
+      },
+      {
+        "variable": "spatial_bin",
+        "eta_squared": 0.5155723023238289,
+        "mutual_info": 0.6491621075868874
+      },
+      {
+        "variable": "dist_center",
+        "eta_squared": 0.30522575516400113,
+        "mutual_info": 0.22089352909280044
+      },
+      {
+        "variable": "dist_reward",
+        "eta_squared": 0.30522575516400113,
+        "mutual_info": 0.22089352909280044
+      },
+      {
+        "variable": "wall_ray_min",
+        "eta_squared": 0.14645753781335524,
+        "mutual_info": 0.13154871893957157
+      }
+    ]
+  },
+  "kmeans_mean_x_per_cluster": [
+    0.542928440724742,
+    0.5427517100684027,
+    0.5428267130685227
+  ],
+  "x_tertile_mean_pc1_per_group": [
+    0.024525055661797523,
+    0.006381079088896513,
+    -0.02213256061077118
+  ],
+  "categorical_top5": [
+    {
+      "variable": "pc1_tertile",
+      "cramers_v": 0.999940002999796,
+      "nmi": 0.9996096467865648
+    },
+    {
+      "variable": "pc2_tertile",
+      "cramers_v": 0.7882083300016648,
+      "nmi": 0.6558399199200583
+    },
+    {
+      "variable": "spatial_8x8",
+      "cramers_v": 0.015509016525552331,
+      "nmi": 2.2872149585627997e-05
+    },
+    {
+      "variable": "obs_12__t5",
+      "cramers_v": 0.01188584725976721,
+      "nmi": 0.0001063818232474983
+    },
+    {
+      "variable": "heading_octant",
+      "cramers_v": 0.0115635702546461,
+      "nmi": 8.848381699485088e-05
+    }
+  ],
+  "multinomial_top3": [
+    {
+      "feature_set": "x_only",
+      "mcfadden_r2": NaN
+    },
+    {
+      "feature_set": "y_only",
+      "mcfadden_r2": NaN
+    },
+    {
+      "feature_set": "xy",
+      "mcfadden_r2": NaN
+    }
+  ]
+}

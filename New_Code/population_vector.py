@@ -8,7 +8,7 @@ import pandas as pd
 from matplotlib.patches import Circle
 from scipy.stats import mannwhitneyu, pearsonr, spearmanr
 
-from common import DEFAULT_REWARD, ensure_dir, load_behavior_activity, pivot_activity_matrix, save_json
+from common import DEFAULT_REWARD, bootstrap_mean_ci, ensure_dir, load_behavior_activity, pivot_activity_matrix, save_json
 
 
 def parse_args() -> argparse.Namespace:
@@ -270,10 +270,13 @@ def main() -> None:
     p_null = float(np.mean(null >= obs_mean)) if null.size and np.isfinite(obs_mean) else np.nan
     plot_pv_map(corr_map, goal, goal_radius, fig_dir / "pv_correlation_map.png")
     plot_corr_vs_distance(curve, fig_dir / "pv_corr_vs_distance.png")
-    plot_goal_vs_nongoal(goal_vals, non_vals, fig_dir / "pv_corr_goal_vs_nongol.png")
+    plot_goal_vs_nongoal(goal_vals, non_vals, fig_dir / "pv_corr_goal_vs_non_goal.png")
     np.save(out_dir / "pv_corr_map.npy", corr_map)
     np.save(out_dir / "pv_shuffle_null.npy", null)
     qualitative_match = bool(np.isfinite(mean_goal) and np.isfinite(mean_non) and (mean_goal < mean_non))
+
+    # Bootstrap 95% CI on the goal-zone mean PV correlation
+    _goal_mean, _goal_ci_lo, _goal_ci_hi = bootstrap_mean_ci(goal_vals, n_boot=2000, seed=args.seed)
 
     payload: dict[str, Any] = {
         "script": "population_vector.py",
@@ -282,7 +285,7 @@ def main() -> None:
         "comparison_value_paper": None,
         "comparison_value_paper_note": "No single canonical scalar in Leutgeb et al.; directional comparison used.",
         "your_value": mean_goal,
-        "your_value_ci_95": [np.nan, np.nan],
+        "your_value_ci_95": [float(_goal_ci_lo), float(_goal_ci_hi)],
         "qualitative_match": qualitative_match,
         "goal_position": goal.tolist(),
         "goal_position_source": goal_source,

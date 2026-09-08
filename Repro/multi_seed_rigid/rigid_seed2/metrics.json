@@ -1,0 +1,21 @@
+{
+  "final_hidden_shape": [
+    99,
+    50,
+    512
+  ],
+  "n_cycles": 1,
+  "phase1_final_loss": 0.0007195760845206678,
+  "phase2_final_reward": 6.297857736469291,
+  "phase2_final_success": 0.0,
+  "phase2_mean_reward": 8.599640716286764,
+  "phase2_mean_reward_last10": 8.27613566994884,
+  "phase2_mean_success": 0.31,
+  "phase2_mean_success_last10": 0.2,
+  "rl_per_cycle": 1000,
+  "seed": 2,
+  "test_success_rates": [
+    0.26666666666666666,
+    0.0
+  ]
+}

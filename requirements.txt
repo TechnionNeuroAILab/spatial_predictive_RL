@@ -1,0 +1,36 @@
+# Exact package set from the `spatial_predictive_RL` conda env used to
+# generate the runs/figures in this repo (Python 3.10.19).
+# Install with:  pip install -r requirements.txt
+# (create the venv/conda env first, e.g. `conda create -n spatial_predictive_RL python=3.10`)
+
+colorama==0.4.6
+contourpy==1.3.2
+cycler==0.12.1
+filelock==3.20.2
+fonttools==4.61.1
+gmpy2==2.2.1
+Jinja2==3.1.6
+kiwisolver==1.4.9
+MarkupSafe==3.0.3
+matplotlib==3.10.8
+mpmath==1.3.0
+munkres==1.1.4
+networkx==3.4.2
+numpy==2.2.6
+packaging==25.0
+pillow==12.1.0
+pyparsing==3.3.1
+PySide6==6.10.1
+python-dateutil==2.9.0.post0
+PyYAML==6.0.3
+ratinabox==1.15.3
+scipy==1.15.2
+shapely==2.1.2
+shiboken6==6.10.1
+six==1.17.0
+sympy==1.14.0
+torch==2.5.1
+tornado==6.5.4
+tqdm==4.67.1
+typing_extensions==4.15.0
+unicodedata2==17.0.0

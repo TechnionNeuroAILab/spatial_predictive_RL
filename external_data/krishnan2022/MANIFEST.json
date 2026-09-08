@@ -1,0 +1,25 @@
+{
+  "dataset": "Krishnan, Heer, Cherian & Sheffield (2022) 'Reward expectation extinction restructures and degrades CA1 spatial maps through loss of a dopaminergic reward proximity signal' -- published Source Data file (Supplementary MOESM4).",
+  "paper_doi": "10.1038/s41467-022-34465-5",
+  "paper_reference": "Krishnan S, Heer C, Cherian C, Sheffield MEJ. Reward expectation extinction restructures and degrades CA1 spatial maps through loss of a dopaminergic reward proximity signal. Nat Commun 13, 6662 (2022).",
+  "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-022-34465-5/MediaObjects/41467_2022_34465_MOESM4_ESM.xlsx",
+  "local_file": "MOESM4_source_data.xlsx",
+  "sha256": "52a8168e6c603bb31d116c9730cb8481837d2c6efc5e114ba57db63995e5946b",
+  "file_size_bytes": 612213,
+  "n_sheets": 18,
+  "download_date": "2026-08-18",
+  "availability_caveat": "Only the published Source Data (per-figure summary values) are publicly available. Raw imaging data are available from the authors upon request only: sheffield@uchicago.edu. Analysis code is public at https://github.com/seethakris/HPCrewardpaper.",
+  "code_repo": {
+    "url": "https://github.com/seethakris/HPCrewardpaper",
+    "local_path": "code_krishnan/",
+    "clone_type": "shallow (git clone --depth 1)",
+    "head_sha": "5b3b22a952ac14c62689b63ad9ada4ea9e0c72b3",
+    "clone_date": "2026-08-18"
+  },
+  "sheets_used": {
+    "Figure3": "Fig 3B per-animal (n=3) place-field reliability across Rewarded / RE-low / Re-Rewarded; Fig 3C per-region (start/middle/end of track) cell-level reliability means with per-condition sample sizes; Fig 3E per-animal % placefields in middle/end of track per condition.",
+    "Figure 5": "Fig 5D per-axon (n=7) reward-normalized VTA-DA mean fluorescence at Start/Middle/End of track for Rewarded, RE-high, RE-low conditions; Fig 5J/5K/5L lap-wise and slope*max summaries.",
+    "Figure2": "Fig 2C cell-level spatial-correlation boxplots per condition; Fig 2D spatial correlation by track region (start/middle/end) per condition, same n per condition (paired cells) -- NOT field density.",
+    "Figure1": "Fig 1E lap-wise decoding + licking; Fig 1F per-animal (n=12; n=6 for Re-Rewarded) Bayesian decoding R2 per condition; Fig 1G decoding error by track region. Not parsed by utils.py (not needed for the confrontation)."
+  }
+}

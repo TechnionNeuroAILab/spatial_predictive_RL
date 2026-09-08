@@ -1,0 +1,24 @@
+Queued 2 jobs across 2 GPU(s): [0, 1]
+
+============================================================
+  START  nohead/seed19 -> GPU0
+  log -> /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed/nohead_seed19_runner.log
+============================================================
+
+============================================================
+  START  head/seed19 -> GPU1
+  log -> /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head/head_seed19_runner.log
+============================================================
+
+============================================================
+  OK  nohead/seed19 -> GPU0
+============================================================
+
+============================================================
+  OK  head/seed19 -> GPU1
+============================================================
+
+============================================================
+All jobs finished.  OK: 2  Failed: []
+  No-head outputs: /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed
+  Head outputs:    /home/stefano/projects/spatial_predictive_RL/Repro/multi_seed_head
