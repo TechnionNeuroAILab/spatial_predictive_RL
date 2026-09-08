@@ -1,0 +1,40 @@
+# Dependencies of the paper_code/ pipeline, pinned to the environment that can
+# actually run it (conda `base` on the workstation: Python 3.13.9).
+#
+#   pip install -r paper_code/requirements.txt
+#
+# System dependency, NOT installable via pip: poppler-utils, which provides
+# `pdftoppm`. Every figure assembler shells out to it to rasterise panels.
+#   Debian/Ubuntu:  sudo apt install poppler-utils
+# `python paper_code/smoke_test.py --phase deps` checks for it.
+#
+# torch is pinned to the CUDA 12.8 build actually in use. On a CPU-only or
+# different-CUDA machine install torch separately per pytorch.org, then
+# `pip install -r` the rest.
+#
+# CAVEAT ON PROVENANCE: these are the versions present today, which is what the
+# smoke test validates against. The runs under Repro/ and New_Results_v3/ were
+# trained in July 2026 and no run's config.json records its library versions,
+# so they may have been produced with somewhat older releases. Numerical
+# reproduction of the archived runs is therefore not guaranteed by this pin.
+#
+# (An unrelated conda env named `spatial_predictive_RL` also exists on this
+# machine, but it lacks pandas/seaborn/scikit-learn and CANNOT run the analysis
+# pipeline -- do not use it.)
+
+numpy==2.3.5
+pandas==2.3.3
+scipy==1.16.3
+matplotlib==3.10.8
+seaborn==0.13.2
+scikit-learn==1.8.0
+torch==2.9.1
+ratinabox==1.15.3
+shapely==2.1.2
+tqdm==4.67.1
+pypdf==6.10.2
+pillow==12.0.0
+
+# external-dataset readers only
+h5py==3.15.1          # Sosa 2025 NWB files (paper_code/external/sosa2025/)
+openpyxl==3.1.5       # Krishnan 2022 Source Data xlsx (via pandas)

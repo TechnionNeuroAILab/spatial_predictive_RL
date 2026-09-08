@@ -11,11 +11,11 @@ __pycache__/
 New_Results_v2/**/data/
 New_Results_v2/**/checkpoints/
 
-# --- run-output trees (regenerable via README / paper-repro commands) ---
+# --- run-output trees (regenerable, see paper_code/README.md) ---
 # *.pkl / *.pt / checkpoints/ above already exclude the bulk (hundreds of GB of
 # raw activity/weights). These add the per-run diagnostic PNGs each training
 # script dumps automatically -- NOT the assembled paper figures, which live
-# under code_analysis/**/figures and paper/paper_figures and stay tracked.
+# under paper_code/figures/*/figures{,_supp}/ and stay tracked.
 Repro/**/*.png
 New_Results/**/*.png
 New_Results_v2/**/*.png
@@ -31,9 +31,10 @@ Results/**/*.png
 /Results/
 /old_code/
 
-# external_data/: keep our own cache/figures + small scripts, drop the raw
-# NWB recordings and the vendored third-party analysis repos (each has its
-# own nested .git and its own license/versioning).
+# external_data/ is now DATA ONLY -- its analysis scripts moved to
+# paper_code/external/. Keep the JSON caches and the Krishnan Source Data xlsx
+# (small, and figures read them directly); drop the raw NWB recordings and the
+# vendored third-party repos (each has its own nested .git and license).
 external_data/sosa2025/nwb/
 external_data/*/code_krishnan/
 external_data/sosa2025/code_sosa/

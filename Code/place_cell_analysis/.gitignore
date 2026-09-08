@@ -1,8 +1,0 @@
-__pycache__/
-*.pyc
-*.pyo
-.DS_Store
-# Large run data / outputs are typically not committed:
-# Positive_Results/
-# Negative_Results/
-# summary_figures/
