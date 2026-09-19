@@ -245,7 +245,9 @@ class Controller(nn.Module):
         super().__init__()
         self.input_norm = nn.LayerNorm(hidden_dim)
         self.goal_encoder = nn.Linear(2, hidden_dim)
+        # NOTE: key/value seq length is 1, so this reduces to additive goal conditioning, not real attention.
         self.attention = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, batch_first=True)
+        # NOTE: unused (dead); kept for checkpoint compatibility.
         self.ln1 = nn.LayerNorm(hidden_dim)
         self.fc = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -868,6 +870,7 @@ def visualize_controller_fields(rnn, ctrl, title="Controller Latent Fields",goal
 
 def generate_predictive_data(rnn, ctrl, n_trials, timesteps):
     """Run goal-directed episodes with current policy, collect (obs, act, next_obs) for predictive training."""
+    # greedy policy, no warmup, no early termination which means occupancy is reward-biased (feeds interleave training).
     rnn.eval()
     ctrl.eval()
     obs_data = np.zeros((n_trials, timesteps, OBS_DIM), dtype=np.float32)
@@ -945,12 +948,18 @@ def get_next_move(coords, hd_idx, m=32):
     action_encoding[next_action_idx] = 1
     return next_coords, next_action_idx, action_encoding
 
+_obs_nan_warned = False
 def get_obs():
     [c.update_cell_locations() for c in fov_cells_all]
     [c.update() for c in fov_cells_all]
     fr = np.concatenate([c.firingrate for c in fov_cells_all]) / 10.0
     dist = fov_cells_all[0].dists / 1.5
     obs = np.concatenate([fr, dist])
+    global _obs_nan_warned
+    if not _obs_nan_warned and (np.isnan(obs).any() or np.isinf(obs).any()):
+        print(f"[get_obs] WARNING: NaN/Inf in observation at step; substituting with 0/1 "
+              f"(further occurrences suppressed). obs={obs}")
+        _obs_nan_warned = True
     return np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0)
 
 dummy = get_obs()
@@ -967,13 +976,7 @@ if ARGS.reward_pred_head:
 print(f"RNN parameters    : {sum(p.numel() for p in rnn_model.parameters()):,}")
 print(f"Controller params : {sum(p.numel() for p in controller.parameters()):,}")
 print("\n=== PHASE 1: Training World Model ===")
-# Re-seed here so instantiating the reward head above cannot perturb the RNG.
-# Creating the head draws from the RNG for its weight init; without this re-seed
-# that shifts the Phase-1 data generation, the DataLoader shuffle and the replay-
-# trajectory recording, giving head and no-head runs DIFFERENT pre-RL maps and
-# trajectories -- which silently confounds any with/without-head comparison.
-# Re-seeding guarantees an identical pre-RL map and replay trajectory across
-# conditions, isolating the head's effect to the RL phase.
+# Re-seed here so instantiating the reward head above cannot perturb the RNG. Re-seeding guarantees an identical pre-RL map and replay trajectory across conditions.
 np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
@@ -1099,7 +1102,7 @@ for cycle in range(n_cycles):
     print(f"Cycle {cycle + 1}/{n_cycles}: RL Phase ({rl_per_cycle} episodes)")
     print(f"{'='*60}")
     cycle_boundaries.append(len(history['rewards']))
-    # [v11 replay] collect this cycle's pre-RL prediction trajectory (before any RL weight updates of this cycle), to be replayed through frozen post-RL weights at the end of the RL phase.
+    # [v11 replay] collect this cycle's pre-RL prediction trajectory, to be replayed through frozen post-RL weights at the end of the RL phase.
     replay_traj = None
     if cycle == (ARGS.replay_cycle - 1):
         print(f"\n[Replay] Collecting cycle-{cycle + 1} prediction trajectory (pre-RL weights)...")
@@ -1129,6 +1132,9 @@ for cycle in range(n_cycles):
                 Ag.head_direction = hds[action_idx]
                 prev_act = act_vec
 
+        # true pre-rollout state, needed by the recompute below (fixes off-by-one)
+        h_rollout_start = h.detach().clone()
+        b_rollout_start = b.detach().clone()
         hs, goals, actions, log_probs, rewards, values = [], [], [], [], [], []
         dones, obs_list, prev_acts, bs, next_obs_list, pos_list = [], [], [], [], [], []
         ep_reward = 0.0
@@ -1214,8 +1220,8 @@ for cycle in range(n_cycles):
 
         for _ in range(UPDATE_EPOCHS):
             recomputed_hs = []
-            h_temp = b_hs[0].unsqueeze(0).detach()
-            b_temp = b_bs[0].unsqueeze(0).detach()
+            h_temp = h_rollout_start
+            b_temp = b_rollout_start
             for i in range(len(b_obs)):
                 h_temp, b_temp = rnn_model.forward_step(
                     b_obs[i:i + 1], b_prev_acts[i:i + 1], h_temp, b_temp

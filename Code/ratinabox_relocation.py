@@ -48,12 +48,10 @@ def parse_args():
     parser.add_argument("--reward_pred_sigma", type=float, default=0.15,help="Gaussian sigma for the proximity target in normalised arena units (default: 0.15)")
     parser.add_argument("--reward_x", type=float, default=0.5,help="Fixed reward / probe x-location in normalised arena units (default 0.5 = centre). Use off-centre (e.g. 0.3) to de-confound the centre-of-mass shift metric.")
     parser.add_argument("--reward_y", type=float, default=0.5,help="Fixed reward / probe y-location in normalised arena units (default 0.5 = centre).")
-    # --- reward relocation (A -> B) ---
+    # reward relocation (A --> B)
     parser.add_argument("--relocate_x", type=float, default=0.7, help="Relocated reward B x-location")
     parser.add_argument("--relocate_y", type=float, default=0.7, help="Relocated reward B y-location")
-    parser.add_argument("--relocate_at_cycle", type=int, default=-1,
-                        help="0-indexed cycle at which to relocate the reward from A (--reward_x/y) to B "
-                             "(--relocate_x/y). -1 disables relocation (behaves like v11).")
+    parser.add_argument("--relocate_at_cycle", type=int, default=-1,help="0-indexed cycle at which to relocate the reward from A (--reward_x/y) to B (--relocate_x/y). -1 disables relocation (behaves like v11).")
     args, _ =parser.parse_known_args()
     return args
 def ensure_dir(path):
@@ -129,7 +127,7 @@ coord_updates = np.array([(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0
 # all use the SAME location. Default (0.5,0.5) -> grid (16,16).
 GOAL_CENTER_GRID = np.array([int(round(ARGS.reward_x * m)), int(round(ARGS.reward_y * m))])
 GOAL_CENTER_GRID = np.clip(GOAL_CENTER_GRID, 2, m - 2)
-# --- relocation: reward A (start) and reward B (relocated) ---
+# relocation: reward A (start) and reward B (relocated)
 REWARD_A = np.array([ARGS.reward_x, ARGS.reward_y], dtype=float)
 REWARD_B = np.array([ARGS.relocate_x, ARGS.relocate_y], dtype=float)
 GRID_A = np.clip(np.array([int(round(ARGS.reward_x * m)), int(round(ARGS.reward_y * m))]), 2, m - 2)
@@ -959,12 +957,19 @@ def get_next_move(coords, hd_idx, m=32):
     action_encoding[next_action_idx] = 1
     return next_coords, next_action_idx, action_encoding
 
+_obs_nan_warned = False
+
 def get_obs():
     [c.update_cell_locations() for c in fov_cells_all]
     [c.update() for c in fov_cells_all]
     fr = np.concatenate([c.firingrate for c in fov_cells_all]) / 10.0
     dist = fov_cells_all[0].dists / 1.5
     obs = np.concatenate([fr, dist])
+    global _obs_nan_warned
+    if not _obs_nan_warned and (np.isnan(obs).any() or np.isinf(obs).any()):
+        print(f"[get_obs] WARNING: NaN/Inf in observation at step; substituting with 0/1 "
+              f"(further occurrences suppressed). obs={obs}")
+        _obs_nan_warned = True
     return np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0)
 
 dummy = get_obs()
@@ -981,6 +986,10 @@ if ARGS.reward_pred_head:
 print(f"RNN parameters    : {sum(p.numel() for p in rnn_model.parameters()):,}")
 print(f"Controller params : {sum(p.numel() for p in controller.parameters()):,}")
 print("\n=== PHASE 1: Training World Model ===")
+# Re-seed here so instantiating the reward head above cannot perturb the RNG. Re-seeding guarantees an identical pre-RL map and replay trajectory across conditions.
+np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 n_trials = int(ARGS.n_trials)
 timesteps = int(ARGS.timesteps)
 obs_data = np.zeros((n_trials, timesteps, OBS_DIM))
@@ -1107,16 +1116,14 @@ for cycle in range(n_cycles):
     # [v11 replay] collect this cycle's pre-RL prediction trajectory (before any RL weight updates of this cycle), to be replayed through frozen post-RL weights at the end of the RL phase.
     replay_traj = None
     if RELOCATE:
-        # [relocation] collect ONE frozen trajectory before any RL (baseline F0),
-        # replayed unchanged through post-A and post-B weights so occupancy is fixed.
+        # [relocation] collect ONE frozen trajectory before any RL, replayed unchanged through post-A and post-B weights so occupancy is fixed.
         if cycle == 0:
             print("\n[Relocation] Collecting the single frozen replay trajectory (pre-RL weights)...")
             reloc_traj = collect_prediction_trajectory(
                 rnn_model, period="replay_reloc_pred",
                 n_steps=ARGS.replay_steps, save_dir=DATA_DIR)
             rnn_model.train()
-        # relocate the reward A -> B at the chosen cycle (rebinds the module globals
-        # that both sample_start_and_goal() and the reward-head target read).
+        # relocate the reward A -> B at the chosen cycle.
         if cycle == ARGS.relocate_at_cycle:
             PROBE_REWARD_POS = REWARD_B
             GOAL_CENTER_GRID = GRID_B
@@ -1149,6 +1156,9 @@ for cycle in range(n_cycles):
                 Ag.head_direction = hds[action_idx]
                 prev_act = act_vec
 
+        # true pre-rollout state
+        h_rollout_start = h.detach().clone()
+        b_rollout_start = b.detach().clone()
         hs, goals, actions, log_probs, rewards, values = [], [], [], [], [], []
         dones, obs_list, prev_acts, bs, next_obs_list, pos_list = [], [], [], [], [], []
         ep_reward = 0.0
@@ -1234,8 +1244,8 @@ for cycle in range(n_cycles):
 
         for _ in range(UPDATE_EPOCHS):
             recomputed_hs = []
-            h_temp = b_hs[0].unsqueeze(0).detach()
-            b_temp = b_bs[0].unsqueeze(0).detach()
+            h_temp = h_rollout_start
+            b_temp = b_rollout_start
             for i in range(len(b_obs)):
                 h_temp, b_temp = rnn_model.forward_step(
                     b_obs[i:i + 1], b_prev_acts[i:i + 1], h_temp, b_temp
@@ -1293,8 +1303,7 @@ for cycle in range(n_cycles):
                 reward_pred_head=reward_pred_head,
             )
     if RELOCATE and reloc_traj is not None:
-        # [relocation] replay the SAME frozen trajectory through the post-A weights
-        # (end of the last A cycle) and the post-B weights (end of the last cycle).
+        # [relocation] replay the SAME frozen trajectory through the post-A weights and the post-B weights.
         if cycle == (ARGS.relocate_at_cycle - 1):
             print("\n[Relocation] Replaying frozen trajectory through post-A weights...")
             run_replay_probe(rnn_model, reloc_traj, period="replay_reloc_postA", save_dir=DATA_DIR)
