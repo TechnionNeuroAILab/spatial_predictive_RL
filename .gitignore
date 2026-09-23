@@ -11,55 +11,43 @@ __pycache__/
 New_Results_v2/**/data/
 New_Results_v2/**/checkpoints/
 
-# --- run-output trees (regenerable, see paper_code/README.md) ---
+# --- run-output trees (regenerable, see code/README.md) ---
 # *.pkl / *.pt / checkpoints/ above already exclude the bulk (hundreds of GB of
 # raw activity/weights). These add the per-run diagnostic PNGs each training
 # script dumps automatically -- NOT the assembled paper figures, which live
-# under paper_code/figures/*/figures{,_supp}/ and stay tracked.
-Repro/**/*.png
+# under code/figures/*/figures{,_supp}/ and stay tracked.
+results/**/*.png
 New_Results/**/*.png
 New_Results_v2/**/*.png
 New_Results_v3/**/*.png
 old_code/**/*.png
 Results/**/*.png
 
-# Legacy/superseded run trees kept on disk for provenance only -- do not
-# track (New_Results_v3/ and Repro/ are current/canonical and NOT listed
-# here; their heavy files are already excluded above by extension).
+# Legacy trees and local data. /sandbox/ and /data/ are the top-level copies.
+# The unanchored data/ rule above also ignores any nested data/ directory.
+# results/ stays tracked (run metadata only).
 /New_Results/
 /New_Results_v2/
+/New_Results_v3/
 /Results/
 /old_code/
+/Analysis_Plots/
+/sandbox/
+/data/
 
-# external_data/ is now DATA ONLY -- its analysis scripts moved to
-# paper_code/external/. Keep the JSON caches and the Krishnan Source Data xlsx
-# (small, and figures read them directly); drop the raw NWB recordings and the
-# vendored third-party repos (each has its own nested .git and license).
-external_data/sosa2025/nwb/
-external_data/*/code_krishnan/
-external_data/sosa2025/code_sosa/
-
-# paper/ is a separately Overleaf-synced git repo (its own remote/history,
+# paper_repo/ is a separately Overleaf-synced git repo (its own remote/history,
 # see README) -- not tracked inside this repo.
-/paper/
+/paper_repo/
 # regenerate_all.py per-figure run logs (transient; warnings + progress)
-paper_code/figures/_logs/
+code/figures/_logs/
 
 # --- code-review scratch output (not part of the paper) ---
 # Reconstruction/diagnostic figures written by the code review. The write-up
-# itself (paper_code/code_review.md) stays tracked; these are regenerable and
+# itself (code/code_review.md) stays tracked; these are regenerable and
 # must not be mistaken for assembled paper figures.
-paper_code/code_review_figures/
+code/code_review_figures/
 
-# --- trees kept out of the paper_code branch (local only) ---
-# Untracked on mid-merge-paper-code so the branch carries paper_code/ + Repro/
-# only. The files remain on disk; Repro/ and paper_code/ hold everything the
-# figures read from version control. external_data/ is kept tracked: four
-# figure scripts read its cached JSON and the published Krishnan source data.
-/New_Results/
-/New_Results_v3/
-/Analysis_Plots/
-/Results/
+# context/ holds notes (CLEANUP_TODO, FIGURE_REPRODUCTION).
 /context/
 
 # macOS finder metadata
