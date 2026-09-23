@@ -24,7 +24,8 @@ python code/smoke_test.py       # verify the pipeline runs
 |---|---|---|
 | `results/` | current multi-seed run batches — the source of every shipped figure | metadata only |
 | `sandbox/New_Results_v3/` | single-seed runs; only the optional `figS_fate` / `figS_decoder` generators read it | no |
-| `data/` | Krishnan 2022 Source Data; Sosa 2025 NWB (DANDI `001361`) + caches | no |
+| `context/` | cleanup notes and the figure-reproduction map | yes |
+| `data/` | Krishnan 2022 Source Data; Sosa 2025 caches and code. NWB files stay local | yes, except `sosa2025/nwb/` |
 | `paper_repo/` | the manuscript — a **separate** Overleaf-synced git repo (`main.tex`) | no (git-ignored) |
 | `sandbox/` | archived leftovers from the paper-slim cleanup (not part of the pipeline) | no (git-ignored) |
 

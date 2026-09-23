@@ -1,0 +1,610 @@
+{
+ "sub-m11/sub-m11_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/23_02_2023/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/a24/59b/a2459b20-228b-41c3-9b98-caf104aed1e4"
+ },
+ "sub-m11/sub-m11_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/26_02_2023/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/6b1/463/6b1463df-caf8-46a0-96e6-2c4821a85650"
+ },
+ "sub-m11/sub-m11_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/24_02_2023/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/d04/684/d046846d-a598-486b-bf74-c78021ca2e59"
+ },
+ "sub-m11/sub-m11_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/28_02_2023/Env1_B_to_Env2_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/25a/d50/25ad50ec-adbe-4115-9007-0160fe08d6ec"
+ },
+ "sub-m11/sub-m11_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/25_02_2023/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/f33/e2c/f33e2c0c-7fd4-4c37-9d5d-75d7d6c76188"
+ },
+ "sub-m11/sub-m11_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/27_02_2023/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/67f/0b0/67f0b0d9-26ce-4e05-baee-837b03c7e870"
+ },
+ "sub-m11/sub-m11_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/01_03_2023/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/8b0/7de/8b07ded4-2a82-4a06-b302-3fb709d05c12"
+ },
+ "sub-m11/sub-m11_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/02_03_2023/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3c2/0c7/3c20c740-f151-4a84-b8e6-e7993355d5ec"
+ },
+ "sub-m11/sub-m11_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/03_03_2023/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/945/9a8/9459a8f5-b013-4128-8946-832fdf005b26"
+ },
+ "sub-m11/sub-m11_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/04_03_2023/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/602/6bd/6026bd9d-c6ed-4a9a-8b4a-6cc159a5e9d2"
+ },
+ "sub-m11/sub-m11_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/05_03_2023/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/4fe/04c/4fe04c12-dd14-4389-ba5f-43c8a070e902"
+ },
+ "sub-m11/sub-m11_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP11/06_03_2023/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/312/38c/31238c09-d67c-45c0-9497-73944495cd85"
+ },
+ "sub-m12/sub-m12_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/22_02_2023/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/eae/00f/eae00f89-cc52-46fb-98a4-bf70379e2ab0"
+ },
+ "sub-m12/sub-m12_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/21_02_2023/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/2a8/9e9/2a89e968-3c64-4bb8-8658-abd1dc2c8f73"
+ },
+ "sub-m12/sub-m12_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/24_02_2023/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3fe/b94/3feb94ef-c298-4769-877a-6f50dd506eab"
+ },
+ "sub-m12/sub-m12_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/25_02_2023/Env1_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/bc5/5ea/bc55ea48-e73d-4ec5-9d4a-cf51f5bd2c48"
+ },
+ "sub-m12/sub-m12_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/23_02_2023/Env1_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/42e/926/42e92615-10da-45d4-9179-c43f5d411c92"
+ },
+ "sub-m12/sub-m12_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/26_02_2023/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/07e/450/07e45041-7eb1-4427-938d-a63ac89a3b5e"
+ },
+ "sub-m12/sub-m12_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/01_03_2023/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/088/06b/08806b64-5f07-4211-9b14-8d9af579b82f"
+ },
+ "sub-m12/sub-m12_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/02_03_2023/Env2_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/fd2/e09/fd2e0935-b272-484c-9ac9-40b7f42f0ba0"
+ },
+ "sub-m12/sub-m12_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/27_02_2023/Env1_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/f23/5a0/f235a0bb-7982-47f0-aa10-1cd0ef1bf792"
+ },
+ "sub-m12/sub-m12_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/28_02_2023/Env1_B_to_Env2_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/dc1/a5e/dc1a5e64-3e9a-4bdd-a41d-b1a25a6a598d"
+ },
+ "sub-m12/sub-m12_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/03_03_2023/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/9e6/03b/9e603b18-a3c2-4417-94e9-766fed45eea3"
+ },
+ "sub-m12/sub-m12_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/04_03_2023/Env2_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/825/e2d/825e2d97-98a6-4242-9dc4-2625afd134d5"
+ },
+ "sub-m12/sub-m12_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/05_03_2023/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/5d3/a84/5d3a84af-29d3-418e-9f53-0447edd8f931"
+ },
+ "sub-m12/sub-m12_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP12/06_03_2023/Env2_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c51/dc6/c51dc6af-4b24-48db-a3ec-1d1957d877ac"
+ },
+ "sub-m13/sub-m13_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/22_02_2023/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/599/a0c/599a0c34-bb9f-49ec-963b-829cc70e7b0c"
+ },
+ "sub-m13/sub-m13_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/23_02_2023/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/cb8/51f/cb851f37-18e9-4050-90dc-d3f5156ec594"
+ },
+ "sub-m13/sub-m13_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/21_02_2023/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/42a/ba0/42aba052-7142-423f-9d70-e0bd066b03d1"
+ },
+ "sub-m13/sub-m13_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/24_02_2023/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/03e/f0c/03ef0cd7-8dc2-43de-9057-3ae8d12c35f3"
+ },
+ "sub-m13/sub-m13_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/25_02_2023/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/8bf/c12/8bfc126c-c597-46ea-91a0-03cddd72a0c9"
+ },
+ "sub-m13/sub-m13_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/26_02_2023/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e18/c3f/e18c3f9a-a930-4219-bc21-4fdad7a46a94"
+ },
+ "sub-m13/sub-m13_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/27_02_2023/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/eb9/9ec/eb99ec19-16ed-495b-a0f6-fcd24628844f"
+ },
+ "sub-m13/sub-m13_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/01_03_2023/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/8e2/87f/8e287f6e-936c-477f-8353-596dae5aa772"
+ },
+ "sub-m13/sub-m13_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/28_02_2023/Env1_C_to_Env2_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/39e/dd7/39edd7af-aa5d-4d61-a47a-28919f0a02e3"
+ },
+ "sub-m13/sub-m13_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/02_03_2023/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c17/9bb/c179bb2a-d377-4183-a6d8-bb62d24705c2"
+ },
+ "sub-m13/sub-m13_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/03_03_2023/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/8b2/c17/8b2c17c7-f075-49e5-a66b-0add9d49bb77"
+ },
+ "sub-m13/sub-m13_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/04_03_2023/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/beb/d82/bebd8263-c8da-4758-9604-f84abc449d15"
+ },
+ "sub-m13/sub-m13_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/05_03_2023/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/736/4f1/7364f165-b306-4634-a6c4-159944bbcd88"
+ },
+ "sub-m13/sub-m13_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP13/06_03_2023/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/b4e/4d7/b4e4d7e4-5123-496e-8e77-2d1419894b82"
+ },
+ "sub-m14/sub-m14_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/23_02_2023/Env1_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/9ab/d0d/9abd0dbb-f1f1-4e3f-90e1-3a81b2805a85"
+ },
+ "sub-m14/sub-m14_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/22_02_2023/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/18f/f74/18ff746a-82bc-4fcd-807d-8596d1dfac80"
+ },
+ "sub-m14/sub-m14_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/21_02_2023/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/2ca/1e1/2ca1e149-b7d9-4d4d-be2e-1629eb5e6f68"
+ },
+ "sub-m14/sub-m14_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/24_02_2023/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/83b/2a0/83b2a070-e561-4682-abb8-8462f067e5ff"
+ },
+ "sub-m14/sub-m14_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/25_02_2023/Env1_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/52d/0ba/52d0ba9a-3566-49dd-a51a-0bb298c99de4"
+ },
+ "sub-m14/sub-m14_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/26_02_2023/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/bd3/a6c/bd3a6ccf-703d-4b29-805c-1c6a6efd4298"
+ },
+ "sub-m14/sub-m14_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/27_02_2023/Env1_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/dfb/6d6/dfb6d6b5-e10c-48db-9106-fd2a7a493175"
+ },
+ "sub-m14/sub-m14_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/01_03_2023/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e1b/9e3/e1b9e31f-3af8-4906-bb47-756cf46eaf7f"
+ },
+ "sub-m14/sub-m14_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/02_03_2023/Env2_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/f59/bc5/f59bc576-57d8-430a-b1ae-93bc3ab6eb6b"
+ },
+ "sub-m14/sub-m14_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/28_02_2023/Env1_A_to_Env2_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/9cf/341/9cf3419f-c7b2-4aff-b4b7-e526edbb3937"
+ },
+ "sub-m14/sub-m14_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/03_03_2023/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/d62/c93/d62c937e-5f6f-4424-a32c-df8bf76b901e"
+ },
+ "sub-m14/sub-m14_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/04_03_2023/Env2_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/0f2/79b/0f279b15-7ce1-44e9-a7e8-7782039204d5"
+ },
+ "sub-m14/sub-m14_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/05_03_2023/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/bf1/944/bf1944b4-6d05-4aa9-8284-caf195d111c9"
+ },
+ "sub-m15/sub-m15_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/25_03_2024/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/37c/1fb/37c1fb75-e938-4c40-9360-cd2c6571fa2c"
+ },
+ "sub-m14/sub-m14_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP14/06_03_2023/Env2_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/d8f/601/d8f6019e-5517-411c-8965-68efc4782d60"
+ },
+ "sub-m15/sub-m15_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/26_03_2024/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/7c0/90a/7c090ac6-03bb-4b3a-9a4b-26eaba987794"
+ },
+ "sub-m15/sub-m15_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/27_03_2024/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/cb6/f5a/cb6f5ad4-3c61-4771-82af-3bbe4d707f7f"
+ },
+ "sub-m15/sub-m15_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/28_03_2024/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3ff/79c/3ff79cf5-cddb-476c-96de-10a4d7a78bbb"
+ },
+ "sub-m15/sub-m15_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/30_03_2024/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c99/ef4/c99ef49e-803c-4cf8-989a-82d9ef5cf06f"
+ },
+ "sub-m15/sub-m15_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/31_03_2024/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/96b/21a/96b21ac0-de8d-4f93-92e6-96ace2c9031a"
+ },
+ "sub-m15/sub-m15_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/02_04_2024/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3b0/cca/3b0cca14-4067-47c5-85ed-58d78a956aba"
+ },
+ "sub-m15/sub-m15_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/01_04_2024/Env1_A_to_Env2_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/a98/e5b/a98e5bd5-c890-421d-90b8-019cab56c6c9"
+ },
+ "sub-m15/sub-m15_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/29_03_2024/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/579/87a/57987ad5-30f6-49a4-bb7d-d9b4423f75d6"
+ },
+ "sub-m15/sub-m15_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/03_04_2024/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/02b/4cb/02b4cbac-134b-4842-a931-d787465f579c"
+ },
+ "sub-m15/sub-m15_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/04_04_2024/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/bf1/808/bf1808e2-5d2b-4951-8b6a-ac99208778ce"
+ },
+ "sub-m15/sub-m15_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/05_04_2024/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/baf/007/baf007cd-ecfe-4e38-94a7-39e470bae725"
+ },
+ "sub-m15/sub-m15_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/07_04_2024/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c19/526/c19526db-09d8-42e5-806c-5294a26c1fa9"
+ },
+ "sub-m15/sub-m15_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP15/06_04_2024/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/8c3/f42/8c3f4295-7a99-40b3-b2b4-fb9cdee20142"
+ },
+ "sub-m17/sub-m17_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/26_03_2024/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/694/080/69408006-977b-4bd3-9c91-b5179e86c3a3"
+ },
+ "sub-m17/sub-m17_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/28_03_2024/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c26/728/c2672897-3c6b-4a69-b082-1d570f771d0c"
+ },
+ "sub-m17/sub-m17_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/27_03_2024/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/325/ec1/325ec177-4e70-4bca-a46c-49bfdeec353a"
+ },
+ "sub-m17/sub-m17_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/29_03_2024/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/996/6fa/9966fa4c-2b46-40f9-90b8-142cb50b0336"
+ },
+ "sub-m17/sub-m17_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/31_03_2024/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c88/53a/c8853ad9-9f2a-4f46-8006-6f6deae71475"
+ },
+ "sub-m17/sub-m17_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/30_03_2024/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/18d/b4f/18db4f64-a65b-4035-8d6d-a5fea620ef77"
+ },
+ "sub-m17/sub-m17_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/01_04_2024/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/aa4/23a/aa423a36-48bb-400e-9b46-6ec325fe3759"
+ },
+ "sub-m17/sub-m17_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/02_04_2024/Env2_B_to_Env1_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/73a/eb4/73aeb4a1-b31b-4293-99d5-8a5fd968a21b"
+ },
+ "sub-m17/sub-m17_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/03_04_2024/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/2bd/c39/2bdc3922-99eb-4540-896d-e8462a80c61e"
+ },
+ "sub-m17/sub-m17_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/06_04_2024/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/d21/361/d213619d-3126-4b17-b4f0-71d5e70f5962"
+ },
+ "sub-m17/sub-m17_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/05_04_2024/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/2c0/f22/2c0f22e2-aaf8-4f4f-bc6d-a7dffade6ce1"
+ },
+ "sub-m17/sub-m17_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/07_04_2024/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/412/13d/41213d2c-c75c-4936-be09-bde8ccd7242b"
+ },
+ "sub-m17/sub-m17_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/08_04_2024/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/99e/4bd/99e4bd9e-87ed-41b3-815f-0f19a79c2a3a"
+ },
+ "sub-m17/sub-m17_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP17/09_04_2024/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/566/9c3/5669c36a-59a0-48ca-a1fd-371ba1ca3ccc"
+ },
+ "sub-m18/sub-m18_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/25_03_2024/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/661/582/6615826b-afdc-405a-81cf-1a761a0d2116"
+ },
+ "sub-m18/sub-m18_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/27_03_2024/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/d60/ae8/d60ae844-7f67-4bee-97c5-3d09da7478b4"
+ },
+ "sub-m18/sub-m18_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/26_03_2024/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/9d9/8bd/9d98bd5b-6ee2-4f20-9daa-507c1d4da019"
+ },
+ "sub-m18/sub-m18_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/28_03_2024/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/a8d/24a/a8d24a42-9244-4f77-ab5c-a0e9547da7b2"
+ },
+ "sub-m18/sub-m18_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/29_03_2024/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/0b6/16e/0b616eed-1b64-4f35-bcc1-ae670df9b5e3"
+ },
+ "sub-m18/sub-m18_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/30_03_2024/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/f73/ecc/f73eccf6-8e7d-4e96-905a-1b2b23c9b396"
+ },
+ "sub-m18/sub-m18_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/31_03_2024/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/7f6/cd9/7f6cd9b9-51d6-4785-9836-3bdabd46c198"
+ },
+ "sub-m18/sub-m18_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/02_04_2024/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/d6b/b04/d6bb04bb-cf2e-4c2d-a348-4741bca8459b"
+ },
+ "sub-m18/sub-m18_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/04_04_2024/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3fb/4f9/3fb4f9a6-01ef-4ce2-95fb-d8771390ec35"
+ },
+ "sub-m18/sub-m18_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/01_04_2024/Env2_A_to_Env1_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/1de/596/1de59614-bf2c-4c14-8d35-4dbf4e6666eb"
+ },
+ "sub-m18/sub-m18_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/03_04_2024/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/058/5cd/0585cd4c-127a-4441-957a-a3c969fe839d"
+ },
+ "sub-m18/sub-m18_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/05_04_2024/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e38/8bd/e388bd88-1b2f-4fbb-86c7-4c697e844c46"
+ },
+ "sub-m19/sub-m19_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/25_03_2024/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/1d4/c97/1d4c9793-e5e3-442f-8d84-3775d4805963"
+ },
+ "sub-m19/sub-m19_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/26_03_2024/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/6d4/10f/6d410fc1-fc38-47b5-995e-0c01665b448f"
+ },
+ "sub-m18/sub-m18_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/06_04_2024/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3dc/a63/3dca6386-794b-49cb-b96d-35dc068d66a6"
+ },
+ "sub-m18/sub-m18_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP18/07_04_2024/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/a70/2fe/a702fe26-6593-4610-9429-e29542db0310"
+ },
+ "sub-m19/sub-m19_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/27_03_2024/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e42/e4b/e42e4b50-442c-4641-b072-e25c68f4d0c3"
+ },
+ "sub-m19/sub-m19_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/30_03_2024/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/532/ee3/532ee3c7-1114-4a92-b3c5-107216e1ce27"
+ },
+ "sub-m19/sub-m19_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/29_03_2024/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/394/a61/394a6158-64c6-4181-82f7-a1e237dde55d"
+ },
+ "sub-m19/sub-m19_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/28_03_2024/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/53a/b49/53ab49a7-2892-4520-a3e2-dd3d70aa4ea3"
+ },
+ "sub-m19/sub-m19_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/31_03_2024/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3d9/883/3d98830f-5e8a-46b1-8d85-99c3f6f768aa"
+ },
+ "sub-m19/sub-m19_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/01_04_2024/Env1_C_to_Env2_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/b67/071/b6707183-d28f-4f18-b743-7616662da6e5"
+ },
+ "sub-m19/sub-m19_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/04_04_2024/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/187/e29/187e29c4-9b77-4b79-8331-18f77f06f4ea"
+ },
+ "sub-m19/sub-m19_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/03_04_2024/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/bdb/69d/bdb69d80-ad7c-4949-86b6-82eca6414b94"
+ },
+ "sub-m19/sub-m19_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/05_04_2024/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/34c/ec5/34cec5f1-3f7b-4d99-8066-91a7a6ee4aec"
+ },
+ "sub-m19/sub-m19_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/06_04_2024/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/7eb/5a0/7eb5a0b5-1d3d-4f2c-85e5-ab6372d55432"
+ },
+ "sub-m19/sub-m19_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/02_04_2024/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/6b1/ce9/6b1ce9ce-6ab8-4c01-afe5-42ec292e8eaf"
+ },
+ "sub-m19/sub-m19_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP19/07_04_2024/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/100/fee/100fee91-f344-4120-a05e-8315d16a75b6"
+ },
+ "sub-m3/sub-m3_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/04_10_2022/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/a05/7d3/a057d33a-6548-461b-8977-0d84e795d55a"
+ },
+ "sub-m3/sub-m3_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/02_10_2022/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/cc2/7a4/cc27a464-f379-4886-bf2d-fe404f865df1"
+ },
+ "sub-m3/sub-m3_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/01_10_2022/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/058/401/058401ea-8ccc-42d3-abb9-04cd2491b983"
+ },
+ "sub-m3/sub-m3_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/03_10_2022/Env1_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/20c/8e7/20c8e7d6-e2fd-496a-a715-af3674e2c046"
+ },
+ "sub-m3/sub-m3_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/05_10_2022/Env1_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e00/5f0/e005f0db-1730-4dcf-8fb1-34313bc9c36b"
+ },
+ "sub-m3/sub-m3_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/07_10_2022/Env1_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/036/175/0361752b-de7f-4a93-b272-4e35b9987ed0"
+ },
+ "sub-m3/sub-m3_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/08_10_2022/Env1_C_to_Env2_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/127/a90/127a9044-7327-4729-8fbb-6535236d7362"
+ },
+ "sub-m3/sub-m3_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/06_10_2022/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/ed6/8d1/ed68d1f5-bd9a-461c-96e3-cc3c291ee200"
+ },
+ "sub-m3/sub-m3_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/10_10_2022/Env2_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/4db/2f8/4db2f8ac-1b60-4723-9780-20423d34d9e2"
+ },
+ "sub-m3/sub-m3_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/09_10_2022/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/ba4/3a9/ba43a930-715f-488c-8c7b-e3ab9f2657a0"
+ },
+ "sub-m3/sub-m3_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/11_10_2022/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/951/03b/95103b90-cad1-4d0d-a336-9d12cba6766b"
+ },
+ "sub-m3/sub-m3_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/13_10_2022/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/4ea/d56/4ead56ee-8cd7-4a25-9e0b-3dad44bb9361"
+ },
+ "sub-m3/sub-m3_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/12_10_2022/Env2_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/774/391/77439156-feb7-4321-ac11-24879506ad00"
+ },
+ "sub-m3/sub-m3_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP3/14_10_2022/Env2_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/2a2/b88/2a2b8897-1b72-49ef-9ccd-a2070399c05b"
+ },
+ "sub-m4/sub-m4_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/06_10_2022/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/42d/0a2/42d0a234-d0cd-4ba0-a937-e24de84714df"
+ },
+ "sub-m4/sub-m4_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/07_10_2022/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e65/700/e65700c4-2159-41c6-bd78-ee53322e23c6"
+ },
+ "sub-m4/sub-m4_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/08_10_2022/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/9a7/1a1/9a71a1fe-0764-489a-beae-6a5ea5d0c5b6"
+ },
+ "sub-m4/sub-m4_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/09_10_2022/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/fa4/824/fa482431-5061-4702-82a5-2c1689128d4a"
+ },
+ "sub-m4/sub-m4_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/11_10_2022/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e57/c14/e57c1420-3431-4e1d-ba4c-a00aaef2a176"
+ },
+ "sub-m4/sub-m4_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/12_10_2022/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/31b/e05/31be05c7-3465-4bb0-8591-7c5bc3b66391"
+ },
+ "sub-m4/sub-m4_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/10_10_2022/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/e4f/0d7/e4f0d7cf-03ae-4728-9714-f46d1966e458"
+ },
+ "sub-m4/sub-m4_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/13_10_2022/Env1_B_to_Env2_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/3bf/b7a/3bfb7ad6-70a6-4931-b1eb-3f6967096765"
+ },
+ "sub-m4/sub-m4_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/14_10_2022/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c3f/02d/c3f02d32-7186-4cc9-9247-54064c8b1156"
+ },
+ "sub-m4/sub-m4_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/16_10_2022/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/af8/bd7/af8bd7d5-1c52-40e2-8a2b-51f1f3f48505"
+ },
+ "sub-m4/sub-m4_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/15_10_2022/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/906/65c/90665cb4-6dbd-43da-a894-3ad423d7410c"
+ },
+ "sub-m4/sub-m4_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/18_10_2022/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/b72/f50/b72f5023-8bcc-437c-adcc-2bffde5c94ee"
+ },
+ "sub-m4/sub-m4_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/17_10_2022/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/fd4/e90/fd4e9041-b381-4b0c-a76d-9d70517dd2e8"
+ },
+ "sub-m7/sub-m7_ses-04_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/19_10_2022/Env1_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/0b8/d9f/0b8d9fea-da34-48dc-bc83-a337131ec295"
+ },
+ "sub-m7/sub-m7_ses-01_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/16_10_2022/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/7b2/f0b/7b2f0bbb-55c5-4df2-a4d5-50d7d1440835"
+ },
+ "sub-m7/sub-m7_ses-02_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/17_10_2022/Env1_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/2e8/975/2e8975bf-6b2b-4f42-90c9-9fcae4d63316"
+ },
+ "sub-m7/sub-m7_ses-03_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/18_10_2022/Env1_LocationA_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/671/9c5/6719c5eb-3ac3-4ebf-a947-cd36990b2fb3"
+ },
+ "sub-m4/sub-m4_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP4/19_10_2022/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/455/b49/455b49b3-a608-46a3-88f2-79ec23e243cc"
+ },
+ "sub-m7/sub-m7_ses-05_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/20_10_2022/Env1_LocationC_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/385/fb9/385fb99c-dc7e-4af5-ab8b-4d4a09937290"
+ },
+ "sub-m7/sub-m7_ses-07_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/22_10_2022/Env1_LocationB_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/468/9f2/4689f243-3c13-4033-896d-6e8ae0223acb"
+ },
+ "sub-m7/sub-m7_ses-06_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/21_10_2022/Env1_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/289/6b0/2896b0f0-74b3-4a7e-9e1e-b6a7ee836366"
+ },
+ "sub-m7/sub-m7_ses-08_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/23_10_2022/Env1_A_to_Env2_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/145/46d/14546d24-8fdb-41db-92a7-e60710feda6c"
+ },
+ "sub-m7/sub-m7_ses-09_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/24_10_2022/Env2_LocationB",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/8a5/8e3/8a58e3f6-95c6-4b31-b6a6-70947aca998b"
+ },
+ "sub-m7/sub-m7_ses-10_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/25_10_2022/Env2_LocationB_to_C",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/784/ee4/784ee480-724a-4f7f-bcaf-87aed388be55"
+ },
+ "sub-m7/sub-m7_ses-11_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/26_10_2022/Env2_LocationC",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/1c0/332/1c033281-e58f-4434-b692-7d84f33db0ee"
+ },
+ "sub-m7/sub-m7_ses-12_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/27_10_2022/Env2_LocationC_to_A",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/c07/883/c078830b-acd9-408f-9eee-0e6bb07277c6"
+ },
+ "sub-m7/sub-m7_ses-13_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/28_10_2022/Env2_LocationA",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/914/fa4/914fa4bb-462b-4774-a150-49ee3a6000c7"
+ },
+ "sub-m7/sub-m7_ses-14_behavior+ophys.nwb": {
+  "identifier": "/data/InVivoDA/GCAMP7/29_10_2022/Env2_LocationA_to_B",
+  "s3_url": "https://dandiarchive.s3.amazonaws.com/blobs/26a/a0c/26aa0c1d-7f79-4ce7-bdc7-ff22a7aa3b30"
+ }
+}

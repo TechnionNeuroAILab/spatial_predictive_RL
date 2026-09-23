@@ -100,7 +100,7 @@ diff first.
 
 The Sosa reader needs the NWB files from DANDI accession `001361` in
 `data/sosa2025/nwb/` (git-ignored, not redistributed). Krishnan uses the
-published Source Data xlsx, which lives in `data/` and is not in git.
+published Source Data xlsx, which is tracked in `data/`.
 
 ## 3. Generate the figures
 

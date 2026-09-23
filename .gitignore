@@ -1,4 +1,7 @@
+# Ignore directories named data/, except the top-level dataset folder.
 data/
+!/data/
+
 *.pkl
 *.npy
 *.pt
@@ -23,9 +26,8 @@ New_Results_v3/**/*.png
 old_code/**/*.png
 Results/**/*.png
 
-# Legacy trees and local data. /sandbox/ and /data/ are the top-level copies.
-# The unanchored data/ rule above also ignores any nested data/ directory.
-# results/ stays tracked (run metadata only).
+# Legacy trees. results/ stays tracked (run metadata only).
+# Top-level data/ is tracked except the Sosa NWB recordings.
 /New_Results/
 /New_Results_v2/
 /New_Results_v3/
@@ -33,7 +35,7 @@ Results/**/*.png
 /old_code/
 /Analysis_Plots/
 /sandbox/
-/data/
+/data/sosa2025/nwb/
 
 # paper_repo/ is a separately Overleaf-synced git repo (its own remote/history,
 # see README) -- not tracked inside this repo.
@@ -46,9 +48,6 @@ code/figures/_logs/
 # itself (code/code_review.md) stays tracked; these are regenerable and
 # must not be mistaken for assembled paper figures.
 code/code_review_figures/
-
-# context/ holds notes (CLEANUP_TODO, FIGURE_REPRODUCTION).
-/context/
 
 # macOS finder metadata
 .DS_Store

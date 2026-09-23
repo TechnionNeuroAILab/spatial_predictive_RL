@@ -1,0 +1,599 @@
+{
+  "meta": {
+    "generated": "2026-08-18",
+    "script": "analysis.py",
+    "source_file": "MOESM4_source_data.xlsx",
+    "source_sha256": "52a8168e6c603bb31d116c9730cb8481837d2c6efc5e114ba57db63995e5946b",
+    "paper_doi": "10.1038/s41467-022-34465-5",
+    "tier": "Tier-1 confrontation: PUBLISHED SOURCE DATA only; raw data were not reanalysed (available on request, sheffield@uchicago.edu)."
+  },
+  "reliability": {
+    "source": "sheet 'Figure3', block Fig 3B 'Reliability' (per-animal)",
+    "n_animals": 3,
+    "per_animal": {
+      "animal": [
+        1,
+        2,
+        3
+      ],
+      "rewarded": [
+        0.473625,
+        0.54699,
+        0.460217
+      ],
+      "re_low": [
+        0.188848,
+        0.391267,
+        0.239673
+      ],
+      "re_rewarded": [
+        0.45237,
+        0.443072,
+        0.338942
+      ],
+      "drop_rewarded_to_re_low": [
+        -0.284777,
+        -0.155723,
+        -0.220544
+      ],
+      "frac_drop": [
+        -0.6013,
+        -0.2847,
+        -0.4792
+      ],
+      "recovery_re_low_to_re_rewarded": [
+        0.263522,
+        0.051805,
+        0.099269
+      ]
+    },
+    "group_means": {
+      "rewarded": 0.49361066666666664,
+      "re_low": 0.27326266666666665,
+      "re_rewarded": 0.4114613333333334
+    },
+    "frac_drop_group_mean": -0.44640040193620883,
+    "frac_of_drop_recovered_group_mean": 0.6271836670478822,
+    "tests": {
+      "rewarded_vs_re_low": {
+        "wilcoxon_W": 0.0,
+        "wilcoxon_p": 0.25,
+        "ttest_t": 5.914618855331603,
+        "ttest_p": 0.02741546182594053,
+        "n_pairs": 3
+      },
+      "re_low_vs_re_rewarded": {
+        "wilcoxon_W": 0.0,
+        "wilcoxon_p": 0.25,
+        "ttest_t": -2.1545673573560453,
+        "ttest_p": 0.16400170233554773,
+        "n_pairs": 3
+      },
+      "rewarded_vs_re_rewarded": {
+        "wilcoxon_W": 0.0,
+        "wilcoxon_p": 0.25,
+        "ttest_t": 2.6622858531781333,
+        "ttest_p": 0.11686699188517784,
+        "n_pairs": 3
+      }
+    },
+    "caveat_power": "Only n=3 imaged animals in the source data; the exact two-sided Wilcoxon p cannot go below 0.25 with 3 pairs. Direction is consistent in 3/3 animals for both drop and recovery.",
+    "annotation_expected_from_paper": "ANNOTATION (not from xlsx): recon/paper text suggested group means ~0.47 -> 0.32 -> 0.41 (~-32% drop); the xlsx per-animal values instead give the group means and fractional drop recorded above (~-45%). The cell-level Fig 3C means give a similar-sized drop."
+  },
+  "da_ramp": {
+    "source": "sheet 'Figure 5', block Fig 5D 'Reward Normalized Mean F' (per-axon)",
+    "n_axons": 7,
+    "per_axon": {
+      "axon": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "start": [
+        0.3192,
+        0.2446,
+        0.1188,
+        0.1841,
+        0.298,
+        0.3407,
+        0.6354
+      ],
+      "middle": [
+        0.4671,
+        0.55,
+        0.2262,
+        0.3545,
+        0.3786,
+        0.4568,
+        0.8255
+      ],
+      "end": [
+        0.7258,
+        0.5978,
+        0.7845,
+        0.8678,
+        0.8425,
+        0.531,
+        0.8819
+      ]
+    },
+    "mean": {
+      "start": 0.30582857142857145,
+      "middle": 0.46552857142857146,
+      "end": 0.7473285714285713
+    },
+    "sem": {
+      "start": 0.062415637213021236,
+      "middle": 0.07137353022183035,
+      "end": 0.05179687301779682
+    },
+    "sheet_95ci": {
+      "start": 0.1527,
+      "middle": 0.1491,
+      "end": 0.1172
+    },
+    "mean_max_normalized": {
+      "start": 0.4092290635214957,
+      "middle": 0.6229235562862004,
+      "end": 1.0
+    },
+    "ramp_test_end_vs_start": {
+      "pairing": "axon",
+      "ttest_t": 5.970308460595358,
+      "ttest_p": 0.0009899558222877735,
+      "wilcoxon_W": 0.0,
+      "wilcoxon_p": 0.015625,
+      "n_pairs": 7
+    },
+    "extinction_context": {
+      "re_high": {
+        "mean": {
+          "start": 0.29219999999999996,
+          "middle": 0.4069285714285714,
+          "end": 0.5127285714285714
+        },
+        "sem": {
+          "start": 0.06093801690867454,
+          "middle": 0.06701194532563973,
+          "end": 0.0397862605758853
+        }
+      },
+      "re_low": {
+        "mean": {
+          "start": 0.2605571428571429,
+          "middle": 0.3354142857142857,
+          "end": 0.3354142857142857
+        },
+        "sem": {
+          "start": 0.047908234987231964,
+          "middle": 0.05622032096845337,
+          "end": 0.05622032096845337
+        }
+      }
+    },
+    "extinction_note": "In the source data the 're_low' block has identical Middle and End values for every axon (as published). DA ramp flattens: rewarded end/start ~2.4x vs re_low end/start ~1.3x.",
+    "model_overlay": {
+      "definition": "head target exp(-d^2/(2*sigma^2)), sigma=0.15, d = |x - x_reward| in normalized track units",
+      "sigma": 0.15,
+      "reward_position_norm": 1.0,
+      "orientation_choice": "Reward at track END: DA ramps Start<Middle<End in the rewarded condition, so Start=far (d~0.875), Middle=mid (d~0.5), End=near reward (d~0.125), using region centers of 0-50 / 50-150 / 150-200 cm on a 200 cm track.",
+      "region_centers_norm": {
+        "start": 0.125,
+        "middle": 0.5,
+        "end": 0.875
+      },
+      "distance_to_reward_at_center": {
+        "start": 0.875,
+        "middle": 0.5,
+        "end": 0.125
+      },
+      "target_at_center": {
+        "start": 4.0828360411425034e-08,
+        "middle": 0.0038659201394728076,
+        "end": 0.7066482778577162
+      },
+      "target_bin_averaged": {
+        "start": 4.3396697662943993e-07,
+        "middle": 0.03611516626542539,
+        "end": 0.6800020107379493
+      },
+      "target_bin_averaged_max_normalized": {
+        "start": 6.381848432455249e-07,
+        "middle": 0.053110381579949476,
+        "end": 1.0
+      },
+      "fine_grid": {
+        "x_norm": [
+          0.0,
+          0.01,
+          0.02,
+          0.03,
+          0.04,
+          0.05,
+          0.06,
+          0.07,
+          0.08,
+          0.09,
+          0.1,
+          0.11,
+          0.12,
+          0.13,
+          0.14,
+          0.15,
+          0.16,
+          0.17,
+          0.18,
+          0.19,
+          0.2,
+          0.21,
+          0.22,
+          0.23,
+          0.24,
+          0.25,
+          0.26,
+          0.27,
+          0.28,
+          0.29,
+          0.3,
+          0.31,
+          0.32,
+          0.33,
+          0.34,
+          0.35,
+          0.36,
+          0.37,
+          0.38,
+          0.39,
+          0.4,
+          0.41,
+          0.42,
+          0.43,
+          0.44,
+          0.45,
+          0.46,
+          0.47,
+          0.48,
+          0.49,
+          0.5,
+          0.51,
+          0.52,
+          0.53,
+          0.54,
+          0.55,
+          0.56,
+          0.57,
+          0.58,
+          0.59,
+          0.6,
+          0.61,
+          0.62,
+          0.63,
+          0.64,
+          0.65,
+          0.66,
+          0.67,
+          0.68,
+          0.69,
+          0.7,
+          0.71,
+          0.72,
+          0.73,
+          0.74,
+          0.75,
+          0.76,
+          0.77,
+          0.78,
+          0.79,
+          0.8,
+          0.81,
+          0.82,
+          0.83,
+          0.84,
+          0.85,
+          0.86,
+          0.87,
+          0.88,
+          0.89,
+          0.9,
+          0.91,
+          0.92,
+          0.93,
+          0.94,
+          0.95,
+          0.96,
+          0.97,
+          0.98,
+          0.99,
+          1.0
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1e-06,
+          1e-06,
+          1e-06,
+          2e-06,
+          3e-06,
+          4e-06,
+          5e-06,
+          7e-06,
+          1e-05,
+          1.4e-05,
+          1.9e-05,
+          2.5e-05,
+          3.4e-05,
+          4.7e-05,
+          6.3e-05,
+          8.4e-05,
+          0.000111,
+          0.000148,
+          0.000195,
+          0.000256,
+          0.000335,
+          0.000437,
+          0.000567,
+          0.000732,
+          0.000941,
+          0.001204,
+          0.001534,
+          0.001946,
+          0.002457,
+          0.003089,
+          0.003866,
+          0.004817,
+          0.005976,
+          0.007381,
+          0.009075,
+          0.011109,
+          0.013538,
+          0.016426,
+          0.019841,
+          0.02386,
+          0.028566,
+          0.034047,
+          0.040401,
+          0.047729,
+          0.056135,
+          0.065729,
+          0.076621,
+          0.088922,
+          0.10274,
+          0.118179,
+          0.135335,
+          0.154295,
+          0.175131,
+          0.197899,
+          0.222635,
+          0.249352,
+          0.278037,
+          0.308647,
+          0.341108,
+          0.375311,
+          0.411112,
+          0.448332,
+          0.486752,
+          0.526122,
+          0.566154,
+          0.606531,
+          0.646905,
+          0.686908,
+          0.726149,
+          0.764228,
+          0.800737,
+          0.83527,
+          0.867428,
+          0.89683,
+          0.923116,
+          0.945959,
+          0.965069,
+          0.980199,
+          0.991151,
+          0.99778,
+          1.0
+        ]
+      },
+      "comparison_note": "Both data and model increase monotonically toward the reward, but the sigma=0.15 head target is far sharper: bin-averaged it is <1e-4 at start and ~0.036 at middle, whereas the measured DA signal is already ~41% / ~62% of its end-of-track value there. The published DA ramp is shallow/quasi-linear over the whole track rather than a narrow near-reward bump."
+    }
+  },
+  "field_density": {
+    "source": "counts: sheet 'Figure3' Fig 3C sample sizes (per-condition place-field counts by region); per-animal: Fig 3E '% placefields' (n=3 animals)",
+    "reward_zone": "end of track (150-200 cm)",
+    "uniform_expectation": {
+      "start": 0.25,
+      "middle": 0.5,
+      "end": 0.25
+    },
+    "by_condition_counts": {
+      "re_low": {
+        "n_fields_total": 620,
+        "n_fields": {
+          "start": 139,
+          "middle": 315,
+          "end": 166
+        },
+        "fraction": {
+          "start": 0.22419354838709676,
+          "middle": 0.5080645161290323,
+          "end": 0.267741935483871
+        },
+        "enrichment_vs_uniform": {
+          "start": 0.896774193548387,
+          "middle": 1.0161290322580645,
+          "end": 1.070967741935484
+        },
+        "chi2_vs_uniform": {
+          "chi2": 2.5129032258064514,
+          "p": 0.2846623286525594
+        }
+      },
+      "re_rewarded": {
+        "n_fields_total": 657,
+        "n_fields": {
+          "start": 126,
+          "middle": 280,
+          "end": 251
+        },
+        "fraction": {
+          "start": 0.1917808219178082,
+          "middle": 0.426179604261796,
+          "end": 0.3820395738203957
+        },
+        "enrichment_vs_uniform": {
+          "start": 0.7671232876712328,
+          "middle": 0.852359208523592,
+          "end": 1.5281582952815829
+        },
+        "chi2_vs_uniform": {
+          "chi2": 61.885844748858446,
+          "p": 3.644681302521005e-14
+        }
+      },
+      "rewarded": {
+        "n_fields_total": 602,
+        "n_fields": {
+          "start": 133,
+          "middle": 262,
+          "end": 207
+        },
+        "fraction": {
+          "start": 0.22093023255813954,
+          "middle": 0.43521594684385384,
+          "end": 0.3438538205980066
+        },
+        "enrichment_vs_uniform": {
+          "start": 0.8837209302325582,
+          "middle": 0.8704318936877077,
+          "end": 1.3754152823920265
+        },
+        "chi2_vs_uniform": {
+          "chi2": 28.29900332225914,
+          "p": 7.160601528676875e-07
+        }
+      }
+    },
+    "per_animal_end_fraction": {
+      "animal": [
+        1,
+        2,
+        3
+      ],
+      "rewarded": [
+        0.4473,
+        0.2914,
+        0.3645
+      ],
+      "re_low": [
+        0.2028,
+        0.3045,
+        0.3169
+      ],
+      "re_rewarded": [
+        0.3908,
+        0.3147,
+        0.4217
+      ],
+      "group_mean": {
+        "rewarded": 0.36772670999999996,
+        "re_low": 0.27475010666666666,
+        "re_rewarded": 0.3757565033333334
+      },
+      "tests": {
+        "rewarded_vs_re_low": {
+          "wilcoxon_W": 1.0,
+          "wilcoxon_p": 0.5,
+          "ttest_t": 1.195671293888579,
+          "ttest_p": 0.35436334633713795,
+          "n_pairs": 3
+        },
+        "re_low_vs_re_rewarded": {
+          "wilcoxon_W": 0.0,
+          "wilcoxon_p": 0.25,
+          "ttest_t": -1.9650317812718814,
+          "ttest_p": 0.18834633355790242,
+          "n_pairs": 3
+        }
+      }
+    },
+    "figure2_note": "The Figure2 sheet does NOT contain field density: its per-region blocks (Fig 2D) are spatial-correlation values for the SAME tracked cells in every condition (n fixed at 133/262/207). Field density had to be taken from Figure3 (Fig 3C counts, Fig 3E per-animal %)."
+  },
+  "spatial_correlation_by_region": {
+    "source": "sheet 'Figure2', block Fig 2D (spatial correlation by track region)",
+    "measure": "spatial correlation of tracked cells vs rewarded-session template",
+    "pairing_note": "same cells across conditions (paired design), n fixed per region",
+    "by_condition": {
+      "re_low": {
+        "start": {
+          "n_cells": 133,
+          "mean": 0.5,
+          "ci95": 0.08
+        },
+        "middle": {
+          "n_cells": 262,
+          "mean": 0.63,
+          "ci95": 0.05
+        },
+        "end": {
+          "n_cells": 207,
+          "mean": 0.48,
+          "ci95": 0.06
+        }
+      },
+      "re_rewarded": {
+        "start": {
+          "n_cells": 133,
+          "mean": 0.69,
+          "ci95": 0.06
+        },
+        "middle": {
+          "n_cells": 262,
+          "mean": 0.65,
+          "ci95": 0.05
+        },
+        "end": {
+          "n_cells": 207,
+          "mean": 0.7,
+          "ci95": 0.04
+        }
+      },
+      "rewarded": {
+        "start": {
+          "n_cells": 133,
+          "mean": 0.88,
+          "ci95": 0.02
+        },
+        "middle": {
+          "n_cells": 262,
+          "mean": 0.87,
+          "ci95": 0.02
+        },
+        "end": {
+          "n_cells": 207,
+          "mean": 0.86,
+          "ci95": 0.02
+        }
+      }
+    }
+  }
+}

@@ -31,7 +31,7 @@ from scipy.stats import wilcoxon
 
 HERE = Path(__file__).resolve().parent
 # Code lives here; the NWB recordings, MANIFEST.json and JSON cache live in
-# data/sosa2025/ (raw data is git-ignored, fetched from DANDI 001361).
+# data/sosa2025/ (NWB recordings are git-ignored, fetched from DANDI 001361).
 DATA = HERE.parents[2] / "data" / "sosa2025"
 sys.path.insert(0, str(HERE))
 from nwb_loader import ZONES, load_session  # noqa: E402
