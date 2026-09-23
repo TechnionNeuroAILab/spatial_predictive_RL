@@ -50,3 +50,14 @@ paper_code/figures/_logs/
 # itself (paper_code/code_review.md) stays tracked; these are regenerable and
 # must not be mistaken for assembled paper figures.
 paper_code/code_review_figures/
+
+# --- trees kept out of the paper_code branch (local only) ---
+# Untracked on mid-merge-paper-code so the branch carries paper_code/ + Repro/
+# only. The files remain on disk; Repro/ and paper_code/ hold everything the
+# figures read from version control.
+/New_Results/
+/New_Results_v3/
+/Analysis_Plots/
+/Results/
+/context/
+/external_data/

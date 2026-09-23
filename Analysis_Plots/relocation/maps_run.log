@@ -1,8 +1,0 @@
-/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
-  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
-/home/stefano/projects/spatial_predictive_RL/New_Code/plot_goal_directed_maps.py:52: RuntimeWarning: invalid value encountered in divide
-  ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
-[reward_relocation_maps] 1 cells passed strict tracking gates; selecting 8 exemplars (best first).
-[reward_relocation_maps] example cells: [41, 289, 306, 508, 95, 314, 243, 222]
-  saved -> Analysis_Plots/relocation/reward_relocation_example_cells.png
-  saved -> Analysis_Plots/relocation/reward_relocation_field_density.png
