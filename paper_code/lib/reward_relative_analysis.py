@@ -1,35 +1,18 @@
-#!/usr/bin/env python3
 """
 Reward-relative vs place-anchored subpopulations across reward relocation.
 
-Mirrors the analysis logic of Sosa, Plitt & Giocomo (2025, Nat Neurosci): after
-the reward moves, does a subpopulation of cells preserve its firing at the same
-position RELATIVE to the reward (reward-relative), while others preserve their
-allocentric field (place-anchored)?
+A 2D translation of Sosa, Plitt & Giocomo (2025, Nat Neurosci): after the reward
+moves A->B, does a cell hold its firing at the same position relative to the
+reward, or at the same allocentric position? Each cell gets one cross-phase
+correlation per frame r_reward in reward-centred coordinates, r_place in
+allocentric ones and is classified by which wins against a cell-identity
+shuffle null. The two are geometrically coupled (a perfectly stable allocentric
+field still scores a nonzero r_reward), so only their contrast is interpretable,
+never either one alone.
 
-2D translation of their 1D criterion. Per cell, two cross-phase similarities:
-  r_reward : correlation of rate maps built in reward-centred coordinates
-             u = pos - reward_active, over the frame-overlap window
-             u in [-0.3, 0.3]^2 (A=(0.3,0.3), B=(0.7,0.7) -> ~19x19 bins);
-  r_place  : correlation of allocentric 32x32 rate maps over bins visited in
-             both phases.
-The two are geometrically coupled (a stable allocentric field has nonzero
-r_reward equal to its spatial autocorrelation at lag |B-A| ~ 0.57), so
-classification is CONTRAST-based against a cell-identity shuffle null (valid
-for per-cell correlations -- the permutation moves the statistic, unlike the
-mean-delta case):
-  reward-relative : r_reward > r_place  AND  r_reward > null 95th pct
-  place-anchored  : r_place  > r_reward AND  r_place  > null 95th pct
-  remap-other     : neither exceeds the null.
-Continuous index RRI = r_reward - r_place reported alongside (no bimodality
-claims). Both read-outs are computed: behavioural (cycle_1_goal vs
-cycle_2_goal -- what an experimenter without occupancy control sees) and
-occupancy-controlled (replay_reloc_postA vs postB, identical trajectory --
-PRIMARY, because reward-frame sampling is then identical by construction).
-
-Conventions: negative = toward reward is irrelevant here; Skaggs gate 0.15 in
-both periods of a contrast (relocation precedent); entropy gate handled by the
-caller; teleport transients trimmed from behavioural goal periods.
+Both read-outs are computed: behavioural (cycle_1_goal vs cycle_2_goal) and
+occupancy-controlled (the two frozen replays, identical trajectory). The latter
+is primary reward-frame sampling is then identical by construction.
 """
 from __future__ import annotations
 
@@ -103,7 +86,7 @@ def _percell_corr(maps_a: np.ndarray, maps_b: np.ndarray,
 
 def _shuffle_null_95(maps_a, maps_b, valid, gate_idx, rng) -> float:
     """95th percentile of cell-identity-shuffled correlations (cell i in A vs a
-    random DIFFERENT gated cell j in B). Population-level null threshold."""
+    random different gated cell j in B). Population-level null threshold."""
     vals = []
     gi = np.asarray(gate_idx)
     for _ in range(N_SHUFFLE):
@@ -183,6 +166,7 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
 
 
 def per_seed_row(run_dir: Path, seed: int) -> dict | None:
+    """Both read-outs for one network; None if the controlled one is unavailable."""
     row = {"seed": seed}
     beh = readout(run_dir, "cycle_1_goal", "cycle_2_goal", seed)
     ctl = readout(run_dir, "replay_reloc_postA", "replay_reloc_postB", seed + 5000)

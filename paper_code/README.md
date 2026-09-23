@@ -222,8 +222,8 @@ hand-drawn assets in `paper/Architecture figures/`, not generated.
 
 ## Data provenance
 
-`Repro/` and `New_Results_v3/` are current. The legacy `New_Results/`, `New_Results_v2/`,
-`Results/` and `old_code/` trees are superseded and git-ignored: they predate an arena
+`Repro/` and `New_Results_v3/` are current. The legacy `New_Results/`, `New_Results_v2/`
+and `Results/` trees are superseded and git-ignored: they predate an arena
 object-placement fix (`b78eb35`), the peak/COM-split analysis pipeline (`2278dca`), and an
 RNG re-seed fix that desyncs head/no-head runs from the same seed (`377728a`). Do not use
 them to regenerate anything.

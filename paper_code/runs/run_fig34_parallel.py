@@ -3,11 +3,11 @@
 Unified parallel runner for Figures 3 and 4 — 10 seeds each, across 2 GPUs.
 
 Figure 3 (reward-prediction head):
-    Calls Code/ratinabox_v11.py with --reward_pred_head on, seeds 0–9.
+    Calls paper_code/model/ratinabox_v11.py with --reward_pred_head on, seeds 0–9.
     Outputs → Repro/multi_seed_head/head_seed{N}/
 
 Figure 4 (reward relocation A → B):
-    Calls Code/ratinabox_relocation.py with 2 cycles (A then B), seeds 0–9.
+    Calls paper_code/model/ratinabox_relocation.py with 2 cycles (A then B), seeds 0–9.
     Outputs → Repro/multi_seed_reloc/reloc_seed{N}/
 
 Work-stealing: a shared queue of 20 jobs is drained by 2 GPU workers.
@@ -61,7 +61,7 @@ FIG3_BASE: list[str] = [
     "--reward_pred_weight","1.5",    # head-specific (vs 0.3 unused in Fig 2)
     "--reward_x",          "0.3",
     "--reward_y",          "0.3",
-    "--reward_pred_head",           # THE key flag
+    "--reward_pred_head",           # the key flag
     "--no_show",
 ]
 

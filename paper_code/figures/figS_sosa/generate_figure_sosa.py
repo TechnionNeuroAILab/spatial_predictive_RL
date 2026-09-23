@@ -1,16 +1,16 @@
 """Supplementary figure: Sosa/Plitt/Giocomo 2025 reanalysis (raw data tests).
 
-Reads ONLY cache/sosa_tests.json (produced by analysis_sosa.py) and writes
+Reads only cache/sosa_tests.json (produced by analysis_sosa.py) and writes
 figures/figure_sosa_supp_raw.{pdf,png}.
 
 Panels:
   a  example switch session: lick raster (lick rate by position x trial) with
      pre/post reward zones and the switch trial marked.
-  b  TEST i: per-session raw vs occupancy-matched shift toward the new zone.
-  c  TEST ii: per-session reward-relative fraction vs the model band.
-  d  TEST iii: behavioural (lick) vs map-transfer latency, unity line.
+  b  test i: per-session raw vs occupancy-matched shift toward the new zone.
+  c  test ii: per-session reward-relative fraction vs the model band.
+  d  test iii: behavioural (lick) vs map-transfer latency, unity line.
 
-Styling follows code_analysis/figure_sr/utils.py (apply_nature_style /
+Styling follows paper_code/figures/figS_sr/utils.py (apply_nature_style /
 save_figure pattern).
 """
 from __future__ import annotations
@@ -55,16 +55,19 @@ COLOR_MODEL_BAND = C["model"]
 
 
 def panel_label(ax, letter):
+    """Draw a bold panel letter just outside the top-left corner of `ax`."""
     ax.text(-0.28, 1.08, letter, transform=ax.transAxes, fontsize=9,
             fontweight="bold", va="top", ha="left")
 
 
 def session_tag(r):
+    """Short label for one session row, e.g. 'm11 s03'."""
     return f"{r['subject']} s{r['session']:02d}"
 
 
 # --------------------------------------------------------------------- panels
 def panel_a(ax, ex):
+    """Panel a -- lick rate by position and trial for the example switch session."""
     lm = np.array(ex["lick_matrix"], dtype=float)
     lm[lm < 0] = np.nan                      # -1 encodes missing/flagged
     n_trials, nbins = lm.shape
@@ -105,6 +108,7 @@ def panel_a(ax, ex):
 
 
 def panel_b(ax, rows, summ):
+    """Panel b -- test i: per-session raw vs occupancy-matched peak shift toward the new zone."""
     raw = [r["delta_raw"] for r in rows]
     mat = [r["delta_matched"] for r in rows]
     assert all(abs(v) <= 1 for v in raw + mat)
@@ -134,6 +138,7 @@ def panel_b(ax, rows, summ):
 
 
 def panel_c(ax, rows, summ):
+    """Panel c -- test ii: per-session reward-relative fraction against the model band."""
     rr = [r["rr_frac"] for r in rows]
     rr50 = [r["rr_frac_50cm_only"] for r in rows]
     assert all(0 <= v <= 1 for v in rr + rr50)
@@ -160,6 +165,7 @@ def panel_c(ax, rows, summ):
 
 
 def panel_d(ax, rows, summ):
+    """Panel d -- test iii: behavioural lick latency against map-transfer latency."""
     pairs = [(r["lick_latency"], r["map_latency"], session_tag(r))
              for r in rows if r["lick_latency"] is not None]
     lim = 1 + max([p[1] or 0 for p in pairs] + [p[0] for p in pairs] + [15])
@@ -195,6 +201,7 @@ def panel_d(ax, rows, summ):
 
 
 def main():
+    """Build all four panels from the cached Sosa JSON and write the figure."""
     apply_nature_style()
     data = json.loads(CACHE.read_text())
     rows = [r for r in data["per_session"] if "skipped" not in r]

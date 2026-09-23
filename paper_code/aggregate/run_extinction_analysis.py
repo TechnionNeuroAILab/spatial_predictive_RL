@@ -5,7 +5,7 @@ extinction seeds and cache group-level statistics to
 Repro/aggregate/extinction_summary.json.
 
 Gate: seed_is_clean(GATE_PERIODS, 5.5) on the frozen-replay triple (same
-collapse gate used everywhere else in this project), applied BEFORE the
+collapse gate used everywhere else in this project), applied before the
 per-cell Skaggs>=0.15 gate inside extinction_analysis itself.
 
 K1 (over-representation collapse): per-seed delta_learn/delta_ext/delta_net;
@@ -197,7 +197,7 @@ def main():
         seeds_used = [r["seed"] for r in rows if r["k3"] is not None]
         # Ratios are heavy-tailed (a couple of seeds have a near-zero far-bin
         # denominator); report median/IQR as the headline. Also flag any seed
-        # where the ratio INCREASES under extinction (wrong-direction anomaly)
+        # where the ratio increases under extinction (wrong-direction anomaly)
         # rather than silently averaging over it.
         reversals = [s for s, cl, ce in zip(seeds_used, contrast_learn, contrast_ext)
                      if np.isfinite(cl) and np.isfinite(ce) and ce > cl]

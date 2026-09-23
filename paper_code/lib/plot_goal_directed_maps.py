@@ -8,19 +8,26 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.ndimage import gaussian_filter
 
-# Publication colormaps (see lib/pubstyle.py). This module already puts its own
-# directory on sys.path above, so a plain import resolves whether it is used as
-# `lib/` or imported from a figure directory.
+# Sibling modules in lib/. Every importer puts lib/ on sys.path before importing
+# this module, and running this file as a script puts lib/ at sys.path[0], so a
+# plain import resolves whether it is used from `lib/` or from a figure dir.
+#
+# The rate-map primitives live in lib/ratemaps.py so that figures/fig1/rate_maps.py
+# shares them instead of keeping its own copy. They are re-exported here, so
+# existing `from plot_goal_directed_maps import build_rate_maps, ...` keeps working.
+from ratemaps import (  # noqa: F401
+    build_rate_maps, compute_skaggs, smooth_and_norm, field_center_of_mass,
+)
+
 try:
     from pubstyle import RATEMAP as _RATEMAP, DIVERGING as _DIVERGING, SEQUENTIAL as _SEQUENTIAL
 except ImportError:  # pragma: no cover - stand-alone use
     _RATEMAP, _DIVERGING, _SEQUENTIAL = "magma", "coolwarm", "magma"
 
 sns.set_theme(style="ticks")
+
 def save_figure(fig, save_path, no_show=False, despine=True):
-    """Despine, then save the figure as BOTH .png and .pdf"""
     if despine:
         try:
             sns.despine(fig=fig)
@@ -36,52 +43,34 @@ def save_figure(fig, save_path, no_show=False, despine=True):
         plt.show()
     plt.close(fig)
 
-def build_rate_maps(df_beh, df_act, m=32, hidden_dim=512):
-    n_steps = len(df_beh)
-    act_mat = df_act["activity"].values.reshape(n_steps, hidden_dim)
-    x_bin = np.clip((df_beh["x"].values * m).astype(int), 0, m - 1)
-    y_bin = np.clip((df_beh["y"].values * m).astype(int), 0, m - 1)
-    gc = x_bin * m + y_bin
-    n_bins = m * m
-    bin_sum = np.zeros((n_bins, hidden_dim), dtype=np.float64)
-    np.add.at(bin_sum, gc, act_mat)
-    bin_count = np.bincount(gc, minlength=n_bins).astype(float)
+def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, save_path=None, no_show=False):
+    """Grid contrasting each cell's random-walk vs goal-directed rate map.
 
-    rate_flat = np.divide(bin_sum, bin_count[:, None],out=np.zeros_like(bin_sum),where=bin_count[:, None] > 0)
-    rate_maps = rate_flat.T.reshape(hidden_dim, m, m)  # (N, m, m)
-    occupancy = (bin_count / n_steps).reshape(m, m)
-    return rate_maps, occupancy
+    One column per cell in `top_idx`, wrapped at 10 columns. Each wrap produces
+    two stacked row-blocks: random-walk maps above, goal-directed below, so a
+    column is the same cell in both conditions. Dark background, each map
+    smoothed and min-max normalized, reward drawn as a white star.
 
+    Parameters
+    ----------
+    rm_rw, rm_gc : ndarray (hidden_dim, m, m)
+        Random-walk and goal-directed rate maps from `build_rate_maps`.
+    skaggs_rw, skaggs_gc : ndarray (hidden_dim,)
+        Accepted but unused -- unpacked in the draw loop and never read. Kept
+        because both call sites pass them positionally.
+    top_idx : sequence of int
+        Cell indices to draw, one column each, in the given order.
+    reward_bin : tuple of int
+        (rx, ry) in bin coordinates, passed straight to `ax.plot`.
+    save_path : str or None
+        Forwarded to `save_figure`, which writes both .png and .pdf.
+    no_show : bool
+        Forwarded to `save_figure`.
 
-def compute_skaggs(rate_maps, occupancy):
-    hidden_dim = rate_maps.shape[0]
-    occ_flat = occupancy.reshape(-1)                    # (m*m,)
-    rate_flat = rate_maps.reshape(hidden_dim, -1).T     # (m*m, N)
-    mean_rate = rate_flat.mean(axis=0)                  # (N,)
-    ratio = np.where(mean_rate[None, :] > 1e-10,rate_flat / mean_rate[None, :], 0.0)
-    log_ratio = np.where(ratio > 0, np.log2(np.maximum(ratio, 1e-300)), 0.0)
-    return (occ_flat[:, None] * ratio * log_ratio).sum(axis=0)
-
-
-def smooth_and_norm(rm, sigma=1.5):
-    s = gaussian_filter(rm, sigma=sigma)
-    if s.max() > 0:
-        s = (s - s.min()) / (s.max() - s.min())
-    return s
-
-
-def field_center_of_mass(rm):
-    m = rm.shape[0]
-    total = rm.sum()
-    if total <= 0:
-        return (0.5, 0.5)
-    xs = np.arange(m) / m + 0.5 / m
-    ys = np.arange(m) / m + 0.5 / m
-    cx = (rm * xs[None, :]).sum() / total
-    cy = (rm * ys[:, None]).sum() / total
-    return (cx, cy)
-
-def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title_suffix="", save_path=None, no_show=False):
+    Returns
+    -------
+    None
+    """
     n = len(top_idx)
     ncols = min(10, n)
     nrows_per = int(np.ceil(n / ncols))
@@ -366,7 +355,7 @@ def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_
 
 
 def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin,save_path=None, no_show=False):
-    """For ONE neuron: top row = prediction (random-walk probe), bottom row = RL (goal-directed probe); one column per cycle."""
+    """For one neuron: top row = prediction (random-walk probe), bottom row = RL (goal-directed probe); one column per cycle."""
     rw_labels = sorted(rw_cycles.keys(), key=_cycle_num)
     goal_labels = sorted(goal_cycles.keys(), key=_cycle_num)
     n = max(len(rw_labels), len(goal_labels))

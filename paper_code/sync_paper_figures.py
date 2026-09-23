@@ -5,9 +5,9 @@ Copy the assembled figure PDFs into paper/paper_figures/v2/ under stable names.
 Design decisions, both deliberate:
 
 1. **Explicit dest -> src allowlist, never a glob.** Several files in this repo
-   have shared the name `figure3_raw.pdf`: the real Figure 3, one in the former
-   `code_analysis/figure_plasticity/` (deleted in the paper_code consolidation),
-   and a stray written into `figure 2/figures/` by a `sys.modules["utils"]`
+   have shared the name `figure3_raw.pdf`: the real Figure 3, one from a
+   since-deleted plasticity-figure directory, and a stray written into
+   `fig2/figures/` by a `sys.modules["utils"]`
    caching bug. A glob would silently pick the wrong one.
 
 2. **A versioned subdirectory, not in-place overwrite.** `paper_figures/` already
@@ -79,14 +79,14 @@ FIGURES: dict[str, Path] = {
 # their wrappers in figures/figS_legacy/ have been run against a v11 run dir.
 OPTIONAL = {"figS_fate", "figS_decoder"}
 
-# Referenced by main_v4_reframed.tex but with NO generator anywhere in this
+# Referenced by main_v4_reframed.tex but with no generator anywhere in this
 # repo (searched exhaustively: no .py contains these stems, and their PDFs are
 # stale July matplotlib output whose source files were pruned):
 #     figS_manifold   (dimensionality PR 21.7->7.0 + Procrustes 0.5079 panels)
 #     figS_fourcond   (four-condition field-centre-distance violins)
 # They still resolve from paper/paper_figures/, so the manuscript builds, but
 # they cannot be reproduced. Flagged for removal from the manuscript --
-# see CLEANUP_TODO.md.
+# see cleanup_todo.md.
 UNREPRODUCIBLE = ("figS_manifold", "figS_fourcond")
 
 

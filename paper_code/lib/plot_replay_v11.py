@@ -1,16 +1,12 @@
 """
-v11 experience-replay analysis.
-Compares the SAME place cells along the SAME (frozen) trajectory before vs after
-cycle-1 RL:
-    replay_c{N}_pred    -> F_pre   (pre-RL weights,  trajectory T)
-    replay_c{N}_postrl  -> F_post  (post-RL weights, trajectory T, frozen)
-Because the trajectory (hence occupancy AND recurrent input history) is identical,
-any field change is purely representational -- not trajectory skew. This is the
-whole point of the v11 replay experiment, so this script does NOT compute
-generalization / ORI-vs-random-walk style figures; it only asks:
-    "Holding the path fixed, did the weights move the fields toward the reward?"
-Run:
-  python paper_code/lib/plot_replay_v11.py --run_dir New_Results_v2/final_v11_fixed --no_show
+v11 experience-replay analysis: place fields before vs after cycle-1 RL.
+
+The same cells are compared along the same frozen trajectory, recorded once
+under pre-RL weights (replay_c{N}_pred) and once under post-RL weights
+(replay_c{N}_postrl). Occupancy and recurrent input history are identical
+across the pair, so any field change is representational rather than
+trajectory skew. This module therefore asks only whether the weights moved the
+fields toward the reward, and computes no random-walk comparison.
 """
 import argparse
 import os
@@ -24,10 +20,11 @@ except Exception:
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from plot_goal_directed_maps import (
-    build_rate_maps, compute_skaggs, smooth_and_norm,
-    field_center_of_mass, save_figure,
+from ratemaps import (
+    build_rate_maps, compute_skaggs, smooth_and_norm, field_center_of_mass,
+    field_peak,  # re-exported: `from plot_replay_v11 import field_peak` still works
 )
+from plot_goal_directed_maps import save_figure
 
 # Publication colormaps (see lib/pubstyle.py). This module puts its own
 # directory on sys.path above, so a plain import resolves either way.
@@ -37,7 +34,9 @@ except ImportError:  # pragma: no cover - stand-alone use
     _RATEMAP, _DIVERGING, _SEQUENTIAL = "magma", "coolwarm", "magma"
 
 
+
 def load_maps(data_dir, period, m, hidden_dim):
+    """Rate maps, occupancy and Skaggs scores for one replay period."""
     beh_path = os.path.join(data_dir, f"df_behavior_{period}.pkl")
     act_path = os.path.join(data_dir, f"df_activations_{period}.pkl")
     if not (os.path.exists(beh_path) and os.path.exists(act_path)):
@@ -51,27 +50,25 @@ def load_maps(data_dir, period, m, hidden_dim):
     return rm, occ, sk
 
 def centres_for(rm, ids):
+    """{neuron id: field centre of mass}, in [0, 1] arena coordinates."""
+    # measured on the smoothed map the figures draw, so centres and panels agree
     return {int(nid): np.array(field_center_of_mass(smooth_and_norm(rm[nid]))) for nid in ids}
 
 
-def field_peak(rm2d):
-    m = rm2d.shape[0]
-    row, col = np.unravel_index(int(np.argmax(rm2d)), rm2d.shape)
-    x = col / m + 0.5 / m
-    y = row / m + 0.5 / m
-    return np.array([x, y])
-
-
 def peaks_for(rm, ids):
+    """{neuron id: field peak}, in [0, 1] arena coordinates."""
     return {int(nid): field_peak(smooth_and_norm(rm[nid])) for nid in ids}
 
+
 def fig_replay_grid(rm_pre, rm_post, rank_score, reward_bin, n_cells=20,save_path=None, no_show=False):
+    """Pre-over-post rate-map grid for the top `n_cells` cells by rank_score."""
     top = np.argsort(rank_score)[::-1][:n_cells]
     ncols = min(10, n_cells)
     nrows_per = int(np.ceil(n_cells / ncols))
     rx, ry = reward_bin
     fig, axes = plt.subplots(nrows_per * 2, ncols,figsize=(ncols * 1.9, nrows_per * 2 * 2.1), squeeze=False)
     fig.patch.set_facecolor("#1a1a1a")
+    # a cell's pre and post panels sit one block apart in the same column
     for i, nid in enumerate(top):
         row_pre = i // ncols
         row_post = row_pre + nrows_per
@@ -95,6 +92,7 @@ def fig_replay_grid(rm_pre, rm_post, rank_score, reward_bin, n_cells=20,save_pat
 
 
 def _draw_map_grid(rm, ids, reward_bin, title, save_path, no_show):
+    """One 10-wide page of rate maps; shared by the pre and post map figures."""
     rx, ry = reward_bin
     n = len(ids)
     ncols = 10
@@ -113,6 +111,7 @@ def _draw_map_grid(rm, ids, reward_bin, title, save_path, no_show):
 
 
 def fig_replay_maps(rm_pre, rm_post, rank_score, reward_bin, n_cells=100,save_dir=None, period_tag="c1", no_show=False):
+    """Pre and post cognitive maps as two PNGs. Returns the cell ids drawn."""
     ids = np.argsort(rank_score)[::-1][:n_cells]
     pre_path = os.path.join(save_dir, f"replay_{period_tag}_map_PRE.png")
     post_path = os.path.join(save_dir, f"replay_{period_tag}_map_POST.png")
@@ -126,6 +125,9 @@ def fig_replay_maps(rm_pre, rm_post, rank_score, reward_bin, n_cells=100,save_di
 
 
 def select_example_cells(active, sk_pre, sk_post, d_pre, d_post, reward_pos,thr, n=12, max_post_dist=0.22):
+    """Cells that pass Skaggs in both periods and moved toward the reward,
+    ranked by distance gained and closeness of the post centre. The
+    end-near-reward gate is dropped if fewer than `n` cells qualify."""
     sk_pre_a = sk_pre[active]
     sk_post_a = sk_post[active]
     delta = d_post - d_pre # < 0 => moved toward reward
@@ -134,12 +136,14 @@ def select_example_cells(active, sk_pre, sk_post, d_pre, d_post, reward_pos,thr,
     if len(idx) < n:# relax the end-near-reward gate if too few
         good = (sk_pre_a >= thr) & (sk_post_a >= thr) & (delta < 0)
         idx = np.where(good)[0]
+    # favours cells that moved far and also ended close to the reward
     score = (d_pre[idx] - d_post[idx]) - d_post[idx]
     order = idx[np.argsort(score)[::-1]]
     return [int(active[i]) for i in order[:n]]
 
 
 def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_bin,save_path=None, no_show=False):
+    """Example cells: pre on top, post below with an arrow from old to new centre."""
     n = len(ids)
     if n == 0:
         print("  (no qualifying example cells to plot)")
@@ -174,7 +178,8 @@ def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_
 
 
 def fig_replay_shift(d_pre, d_post, save_path=None, no_show=False):
-    delta = d_post - d_pre # negative = field moved TOWARD reward
+    """Distance-to-reward histograms (pre vs post) and the delta-distance one."""
+    delta = d_post - d_pre # negative = field moved toward reward
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
     ax = axes[0]
     bins = np.linspace(0, 0.8, 26)
@@ -188,6 +193,7 @@ def fig_replay_shift(d_pre, d_post, save_path=None, no_show=False):
     ax.set_ylabel("Density", fontsize=11)
     ax.legend(fontsize=9)
     ax = axes[1]
+    # clip at the 99th pct so a few large shifts don't flatten the histogram
     lim = np.nanpercentile(np.abs(delta), 99) if len(delta) else 0.3
     bins2 = np.linspace(-lim, lim, 31)
     ax.hist(delta, bins=bins2, color="slateblue", alpha=0.75)
@@ -203,6 +209,7 @@ def fig_replay_shift(d_pre, d_post, save_path=None, no_show=False):
 
 
 def fig_replay_quiver(c_pre, c_post, reward_pos, save_path=None, no_show=False):
+    """Field centres before and after, joined by arrows, over the arena."""
     fig, ax = plt.subplots(figsize=(6.5, 6.5))
     for nid in c_pre:
         p0 = c_pre[nid]; p1 = c_post[nid]
@@ -219,6 +226,7 @@ def fig_replay_quiver(c_pre, c_post, reward_pos, save_path=None, no_show=False):
     ax.legend(fontsize=9, loc="upper right")
     plt.tight_layout()
     save_figure(fig, save_path, no_show)
+
 
 
 def main():
@@ -247,6 +255,8 @@ def main():
     rm_pre, _, sk_pre = load_maps(data_dir, f"replay_c{N}_pred", m, hidden_dim)
     rm_post, _, sk_post = load_maps(data_dir, f"replay_c{N}_postrl", m, hidden_dim)
     print(f"  place cells (Skaggs >= {thr}):  pre={int((sk_pre>=thr).sum())}  post={int((sk_post>=thr).sum())}")
+    # pre OR post: a cell recruited into the place-cell population by RL
+    # still belongs in the paired comparison
     active = np.where(np.maximum(sk_pre, sk_post) >= thr)[0]
     print(f"  paired active neurons (place cell in pre OR post): {len(active)}")
     if len(active) == 0:
@@ -257,6 +267,8 @@ def main():
     d_pre = np.array([np.linalg.norm(c_pre[int(n)] - reward_pos) for n in active])
     d_post = np.array([np.linalg.norm(c_post[int(n)] - reward_pos) for n in active])
     delta = d_post - d_pre
+    # COM is pulled toward the arena middle, so it is confounded for a centre
+    # reward; the peak metric is reported alongside as the de-confounded one
     p_pre = peaks_for(rm_pre, active)
     p_post = peaks_for(rm_post, active)
     dpk_pre = np.array([np.linalg.norm(p_pre[int(n)] - reward_pos) for n in active])
@@ -276,6 +288,7 @@ def main():
     print(f"    mean delta (post-pre): {delta_pk.mean():+.4f}   (negative = moved toward reward)")
     print(f"    fraction of cells moved TOWARD reward: {frac_toward_pk*100:.1f}%")
     try:
+        # paired across cells -- the trajectory is identical in both periods
         from scipy.stats import wilcoxon
         if len(delta) >= 5 and np.any(delta != 0):
             _, p = wilcoxon(d_post, d_pre)

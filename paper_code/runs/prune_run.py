@@ -3,19 +3,19 @@ prune_run.py
 Free disk space in a finished run directory by deleting the large activation
 probes that downstream analysis does not need, keeping only the essentials.
 
-By default it keeps ONLY the frozen-replay pair (replay_c1_pred, replay_c1_postrl)
+By default it keeps only the frozen-replay pair (replay_c1_pred, replay_c1_postrl)
 activations -- everything the multi-seed dissociation aggregator needs. All small
 files (df_behavior_*, df_skaggs_*, df_centers_*, config.json, figures) are kept.
 Checkpoints are kept unless --drop-checkpoints is passed (they are only ~32 MB and
 are needed for the reward-head readout analysis).
 
-This is DESTRUCTIVE (deleted activation probes can only be recovered by
+This is destructive (deleted activation probes can only be recovered by
 re-training). Use --dry-run first to see exactly what would be deleted.
 
 Usage:
   python paper_code/runs/prune_run.py --run-dir New_Results_v2/seed_runs/head_seed42 --dry-run
   python paper_code/runs/prune_run.py --run-dir New_Results_v2/seed_runs/head_seed42
-  python paper_code/runs/prune_run.py --run-dir <DIR> --keep replay_c1_pred replay_c1_postrl goal_conditioned
+  python paper_code/runs/prune_run.py --run-dir <dir> --keep replay_c1_pred replay_c1_postrl goal_conditioned
 """
 from __future__ import annotations
 import argparse

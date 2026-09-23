@@ -8,11 +8,11 @@
 
 ## Data
 
-- Training: `Code/ratinabox_v11.py` (same script as Fig 2), seeds 0–9
+- Training: `paper_code/model/ratinabox_v11.py` (same script as Fig 2), seeds 0–9
 - Head flags: `--reward_pred_head --reward_pred_weight 1.5`
 - rnn_rl_lr: 5e-5 (same as Fig 2 for consistency)
 - Outputs: `Repro/multi_seed_head/head_seed{N}/`
-- Best seed selected by: `New_Code/select_best_seed_fig3.py`
+- Best seed selected by: `paper_code/runs/select_best_seed_fig3.py`
 
 ## Panels
 
@@ -34,16 +34,16 @@
 # Run from repo root
 
 # Training (parallel, ~35 min on 2 GPUs):
-python New_Code/run_fig34_parallel.py --only fig3 --gpus 0 1
+python paper_code/runs/run_fig34_parallel.py --only fig3 --gpus 0 1
 
 # Pick best seed and regenerate:
-python New_Code/select_best_seed_fig3.py
+python paper_code/runs/select_best_seed_fig3.py
 
 # Or manually:
-python "code_analysis/figure 3/generate_figure3.py" \
+python paper_code/figures/fig3/generate_figure3.py \
     --run_dir Repro/multi_seed_head/head_seed0 --reward_pos 0.3 0.3 --no_show
 
-python "code_analysis/figure 3/generate_figure3_supp.py" \
+python paper_code/figures/fig3/generate_figure3_supp.py \
     --multi_seed_dir Repro/multi_seed_head \
     --nohead_dir Repro/multi_seed \
     --no_show

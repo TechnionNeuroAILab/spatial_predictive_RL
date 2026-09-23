@@ -1,8 +1,7 @@
 """Shared helpers for the place-cell analysis scripts.
 
-Used by gmm_place_metric.py, shift_toward_reward.py, recuritment_place_cells.py,
-analyze_activty_lineardecoder.py, analyze_activity.py, create_place_metrics.py,
-analyze_filtered_place_cell_shifts.py, analyze_cycle_shift_matrix.py.
+Used by the generators in this directory: plot_replay_v11.py,
+plot_goal_directed_maps.py and analyze_activty_lineardecoder.py.
 """
 
 import json
@@ -18,7 +17,7 @@ import pandas as pd
 # standard neuroscience criterion; k<=3 excludes diffuse/multi-modal cells.
 #
 # icl_score (a GMM model-selection confidence score: more negative = a
-# tighter, more confident fit) is still used, but as a WITHIN-STATE relative
+# tighter, more confident fit) is still used, but as a within-state relative
 # quantile rather than a fixed absolute cutoff. An earlier version used a
 # fixed absolute cutoff (icl_score <= -5000); that doesn't port across runs
 # because icl_score's magnitude is driven by each neuron's total spike-mass,
@@ -39,9 +38,8 @@ PLACE_CELL_ICL_QUANTILE = 0.5
 def filter_place_cells(df_skaggs: pd.DataFrame, df_centers: pd.DataFrame, skaggs_prec: Optional[float] = None,
                         icl_quantile: float = PLACE_CELL_ICL_QUANTILE) -> pd.DataFrame:
     """
-    Canonical "is this a place cell" filter, shared by shift_toward_reward.py,
-    recuritment_place_cells.py, and create_place_metrics.py so all three
-    scripts define the same neuron set.
+    Canonical "is this a place cell" filter, shared by the generators in this
+    directory so they all define the same neuron set.
 
     df_skaggs: columns neuron_id, skaggs_score.
     df_centers: columns neuron_id, k, icl_score (one row per neuron; if
@@ -77,7 +75,7 @@ def compute_skaggs_scores_optimized(df_combined: pd.DataFrame, output: Optional[
 
         I = sum_i p_i * (lambda_i / lambda_bar) * log2(lambda_i / lambda_bar)
 
-    where p_i is the EMPIRICAL occupancy probability of bin i (not 1/N_bins),
+    where p_i is the empirical occupancy probability of bin i (not 1/N_bins),
     lambda_i is the mean activity in bin i, and lambda_bar is the
     occupancy-weighted mean activity = sum_i p_i * lambda_i.
 
@@ -117,7 +115,7 @@ def compute_skaggs_scores_optimized(df_combined: pd.DataFrame, output: Optional[
     cell_activities = cell_activities.merge(occ_p, on="grid_cell", how="left")
 
     # Occupancy-weighted mean activity per neuron (= lambda_bar).
-    # NOTE: this must be computed over ALL bins (not the >0 filter) to match
+    # NOTE: this must be computed over all bins (not the >0 filter) to match
     # the standard Skaggs definition. We use the full df for that.
     full_mean = (
         df_with_grid.groupby(["neuron_id", "grid_cell"])["activity"].mean().reset_index()
@@ -239,6 +237,7 @@ _NON_PVALUE_KEYS = {"p_obs", "p_chance"}
 
 
 def _is_pvalue_key(key: str) -> bool:
+    """Whether a stats-report key names a p-value."""
     if key in _NON_PVALUE_KEYS:
         return False
     lk = key.lower()
@@ -246,6 +245,7 @@ def _is_pvalue_key(key: str) -> bool:
 
 
 def _significance_stars(p: float) -> str:
+    """Conventional star string for a p-value ('' when not significant)."""
     if p < 0.001:
         return " ***"
     if p < 0.01:

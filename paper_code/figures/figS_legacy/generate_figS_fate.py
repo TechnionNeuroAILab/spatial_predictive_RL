@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Produce figS_fate ("Place-cell status migration") for main_v4_reframed.tex.
 
-This figure was originally made by the pre-consolidation analysis script that now
-sits next to this file as `plot_replay_v11.py` (the 916-line copy from the former
-`Code/place_cell_analysis/`, NOT the trimmed 313-line `paper_code/lib/` module of
-the same name). Its `fig_recruitment_fate()` is the only generator in the repo
+This figure was originally made by the analysis script that sits next to this file
+as `plot_replay_v11.py` (the 916-line standalone copy, not the trimmed 313-line
+`paper_code/lib/` module of the same name). Its `fig_recruitment_fate()` is the only generator in the repo
 that emits the panels in the shipped PDF -- identified by the verbatim titles
 "Place-cell status migration", "Activity level change by fate" and
 "Distance to reward by fate", and the legend format "Neither (n=87)".
@@ -47,6 +46,7 @@ FIG_SUBDIR = "replay"
 
 
 def main() -> int:
+    """Run the replay script on a run directory and copy the recruitment-fate PDF to figures_supp/."""
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run_dir", type=str, default=str(DEFAULT_RUN))

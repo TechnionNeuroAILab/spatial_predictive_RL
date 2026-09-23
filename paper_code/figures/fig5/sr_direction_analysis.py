@@ -1,11 +1,11 @@
 """
-sr_direction_analysis.py — SR-predicted shift DIRECTION test for the A→B
+sr_direction_analysis.py — SR-predicted shift direction test for the A→B
 (occupancy-driven, RL-policy) remapping contrast.
 
-the retired New_Code/sr_vs_model_panel.py (Figure 5 panel f) tests the frozen-replay
-shift MAGNITUDE against a trivial SR = 0 null (occupancy is fixed there, so
+The retired Figure 5 panel f tested the frozen-replay shift magnitude against a
+trivial SR = 0 null (occupancy is fixed there, so
 SR predicts no shift by construction). This module instead tests whether SR
-explains shift DIRECTION for the A→B contrast, where SR's prediction is
+explains shift direction for the A→B contrast, where SR's prediction is
 genuinely non-trivial (occupancy really does change between the
 prediction-only exploration phase and the RL-trained goal-directed phase).
 
@@ -16,7 +16,7 @@ For each seed:
      SR predicts a cell starting there should move.
   3. For each shared place cell (Skaggs-gated in phases A and B), look up the
      SR-predicted direction at its Phase-A location and compare it to
-     the cell's ACTUAL shift direction (com_B - com_A) via the angle between
+     the cell's actual shift direction (com_B - com_A) via the angle between
      them (Rayleigh test for non-uniformity = "does SR predict direction
      better than chance").
   4. The residual — the actual shift component orthogonal to the SR
@@ -51,9 +51,9 @@ from successor_representation import (  # noqa: E402
 )
 
 # Figure 5's own analysis.py (imported earlier by generate_figure5_supp.py)
-# leaves figure 5's OWN directory at the front of sys.path (it pushes _HERE
+# leaves figure 5's own directory at the front of sys.path (it pushes _HERE
 # there at its own tail, after it's done needing figure 2's utils.py). By the
-# time THIS module runs, figure 1/figure 2's directories may already be
+# time this module runs, figure 1/figure 2's directories may already be
 # present in sys.path but stuck behind figure 5's -- an `if _p not in
 # sys.path` guard would then wrongly skip re-inserting them at the front.
 # So we unconditionally insert (duplicates in sys.path are harmless) to
@@ -83,7 +83,7 @@ SKAGGS_THR = 0.05
 
 
 def seed_direction_metrics(data_dir: Path, skaggs_threshold: float = SKAGGS_THR) -> dict | None:
-    """SR-predicted vs actual shift DIRECTION for the A→B (policy) contrast
+    """SR-predicted vs actual shift direction for the A→B (policy) contrast
     on one seed. Returns None if behavioral data is missing or too few cells
     pass the Skaggs gate."""
     _, SR_random, state_xy = _get_shared_random()

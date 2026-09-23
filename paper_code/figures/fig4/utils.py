@@ -60,7 +60,7 @@ PERIOD_COLORS = {
     PERIOD_POST_B: COLOR_B,
 }
 
-# Default run: the displayed network is the MEDIAN entropy-gate-passing seed
+# Default run: the displayed network is the median entropy-gate-passing seed
 # by tracking quality (rank 17 of 32 clean seeds; see
 # Repro/multi_seed_reloc/aggregate/fig4_multi_seed_summary.json and
 # paper_code/runs/select_best_seed_fig4.py for the ranking). Entropy gate for this

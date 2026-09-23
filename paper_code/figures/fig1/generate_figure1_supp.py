@@ -12,13 +12,14 @@ Panels:
      (justifies the inconsistent 0.05/0.15/0.3 thresholds used across figures)
 
 Usage (run from repo root):
-    python "code_analysis/figure 1/generate_figure1_supp.py" --no_show
-    python "code_analysis/figure 1/generate_figure1_supp.py" \
+    python paper_code/figures/fig1/generate_figure1_supp.py --no_show
+    python paper_code/figures/fig1/generate_figure1_supp.py \
         --multi_seed_dir Repro/multi_seed --seeds 0 1 2 ... 49 --no_show
 """
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import subprocess
 import sys
 import tempfile
@@ -34,14 +35,30 @@ REPO = Path(__file__).resolve().parents[3]
 FIG2_DIR = REPO / "paper_code" / "figures" / "fig2"
 FIG1_DIR = REPO / "paper_code" / "figures" / "fig1"
 
+# fig2 first: `analysis` is fig2's (fig1 has none) and must execute with fig2's
+# utils, which alone defines PHASE_A/PHASE_B/PHASE_C_*. fig1 stays on the path
+# because fig2/analysis.py imports fig1's rate_maps.
 sys.path.insert(0, str(FIG1_DIR))
 sys.path.insert(0, str(FIG2_DIR))
 
 from analysis import load_phases, shared_place_cell_ids, paired_distance_stats, dist_to_reward  # noqa: E402
-from utils import (  # noqa: E402
-    DEFAULT_REWARD, FIGURES_DIR, apply_nature_style, ensure_dir, save_figure,
-    PAGE_W, PAGE_MARGIN, MM_TO_PT,
-)
+
+# fig1's utils, loaded by path on purpose. A bare `from utils import ...` here
+# returns fig2's copy instead: importing `analysis` above already bound the name
+# "utils" to it in sys.modules, so neither this file's sys.path order nor the
+# import system would ever reach fig1/utils.py.
+_spec = importlib.util.spec_from_file_location("fig1_utils", FIG1_DIR / "utils.py")
+_fig1_utils = importlib.util.module_from_spec(_spec)
+sys.modules["fig1_utils"] = _fig1_utils
+_spec.loader.exec_module(_fig1_utils)
+
+DEFAULT_REWARD = _fig1_utils.DEFAULT_REWARD
+apply_nature_style = _fig1_utils.apply_nature_style
+ensure_dir = _fig1_utils.ensure_dir
+save_figure = _fig1_utils.save_figure
+PAGE_W = _fig1_utils.PAGE_W
+PAGE_MARGIN = _fig1_utils.PAGE_MARGIN
+MM_TO_PT = _fig1_utils.MM_TO_PT
 
 apply_nature_style()
 
@@ -83,6 +100,7 @@ def _threshold_sensitivity(phases: dict, thresholds: list[float]) -> dict:
 
 def load_seed(seed: int, multi_seed_dir: Path, skaggs_threshold: float = 0.05,
               sweep_thresholds: list[float] | None = None):
+    """Per-seed summary row (cell counts, Skaggs, A->B distances); None if the run is missing or fails."""
     run_dir = multi_seed_dir / f"nohead_seed{seed}"
     data_dir = run_dir / "data"
     if not data_dir.exists():
@@ -143,6 +161,7 @@ def _strip_panel(ax, values, seeds, ylabel, title, hline=None, hline_label="chan
 
 
 def fig_supp_n_cells(rows, stem):
+    """Panel a -- number of shared place cells per seed."""
     fig, ax = plt.subplots(figsize=(2.2, 2.2))
     vals = np.array([r["n_cells"] for r in rows], dtype=float)
     seeds = [r["seed"] for r in rows]
@@ -152,6 +171,7 @@ def fig_supp_n_cells(rows, stem):
 
 
 def fig_supp_skaggs(rows, stem):
+    """Panel b -- mean phase-A Skaggs information per seed."""
     fig, ax = plt.subplots(figsize=(2.2, 2.2))
     vals = np.array([r["mean_skaggs_a"] for r in rows], dtype=float)
     seeds = [r["seed"] for r in rows]
@@ -161,6 +181,7 @@ def fig_supp_skaggs(rows, stem):
 
 
 def fig_supp_delta_com(rows, stem):
+    """Panel c -- mean COM Delta-d for the A->B contrast per seed, with a Wilcoxon against zero."""
     fig, ax = plt.subplots(figsize=(2.2, 2.2))
     vals = np.array([r["com_mean_delta_AB"] for r in rows], dtype=float)
     seeds = [r["seed"] for r in rows]
@@ -178,6 +199,7 @@ def fig_supp_delta_com(rows, stem):
 
 
 def fig_supp_frac_toward(rows, stem):
+    """Panel d -- fraction of cells moving toward the reward in A->B, per seed."""
     fig, ax = plt.subplots(figsize=(2.2, 2.2))
     vals = np.array([r["com_frac_toward_AB"] * 100 for r in rows], dtype=float)
     seeds = [r["seed"] for r in rows]
@@ -275,6 +297,7 @@ def fig_supp_skaggs_sensitivity(rows, thresholds, stem):
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -353,6 +376,7 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 def parse_args():
+    """Command-line arguments: multi-seed directory, seed list, output directory."""
     p = argparse.ArgumentParser()
     p.add_argument("--multi_seed_dir", default=str(REPO / "Repro" / "multi_seed"))
     p.add_argument("--seeds", type=int, nargs="+", default=list(range(50)))
@@ -367,6 +391,7 @@ def parse_args():
 
 
 def main():
+    """Load every seed, build the panels, and assemble the supplementary figure."""
     args = parse_args()
     multi_seed_dir = Path(args.multi_seed_dir)
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")

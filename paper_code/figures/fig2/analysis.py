@@ -46,6 +46,7 @@ FIG1_PANEL_D_NEURONS = [510, 364, 442, 334, 227, 229, 47, 400]
 
 
 def load_period(data_dir: Path, period: str, m: int = M, hidden_dim: int = HIDDEN_DIM):
+    """Rate maps, occupancy and Skaggs scores for one period's pickles."""
     beh = pd.read_pickle(data_dir / f"df_behavior_{period}.pkl")
     act = pd.read_pickle(data_dir / f"df_activations_{period}.pkl")
     rm, occ = build_rate_maps(beh, act, m, hidden_dim)
@@ -87,7 +88,7 @@ def fig1_panel_d_neuron_ids(phases: dict, n: int = 8, seed: int = 42) -> list[in
 def shared_place_cell_ids(phases: dict, skaggs_threshold: float = 0.05) -> np.ndarray:
     """Place cells gated in A, B, and C (postrl) for the A→B contrast (kept
     name/gate for backward compatibility). The "AC" frozen-replay contrast
-    in paired_distance_stats() uses its OWN independent C_pre/C_post gate,
+    in paired_distance_stats() uses its own independent C_pre/C_post gate,
     not this one."""
     mask = (
         (phases["A"]["sk"] >= skaggs_threshold)
@@ -99,15 +100,15 @@ def shared_place_cell_ids(phases: dict, skaggs_threshold: float = 0.05) -> np.nd
 
 def paired_distance_stats(phases: dict, reward_pos, ids: np.ndarray,
                           ac_skaggs_threshold: float = 0.05, ac_min_cells: int = 10):
-    """COM / peak distances and Δd for two DIFFERENT contrasts:
+    """COM / peak distances and Δd for two different contrasts:
 
-    - A→B: RL policy vs prediction-only exploration. Occupancy is NOT fixed
+    - A→B: RL policy vs prediction-only exploration. Occupancy is not fixed
       here (this is intentional -- it answers "does active RL exploration
       reshape place fields?", confounded with occupancy by design).
 
     - "AC" (historically buggy; fixed here): now means C_pre -> C_post, i.e.
       replay_c1_pred (frozen trajectory, pre-RL weights) vs replay_c1_postrl
-      (the SAME frozen trajectory, post-RL weights). Occupancy is genuinely
+      (the same frozen trajectory, post-RL weights). Occupancy is genuinely
       fixed -- only the weights differ -- so this isolates weight-driven
       (H2 / real-remapping) shifts. This replaces the old (bug) definition
       that used A (a real exploratory trajectory) as the "occupancy fixed"
@@ -126,7 +127,7 @@ def paired_distance_stats(phases: dict, reward_pos, ids: np.ndarray,
     d_peak = {"A": dist_to_reward(peak_a, R), "B": dist_to_reward(peak_b, R)}
 
     # --- corrected frozen-replay contrast: C_pre -> C_post (weights only) ---
-    # Independently gated on C_pre/C_post Skaggs (NOT on the A/B/ids gate above) --
+    # Independently gated on C_pre/C_post Skaggs (not on the A/B/ids gate above) --
     # matches figure 5's own frozen-replay diagnostic exactly.
     com_ac = frozen_replay_delta_from_centers(
         phases["C_pre"]["sk"], phases["C_pre"]["com"],
@@ -259,7 +260,7 @@ def fig_centers_abc(phases: dict, reward_pos, ids: np.ndarray, stem):
         ax.scatter(com[:, 0], com[:, 1], s=3.2, alpha=0.42, c=colour,
                    linewidths=0, rasterized=True)
     # n is a property of the cell set, not of each panel: state it once, and
-    # OUTSIDE the arena box so it cannot sit on top of the frame or the points.
+    # outside the arena box so it cannot sit on top of the frame or the points.
     axes[0].set_xlabel("Arena x", labelpad=1.5)
     axes[0].set_ylabel("Arena y", labelpad=1.5)
     axes[2].text(1.0, -0.06, f"n = {len(ids)} cells", transform=axes[2].transAxes,
@@ -287,7 +288,7 @@ def fig_delta_violins(stats: dict, stem):
     ax.set_xlim(0.45, 2.55)
     ax.set_ylabel(r"$\Delta$ distance to reward")
 
-    # Each violin is annotated ABOVE ITS OWN BODY. A single stacked block in the
+    # Each violin is annotated above its own body. A single stacked block in the
     # corner both collided with the violins and left it ambiguous which number
     # belonged to which distribution.
     lo, hi = ax.get_ylim()
@@ -307,7 +308,7 @@ def fig_distance_histograms(stats: dict, stem):
     """Panel d — COM distance histograms for both contrasts (C:pre→post frozen
     replay, A→B policy).
 
-    The C:pre→post contrast (left) uses the SAME frozen trajectory before and
+    The C:pre→post contrast (left) uses the same frozen trajectory before and
     after RL, so it tests whether weight changes alone shift fields (occupancy
     genuinely fixed). The A–B contrast (right) tests whether active RL
     exploration shifts them (occupancy-confounded by design).

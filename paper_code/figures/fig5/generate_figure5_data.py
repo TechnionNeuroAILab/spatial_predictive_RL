@@ -43,7 +43,7 @@ Inputs (all cached, no recomputation):
   Repro/multi_seed_reloc/aggregate/reward_relative_summary.json
 
 Usage:
-    python "code_analysis/figure 5/generate_figure5_data.py" --no_show
+    python paper_code/figures/fig5/generate_figure5_data.py --no_show
 """
 from __future__ import annotations
 
@@ -95,17 +95,20 @@ PERIOD_LABELS = ["baseline\n(pre)", "learned", "extinguished"]
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if p is None:
         return "p=n/a"
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
 
 def _letter(fig, letter):
+    """Write a bold panel letter in the figure's top-left corner."""
     fig.text(0.012, 0.975, letter, fontsize=8, fontweight="bold",
              va="top", ha="left")
 
 
 def load():
+    """Read the four cached JSONs this figure needs: extinction, Krishnan, Sosa and reward-relative."""
     d = json.loads(EXT_CACHE.read_text())
     kr = json.loads(KRISHNAN_CACHE.read_text())
     so = json.loads(SOSA_CACHE.read_text())
@@ -127,6 +130,7 @@ def _mouse(ax, x, y, s=1.0, color="0.25"):
 
 
 def _star(ax, x, y, color, s=55, crossed=False, ec="black"):
+    """Draw a reward star, optionally crossed out to mark a removed or former reward."""
     ax.scatter([x], [y], marker="*", s=s, color=color, edgecolor=ec,
                linewidths=0.4, zorder=7)
     if crossed:
@@ -137,6 +141,7 @@ def _star(ax, x, y, color, s=55, crossed=False, ec="black"):
 
 
 def _track(ax, x0, x1, y, tick_h=0.012):
+    """Draw a linear track with position ticks."""
     ax.plot([x0, x1], [y, y], color="0.25", lw=1.4, solid_capstyle="round",
             zorder=4)
     for xt in np.linspace(x0, x1, 6):
@@ -144,6 +149,7 @@ def _track(ax, x0, x1, y, tick_h=0.012):
 
 
 def _arena(ax, x0, y0, w, star_xy, crossed=False, star_color="k"):
+    """Draw a square arena with a reward star at a relative position inside it."""
     ax.add_patch(Rectangle((x0, y0), w, w, facecolor="#eef3fa",
                            edgecolor="0.3", lw=0.7, zorder=3))
     sx, sy = star_xy
@@ -151,6 +157,7 @@ def _arena(ax, x0, y0, w, star_xy, crossed=False, star_color="k"):
 
 
 def _arrow(ax, x0, y0, x1, y1, label=None, color="0.3", fs=5.2):
+    """Draw a labelled arrow between two cartoon elements."""
     ax.add_patch(FancyArrowPatch((x0, y0), (x1, y1), arrowstyle="-|>",
                                  mutation_scale=7, color=color, lw=0.9,
                                  zorder=5))
@@ -160,6 +167,7 @@ def _arrow(ax, x0, y0, x1, y1, label=None, color="0.3", fs=5.2):
 
 
 def _cartoon_axes():
+    """Blank, equal-aspect axes sized for the schematic cartoons."""
     fig, ax = plt.subplots(figsize=(3.35, 2.24))
     ax.set_xlim(0, 1.50)
     ax.set_ylim(0, 1.0)
@@ -169,6 +177,7 @@ def _cartoon_axes():
 
 
 def fig_cartoon_krishnan(stem):
+    """Schematic of the Krishnan extinction experiment, as the model's analogue of it."""
     fig, ax = _cartoon_axes()
 
     # ---- experiment (top half) ----
@@ -220,6 +229,7 @@ def fig_cartoon_krishnan(stem):
 
 
 def fig_cartoon_sosa(stem):
+    """Schematic of the Sosa reward-relocation experiment, as the model's analogue of it."""
     fig, ax = _cartoon_axes()
 
     # ---- experiment (top half) ----
@@ -540,6 +550,7 @@ def fig_test_i(so, stem):
 
 # ---------------------------------------------------------------- assembly
 def _pdf_to_png(pdf, png, dpi=300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         pre = Path(tmp) / "p"
         subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile",
@@ -586,6 +597,7 @@ def assemble(pdfs, out_stem, dpi=300):
 
 
 def main():
+    """Build every panel from the cached JSONs and assemble the figure."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--no_show", action="store_true")
     ap.parse_args()

@@ -1,3 +1,17 @@
+"""
+Successor-representation analyses: transition matrices, the SR, and SR-vs-RNN comparisons.
+
+States are the interior grid: `wall_buffer` cells are dropped from each side of
+the m x m arena, leaving (m - 2*wb)^2 reachable cells flattened row-major.
+
+Two layers live here. The library surface -- the index helpers, the
+transition-matrix builders, compute_sr_matrix and the shift-vector functions --
+is imported by lib/sr_common.py and figures/fig5/sr_direction_analysis.py.
+Everything else exists only for main(), a standalone CLI writing three
+sr_*_results.json files that nothing in the pipeline reads; it is not wired into
+regenerate_all.py or smoke_test.py, and its --reward-x/y default of 0.75
+matches no condition in the current runs.
+"""
 from __future__ import annotations
 import argparse
 import json
@@ -10,9 +24,7 @@ import pandas as pd
 from matplotlib.patches import Circle
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import circmean, pearsonr, spearmanr
-from common import (
-    DEFAULT_REWARD,
-    cohen_d_independent,
+from dataframe_io import (
     ensure_dir,
     extract_single_centers,
     load_behavior_activity,
@@ -39,6 +51,7 @@ BASE_ACTION_PROBS = np.array([0.5, 0.15, 0.05, 0.04, 0.02, 0.04, 0.05, 0.15], dt
 
 
 def parse_args() -> argparse.Namespace:
+    """CLI arguments for the standalone SR analysis (main() only)."""
     parser = argparse.ArgumentParser(description="Section E: Successor Representation analyses.")
     parser.add_argument("--data-dir", "--data_dir", dest="data_dir", type=str, default="data")
     parser.add_argument("--output-dir", "--output_dir", dest="output_dir", type=str, default="../New_Results/successor_representation")
@@ -71,20 +84,24 @@ def parse_args() -> argparse.Namespace:
 
 
 def interior_size(m: int, wall_buffer: int) -> int:
+    """Side length of the interior grid: m minus `wall_buffer` on each side."""
     return m - 2 * wall_buffer
 
 
 def n_interior_states(m: int, wall_buffer: int) -> int:
+    """Number of interior states, i.e. interior_size squared."""
     s = interior_size(m, wall_buffer)
     return s * s
 
 
 def interior_index(row: int, col: int, m: int, wall_buffer: int) -> int:
+    """Flat state index for an (row, col) arena coordinate."""
     s = interior_size(m, wall_buffer)
     return (row - wall_buffer) * s + (col - wall_buffer)
 
 
 def interior_coord(idx: int, m: int, wall_buffer: int) -> tuple[int, int]:
+    """Inverse of `interior_index`: flat state index back to (row, col)."""
     s = interior_size(m, wall_buffer)
     r = idx // s + wall_buffer
     c = idx % s + wall_buffer
@@ -92,6 +109,7 @@ def interior_coord(idx: int, m: int, wall_buffer: int) -> tuple[int, int]:
 
 
 def state_centers(m: int, wall_buffer: int) -> np.ndarray:
+    """(n_states, 2) centre of every interior state, in arena coords [0, 1]."""
     n = n_interior_states(m, wall_buffer)
     out = np.zeros((n, 2), dtype=float)
     for idx in range(n):
@@ -102,6 +120,7 @@ def state_centers(m: int, wall_buffer: int) -> np.ndarray:
 
 
 def pos_to_interior_idx(x: np.ndarray, y: np.ndarray, m: int, wall_buffer: int) -> np.ndarray:
+    """Map continuous (x, y) positions to the interior state index containing them."""
     s = interior_size(m, wall_buffer)
     rr = np.clip((x * s).astype(int), 0, s - 1) + wall_buffer
     cc = np.clip((y * s).astype(int), 0, s - 1) + wall_buffer
@@ -110,6 +129,30 @@ def pos_to_interior_idx(x: np.ndarray, y: np.ndarray, m: int, wall_buffer: int) 
 
 
 def action_probs_like_get_next_move(row: int, col: int, hd_idx: int, m: int, wall_buffer: int) -> np.ndarray:
+    """Action distribution for one state and heading, mirroring the simulator.
+
+    Reproduces the movement policy of `model/ratinabox_v11.py` so that the SR
+    baseline describes the same random walk the network actually experienced.
+    `BASE_ACTION_PROBS` is rolled by the heading index (forward is most likely,
+    reversals least), then any action that would cross a wall is zeroed and the
+    remainder renormalized.
+
+    Parameters
+    ----------
+    row, col : int
+        State coordinates in arena grid units.
+    hd_idx : int
+        Heading index 0..7; rolls the base distribution so it is relative to
+        the current facing.
+    m, wall_buffer : int
+        Arena size and the interior margin.
+
+    Returns
+    -------
+    ndarray (8,), float
+        Probability per action, summing to 1. A state with every action blocked
+        falls back to uniform.
+    """
     p = np.roll(BASE_ACTION_PROBS, hd_idx).astype(float).copy()
     border_flags = [
         row >= (m - wall_buffer),
@@ -138,6 +181,7 @@ def action_probs_like_get_next_move(row: int, col: int, hd_idx: int, m: int, wal
 
 
 def clipped_next_coord(row: int, col: int, action_idx: int, m: int, wall_buffer: int) -> tuple[int, int]:
+    """Apply action `action_idx` to (row, col), clipped to stay inside the interior."""
     dr, dc = ACTION_UPDATES[action_idx]
     r2 = int(np.clip(row + dr, wall_buffer, m - wall_buffer - 1))
     c2 = int(np.clip(col + dc, wall_buffer, m - wall_buffer - 1))
@@ -145,6 +189,23 @@ def clipped_next_coord(row: int, col: int, action_idx: int, m: int, wall_buffer:
 
 
 def build_T_random(m: int, wall_buffer: int) -> np.ndarray:
+    """Transition matrix for the unbiased random walk over interior states.
+
+    Marginalizes `action_probs_like_get_next_move` over all 8 headings -- the
+    walk has no preferred direction, so each heading is equally likely -- and
+    accumulates the resulting probability into the clipped destination state.
+
+    Parameters
+    ----------
+    m, wall_buffer : int
+        Arena size and the interior margin.
+
+    Returns
+    -------
+    ndarray (n_states, n_states), float
+        Row-stochastic. Rows are renormalized if floating-point drift leaves
+        them off 1.0.
+    """
     n = n_interior_states(m, wall_buffer)
     T = np.zeros((n, n), dtype=float)
 
@@ -171,6 +232,7 @@ def build_T_random(m: int, wall_buffer: int) -> np.ndarray:
 
 
 def uniform_neighbor_row(row: int, col: int, m: int, wall_buffer: int) -> np.ndarray:
+    """Transition row placing equal mass on each of one state's 8 clipped neighbours."""
     n = n_interior_states(m, wall_buffer)
     r = np.zeros(n, dtype=float)
 
@@ -186,6 +248,7 @@ def uniform_neighbor_row(row: int, col: int, m: int, wall_buffer: int) -> np.nda
 
 
 def normalize_transition_rows(T: np.ndarray, m: int, wall_buffer: int) -> np.ndarray:
+    """Row-normalize T; a state never left falls back to `uniform_neighbor_row`."""
     n = T.shape[0]
     row_sum = T.sum(axis=1)
     out = np.zeros_like(T)
@@ -201,6 +264,7 @@ def normalize_transition_rows(T: np.ndarray, m: int, wall_buffer: int) -> np.nda
 
 
 def transition_from_behavior_positions(pos: np.ndarray, m: int, wall_buffer: int) -> tuple[np.ndarray, float]:
+    """Empirical transition matrix counted from a trajectory, plus the fraction of states it visited."""
     n = n_interior_states(m, wall_buffer)
     T_counts = np.zeros((n, n), dtype=float)
 
@@ -215,6 +279,7 @@ def transition_from_behavior_positions(pos: np.ndarray, m: int, wall_buffer: int
 
 
 def transition_goal_biased(m: int, wall_buffer: int, goal_xy: np.ndarray, beta: float) -> np.ndarray:
+    """Synthetic policy biased toward `goal_xy`: actions are reweighted by exp(beta * distance reduced)."""
     n = n_interior_states(m, wall_buffer)
     centers = state_centers(m, wall_buffer)
     T = np.zeros((n, n), dtype=float)
@@ -252,6 +317,7 @@ def transition_goal_biased(m: int, wall_buffer: int, goal_xy: np.ndarray, beta: 
 
 
 def load_transition_from_file(path: Path, m: int, wall_buffer: int) -> np.ndarray | None:
+    """Load a precomputed transition matrix, or None if the file is missing or the wrong shape."""
     n = n_interior_states(m, wall_buffer)
     if not path.exists():
         return None
@@ -297,6 +363,7 @@ def load_transition_from_file(path: Path, m: int, wall_buffer: int) -> np.ndarra
 
 
 def load_behavior_positions(path: Path) -> np.ndarray | None:
+    """Load an (n, 2) position array from a behaviour file, or None if absent."""
     if not path.exists():
         return None
 
@@ -331,6 +398,7 @@ def build_T_policy(
     policy_behavior_file: str,
     beta: float,
 ) -> tuple[np.ndarray, str, dict[str, Any]]:
+    """Post-learning transition matrix, from whichever `policy_source` is configured."""
     info: dict[str, Any] = {}
     if policy_source in {"auto", "empirical"} and policy_transition_file.strip() != "":
         p = Path(policy_transition_file)
@@ -378,6 +446,36 @@ def compute_sr_matrix(
     neumann_k: int,
     cond_threshold: float,
 ) -> tuple[np.ndarray, float, str]:
+    """Successor representation M = (I - gamma*T)^-1, with the solver chosen by conditioning.
+
+    M[i, j] is the discounted expected number of visits to state j when
+    starting from state i, so column j is the "successor field" of j.
+
+    Parameters
+    ----------
+    T : ndarray (n, n)
+        Row-stochastic transition matrix.
+    gamma : float
+        Discount; 0.99 throughout this project.
+    method : {"auto", "inverse", "pinv", "neumann"}
+        "auto" picks `inverse` when cond(I - gamma*T) <= `cond_threshold` and
+        `pinv` otherwise. "neumann" sums the truncated series instead.
+    neumann_k : int
+        Terms in the Neumann series, used only by that method.
+    cond_threshold : float
+        Conditioning cutoff for "auto".
+
+    Returns
+    -------
+    M : ndarray (n, n)
+        The SR.
+    cond : float
+        Condition number of (I - gamma*T), worth recording -- it is what
+        decided the solver.
+    used : str
+        Which method actually ran, including "pinv_fallback" when the direct
+        solve raised.
+    """
     n = T.shape[0]
     I = np.eye(n, dtype=float)
     A = I - gamma * T
@@ -413,6 +511,7 @@ def compute_sr_matrix(
 
 
 def sr_participation_ratio(M: np.ndarray) -> tuple[float, np.ndarray]:
+    """Participation ratio of the symmetrized SR's eigenspectrum, with the spectrum itself."""
     Ms = 0.5 * (M + M.T)
     eig = np.linalg.eigvalsh(Ms)
     eig = np.sort(np.maximum(eig, 0.0))[::-1]
@@ -426,11 +525,13 @@ def sr_participation_ratio(M: np.ndarray) -> tuple[float, np.ndarray]:
 
 
 def vector_to_grid(vec: np.ndarray, m: int, wall_buffer: int) -> np.ndarray:
+    """Reshape a per-state vector back into the (s, s) interior grid, for plotting."""
     s = interior_size(m, wall_buffer)
     return np.asarray(vec, dtype=float).reshape(s, s)
 
 
 def plot_sr_place_fields(M: np.ndarray, out_path: Path, title: str, m: int, wall_buffer: int, seed: int) -> None:
+    """Grid of randomly chosen SR columns rendered as place fields."""
     n = M.shape[0]
     rng = np.random.default_rng(seed)
     cols = rng.choice(n, size=min(100, n), replace=False)
@@ -454,12 +555,14 @@ def plot_sr_place_fields(M: np.ndarray, out_path: Path, title: str, m: int, wall
     plt.close(fig)
 
 def state_distances_to_goal(m: int, wall_buffer: int, goal_xy: np.ndarray) -> np.ndarray:
+    """Euclidean distance from every state centre to the goal."""
     coords = state_centers(m, wall_buffer)
     d = np.sqrt((coords[:, 0] - goal_xy[0]) ** 2 + (coords[:, 1] - goal_xy[1]) ** 2)
     return d.astype(float)
 
 
 def sr_ori_from_diag(diag_vals: np.ndarray, dists: np.ndarray, goal_radius: float) -> tuple[float, dict[str, int]]:
+    """Over-representation index: how much more often above-mean SR diagonal values fall inside the goal radius than outside."""
     vals = np.asarray(diag_vals, dtype=float)
     thr = float(np.nanmean(vals))
     above = vals > thr
@@ -482,6 +585,7 @@ def sr_ori_from_diag(diag_vals: np.ndarray, dists: np.ndarray, goal_radius: floa
 
 
 def bootstrap_sr_ori(diag_vals: np.ndarray, dists: np.ndarray, goal_radius: float, n_boot: int, seed: int) -> tuple[float, float]:
+    """Percentile bootstrap 95% CI for `sr_ori_from_diag`."""
     vals = np.asarray(diag_vals, dtype=float)
     n = vals.size
     rng = np.random.default_rng(seed)
@@ -500,6 +604,7 @@ def bootstrap_sr_ori(diag_vals: np.ndarray, dists: np.ndarray, goal_radius: floa
 
 
 def load_goal_position(data_dir: Path, goal_file: str, reward_x: float, reward_y: float) -> tuple[np.ndarray, str]:
+    """Goal position from `goal_file` if it exists, else the --reward-x/y fallback, with its source."""
     p = data_dir / goal_file
     if p.exists():
         arr = np.asarray(np.load(p), dtype=float).reshape(-1)
@@ -509,6 +614,7 @@ def load_goal_position(data_dir: Path, goal_file: str, reward_x: float, reward_y
 
 
 def load_centers(data_dir: Path, which: str) -> tuple[pd.DataFrame, str]:
+    """Field centres for 'before' or 'after' from whichever centre file exists, with the path used."""
     if which == "before":
         cands = [data_dir / "df_centers_before.pkl", data_dir / "place_field_centres_phase1.npy"]
     else:
@@ -538,6 +644,7 @@ def load_centers(data_dir: Path, which: str) -> tuple[pd.DataFrame, str]:
 
 
 def rnn_ori_from_centers(centers: pd.DataFrame, goal_xy: np.ndarray, goal_radius: float) -> float:
+    """The same over-representation index as `sr_ori_from_diag`, for RNN field centres."""
     if centers.empty:
         return np.nan
     xy = centers[["x", "y"]].to_numpy(dtype=float)
@@ -558,6 +665,7 @@ def rnn_ori_from_centers(centers: pd.DataFrame, goal_xy: np.ndarray, goal_radius
 
 
 def bootstrap_rnn_ori(centers: pd.DataFrame, goal_xy: np.ndarray, goal_radius: float, n_boot: int, seed: int) -> tuple[float, float]:
+    """Percentile bootstrap 95% CI for `rnn_ori_from_centers`."""
     if centers.empty:
         return np.nan, np.nan
     rng = np.random.default_rng(seed)
@@ -574,6 +682,7 @@ def bootstrap_rnn_ori(centers: pd.DataFrame, goal_xy: np.ndarray, goal_radius: f
     return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
 
 def plot_ori_bar(sr_ori: float, sr_ci: tuple[float, float], rnn_ori: float, rnn_ci: tuple[float, float], out_path: Path, title: str) -> None:
+    """Two-bar SR-vs-RNN over-representation figure with bootstrap CIs."""
     labels = ["SR ORI", "RNN ORI"]
     vals = [sr_ori, rnn_ori]
 
@@ -590,6 +699,7 @@ def plot_ori_bar(sr_ori: float, sr_ci: tuple[float, float], rnn_ori: float, rnn_
     plt.close()
 
 def load_period_matrix(data_dir: Path, period: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """One period as (activity (t, n_cells), positions (t, 2), neuron_ids)."""
     beh, act_df, _ = load_behavior_activity(data_dir, period)
     X_df, B_df = pivot_activity_matrix(act_df, beh)
     if B_df is None:
@@ -603,6 +713,7 @@ def load_period_matrix(data_dir: Path, period: str) -> tuple[np.ndarray, np.ndar
 
 
 def build_rnn_state_maps(X: np.ndarray, pos: np.ndarray, m: int, wall_buffer: int) -> tuple[np.ndarray, np.ndarray]:
+    """Per-cell mean activity per interior state, plus each state's visit count. Unvisited states are NaN."""
     S = n_interior_states(m, wall_buffer)
     N = X.shape[1]
 
@@ -621,6 +732,7 @@ def build_rnn_state_maps(X: np.ndarray, pos: np.ndarray, m: int, wall_buffer: in
 
 
 def build_population_response_16(X: np.ndarray, pos: np.ndarray, min_visits: int, m: int, wall_buffer: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Population response on a coarser 16x16 grid, with a validity mask and each bin's interior state index."""
     N = X.shape[1]
     K = 16 * 16
     xb = np.clip(np.floor(pos[:, 0] * 16).astype(int), 0, 15)
@@ -647,6 +759,7 @@ def build_population_response_16(X: np.ndarray, pos: np.ndarray, min_visits: int
 
 
 def fill_nan_rowwise(A: np.ndarray) -> np.ndarray:
+    """Replace NaNs in each row with that row's mean, so correlations can be taken."""
     B = np.asarray(A, dtype=float).copy()
     for i in range(B.shape[0]):
         row = B[i]
@@ -661,6 +774,7 @@ def fill_nan_rowwise(A: np.ndarray) -> np.ndarray:
 
 
 def normalize_rows_for_corr(X: np.ndarray) -> np.ndarray:
+    """Centre and unit-norm each row, so a dot product is a Pearson correlation."""
     Xc = X - np.mean(X, axis=1, keepdims=True)
     norm = np.linalg.norm(Xc, axis=1, keepdims=True)
     out = np.divide(Xc, norm, out=np.zeros_like(Xc), where=norm > 1e-12)
@@ -668,6 +782,7 @@ def normalize_rows_for_corr(X: np.ndarray) -> np.ndarray:
 
 
 def normalize_cols_for_corr(Y: np.ndarray) -> np.ndarray:
+    """Centre and unit-norm each column, the column-wise counterpart of `normalize_rows_for_corr`."""
     Yc = Y - np.mean(Y, axis=0, keepdims=True)
     norm = np.linalg.norm(Yc, axis=0, keepdims=True)
     out = np.divide(Yc, norm, out=np.zeros_like(Yc), where=norm > 1e-12)
@@ -675,6 +790,7 @@ def normalize_cols_for_corr(Y: np.ndarray) -> np.ndarray:
 
 
 def max_corr_vs_sr(rnn_maps: np.ndarray, SR: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Best-matching SR column for every RNN cell: max correlation, its index, and the full matrix."""
     X = fill_nan_rowwise(rnn_maps)
     Xn = normalize_rows_for_corr(X)
     Yn = normalize_cols_for_corr(SR)
@@ -686,6 +802,7 @@ def max_corr_vs_sr(rnn_maps: np.ndarray, SR: np.ndarray) -> tuple[np.ndarray, np
 
 
 def shuffle_max_corr_baseline(Xn: np.ndarray, Yn: np.ndarray, n_shuffle: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    """Null for `max_corr_vs_sr` from permuting SR states: the first draw per cell and the per-shuffle means."""
     rng = np.random.default_rng(seed)
     N, S = Xn.shape
     if n_shuffle <= 0:
@@ -705,6 +822,7 @@ def shuffle_max_corr_baseline(Xn: np.ndarray, Yn: np.ndarray, n_shuffle: int, se
 
 
 def spearman_upper(A: np.ndarray, B: np.ndarray) -> tuple[float, float]:
+    """Spearman correlation between two RDMs, over the upper triangle only."""
     if A.shape != B.shape or A.shape[0] < 2:
         return np.nan, np.nan
 
@@ -720,6 +838,7 @@ def spearman_upper(A: np.ndarray, B: np.ndarray) -> tuple[float, float]:
 
 
 def corr_distance_rdm(X: np.ndarray) -> np.ndarray:
+    """Representational dissimilarity matrix using correlation distance."""
     if X.shape[0] < 2:
         return np.full((X.shape[0], X.shape[0]), np.nan)
     d = pdist(X, metric="correlation")
@@ -734,6 +853,7 @@ def bootstrap_interaction(
     n_boot: int,
     seed: int,
 ) -> tuple[float, float]:
+    """Percentile bootstrap CI for the interaction (mean d - mean c) - (mean b - mean a)."""
     n = min(a.size, b.size, c.size, d.size)
     if n < 5:
         return np.nan, np.nan
@@ -748,6 +868,28 @@ def bootstrap_interaction(
     return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
 
 def sr_predicted_shift_vectors(M_random: np.ndarray, M_policy: np.ndarray, state_xy: np.ndarray) -> np.ndarray:
+    """Field-centre displacement each state's successor field is predicted to undergo.
+
+    For state j, the change in its successor field is M_policy[:, j] -
+    M_random[:, j]. Treating the positive part of that change as a weight over
+    state centres gives a centroid, and the predicted shift is that centroid
+    minus the state's own position -- i.e. the direction the field is pulled by
+    moving from a random walk to the goal-directed policy.
+
+    Parameters
+    ----------
+    M_random, M_policy : ndarray (n, n)
+        SR matrices for the two policies.
+    state_xy : ndarray (n, 2)
+        State centres in arena coords, from `state_centers`.
+
+    Returns
+    -------
+    ndarray (n, 2), float
+        Predicted (dx, dy) per state. States whose field does not change get a
+        zero vector; if the positive part vanishes the absolute change is used
+        instead, so a purely negative change still yields a direction.
+    """
     S = M_random.shape[0]
     out = np.zeros((S, 2), dtype=float)
     for j in range(S):
@@ -766,6 +908,7 @@ def sr_predicted_shift_vectors(M_random: np.ndarray, M_policy: np.ndarray, state
 
 
 def nearest_state_for_points(xy: np.ndarray, state_xy: np.ndarray) -> np.ndarray:
+    """Index of the nearest interior state to each (x, y) point."""
     d2 = (
         (xy[:, None, 0] - state_xy[None, :, 0]) ** 2
         + (xy[:, None, 1] - state_xy[None, :, 1]) ** 2
@@ -774,6 +917,7 @@ def nearest_state_for_points(xy: np.ndarray, state_xy: np.ndarray) -> np.ndarray
 
 
 def angle_between_vectors(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Unsigned angle in [0, pi] between paired row vectors; NaN where either is degenerate."""
     na = np.linalg.norm(a, axis=1)
     nb = np.linalg.norm(b, axis=1)
     valid = (na > 1e-12) & (nb > 1e-12)
@@ -788,6 +932,7 @@ def angle_between_vectors(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def rayleigh_from_angles(angles: np.ndarray) -> tuple[float, float]:
+    """Rayleigh test on a set of angles: resultant length R and its p-value."""
     ang = np.asarray(angles, dtype=float)
     ang = ang[np.isfinite(ang)]
     n = ang.size
@@ -804,6 +949,7 @@ def plot_corr_hist(
     max_p2: np.ndarray,
     shuffle_baseline: np.ndarray,
 ) -> None:
+    """Histogram of per-cell best SR correlation for both phases against the shuffled baseline."""
     plt.figure(figsize=(7.2, 4.8))
     plt.hist(shuffle_baseline[np.isfinite(shuffle_baseline)], bins=30, alpha=0.5, color="gray", label="Shuffle baseline")
     plt.hist(max_p1[np.isfinite(max_p1)], bins=30, alpha=0.55, color="#2E5FA3", label="Phase 1")
@@ -824,6 +970,7 @@ def plot_2x2_corr_bar(
     p2_rand: float,
     p2_pol: float,
 ) -> None:
+    """2x2 bar chart of mean best correlation across phase x SR variant."""
     x = np.arange(2)
     w = 0.35
 
@@ -840,6 +987,7 @@ def plot_2x2_corr_bar(
 
 
 def plot_rsa_bar(out_path: Path, vals: list[float], labels: list[str]) -> None:
+    """Bar chart of RSA similarity values."""
     plt.figure(figsize=(8.0, 4.8))
     plt.bar(labels, vals, color=["#2E5FA3", "#E07A2D", "#2E5FA3", "#E07A2D"], alpha=0.9)
     plt.axhline(0.0, linestyle="--", color="black", linewidth=1.2)
@@ -852,6 +1000,7 @@ def plot_rsa_bar(out_path: Path, vals: list[float], labels: list[str]) -> None:
 
 
 def plot_sr_eigenspectrum(out_path: Path, eig: np.ndarray, rnn_pr: float) -> None:
+    """SR eigenspectrum with the RNN participation ratio marked."""
     r = np.arange(1, eig.size + 1)
 
     plt.figure(figsize=(7.2, 5.0))
@@ -868,6 +1017,7 @@ def plot_sr_eigenspectrum(out_path: Path, eig: np.ndarray, rnn_pr: float) -> Non
 
 
 def plot_residual_map(out_path: Path, residual_map: np.ndarray) -> None:
+    """Per-state residual drawn as an arena heatmap."""
     plt.figure(figsize=(6.2, 5.4))
     im = plt.imshow(residual_map.T, origin="lower", cmap="magma")
     plt.colorbar(im, shrink=0.85, label="Residual magnitude")
@@ -880,6 +1030,7 @@ def plot_residual_map(out_path: Path, residual_map: np.ndarray) -> None:
 
 
 def plot_predicted_vs_actual_shift(out_path: Path, pred_mag: np.ndarray, act_mag: np.ndarray, dist_reward: np.ndarray) -> None:
+    """SR-predicted against actual shift magnitude, coloured by distance to reward."""
     plt.figure(figsize=(6.8, 5.6))
     sc = plt.scatter(pred_mag, act_mag, c=dist_reward, cmap="viridis", s=22, alpha=0.7)
     lim = np.nanmax([np.nanmax(pred_mag), np.nanmax(act_mag), 1e-6])
@@ -894,6 +1045,7 @@ def plot_predicted_vs_actual_shift(out_path: Path, pred_mag: np.ndarray, act_mag
 
 
 def plot_rose(out_path: Path, angles: np.ndarray, R: float, p: float) -> None:
+    """Rose plot of shift angles annotated with the Rayleigh R and p."""
     a = angles[np.isfinite(angles)]
     bins = np.linspace(0, np.pi, 19)
     hist, edges = np.histogram(a, bins=bins)
@@ -912,6 +1064,7 @@ def plot_rose(out_path: Path, angles: np.ndarray, R: float, p: float) -> None:
 
 
 def plot_residual_vs_distance(out_path: Path, residual: np.ndarray, dist: np.ndarray, rho: float, p: float) -> None:
+    """Residual against distance to reward, annotated with Spearman rho and p."""
     plt.figure(figsize=(6.8, 5.4))
     plt.scatter(dist, residual, s=20, alpha=0.65, color="#2E5FA3")
 
@@ -932,6 +1085,7 @@ def plot_residual_vs_distance(out_path: Path, residual: np.ndarray, dist: np.nda
     plt.close()
 
 def main() -> None:
+    """Run the standalone SR analysis end to end and write its JSONs and figures."""
     args = parse_args()
     rng = np.random.default_rng(args.seed)
     data_dir = Path(args.data_dir)

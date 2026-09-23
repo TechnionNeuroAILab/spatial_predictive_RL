@@ -5,7 +5,7 @@ periods, and cache per-seed rows + validation summary to
 Repro/aggregate/occupancy_matched_estimator.json.
 
 Post periods:
-  - cycle_1_goal      : SAME weights as the ground-truth post snapshot
+  - cycle_1_goal      : same weights as the ground-truth post snapshot
                         (replay_c1_postrl) -- exact weight alignment, few steps.
   - goal_conditioned  : post-interleave weights (the interleave is the map
                         stabilizer, so approximately aligned), 10x more steps.
@@ -104,7 +104,7 @@ def main():
             s[f"{cond}_null_naive"] = {"mean": float(np.nanmean(nulls_nv)),
                                        "sd": float(np.nanstd(nulls_nv, ddof=1))}
 
-        # paired ordering across matched seeds (PAIRED: same seed = same
+        # paired ordering across matched seeds (paired: same seed = same
         # pre-learning network in both conditions)
         nh = {r["seed"]: r for r in results[pp]["nohead"]}
         hd = {r["seed"]: r for r in results[pp]["head"]}

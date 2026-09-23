@@ -32,6 +32,7 @@ SEED = 42
 
 
 def load_behavior_full(data_dir: Path) -> pd.DataFrame:
+    """Load the 'before' behaviour frame for a run."""
     return pd.read_pickle(data_dir / "df_behavior_before.pkl")
 
 
@@ -67,6 +68,7 @@ def build_variable_table(
     reward_pos: tuple[float, float],
     m: int = M,
 ) -> pd.DataFrame:
+    """Per-timestep candidate explanatory variables (position, heading, speed, wall and reward distances, observation summaries) as one table."""
     x = beh["x"].to_numpy(dtype=float)
     y = beh["y"].to_numpy(dtype=float)
     theta = beh["theta"].to_numpy(dtype=float)
@@ -116,6 +118,7 @@ def build_variable_table(
 
 
 def eta_squared_kruskal(groups: list[np.ndarray]) -> float:
+    """Kruskal-Wallis effect size eta^2 for a set of groups."""
     all_vals = np.concatenate(groups)
     n = len(all_vals)
     if n == 0:
@@ -136,6 +139,7 @@ def eta_squared_kruskal(groups: list[np.ndarray]) -> float:
 
 
 def mutual_information_discrete(x: np.ndarray, y: np.ndarray, n_bins: int = 20) -> float:
+    """Mutual information between two variables after binning both into `n_bins`."""
     x_disc = np.digitize(x, np.linspace(x.min(), x.max(), n_bins + 1)[1:-1])
     mi = 0.0
     n = len(x)
@@ -151,6 +155,7 @@ def mutual_information_discrete(x: np.ndarray, y: np.ndarray, n_bins: int = 20) 
 
 
 def ridge_r2_cv(X: np.ndarray, y: np.ndarray, seed: int = SEED) -> float:
+    """Cross-validated R^2 of a ridge regression from X to y."""
     if X.ndim == 1:
         X = X[:, None]
     scaler = StandardScaler()
@@ -168,6 +173,7 @@ def run_stats_for_partition(
     n_perm: int = N_PERM,
     seed: int = SEED,
 ) -> pd.DataFrame:
+    """Score every variable against one partition (effect size plus a permutation null), sorted by eta^2."""
     rng = np.random.default_rng(seed)
     rows = []
     numeric_cols = [
@@ -212,6 +218,7 @@ def run_stats_for_partition(
 
 
 def pc1_tertile_labels(z: np.ndarray) -> np.ndarray:
+    """Tertile label per point along PC1."""
     return np.digitize(z[:, 0], np.quantile(z[:, 0], [1 / 3, 2 / 3]))
 
 
@@ -227,6 +234,7 @@ def build_summary(
     evr: np.ndarray,
     seed: int = SEED,
 ) -> dict:
+    """Collect the whole analysis into one JSON-ready dict: partition agreement (ARI), effect sizes and variance explained."""
     ari = {
         "kmeans_vs_x_tertile": float(adjusted_rand_score(kmeans_labels, x_tert)),
         "kmeans_vs_wall_proximity": float(adjusted_rand_score(kmeans_labels, wall_labels)),
@@ -294,10 +302,12 @@ def discretize_equal_freq(values: np.ndarray, n_bins: int) -> np.ndarray:
 
 
 def y_tertile_labels(y: np.ndarray) -> np.ndarray:
+    """Tertile label per point along the arena y axis."""
     return np.digitize(y, [1.0 / 3.0, 2.0 / 3.0])
 
 
 def heading_octant_labels(theta: np.ndarray) -> np.ndarray:
+    """Nearest of the eight discrete headings, per timestep."""
     from utils import HDS
     hd_angles = np.arctan2(HDS[:, 1], HDS[:, 0])
     diff = np.abs((theta[:, None] - hd_angles[None, :]) + np.pi) % (2 * np.pi) - np.pi
@@ -361,6 +371,7 @@ def build_categorical_features(
     positions: np.ndarray,
     beh: pd.DataFrame,
 ) -> dict[str, np.ndarray]:
+    """Discrete versions of the candidate variables, for the categorical association tests."""
     x, y = positions[:, 0], positions[:, 1]
     theta = beh["theta"].to_numpy(dtype=float)
     cats: dict[str, np.ndarray] = {}
@@ -395,6 +406,7 @@ def run_categorical_correlation(
     categorical: dict[str, np.ndarray],
     kmeans_labels: np.ndarray,
 ) -> pd.DataFrame:
+    """Cramer's V between each categorical feature and the cluster labels, sorted strongest first."""
     rows = []
     for name, labels in categorical.items():
         v, p_val, n_a, n_b = cramers_v_from_labels(labels, kmeans_labels)
@@ -445,6 +457,7 @@ def run_multinomial_screen(
 
 
 def plot_categorical_heatmap(cat_df: pd.DataFrame, stem: Path, top_n: int = 25) -> None:
+    """Heatmap of the top categorical associations by Cramer's V."""
     sub = cat_df.head(top_n).iloc[::-1]
     fig, ax = plt.subplots(figsize=(4.8, 5.0))
     y_pos = np.arange(len(sub))
@@ -465,6 +478,7 @@ def plot_contingency_heatmap(
     cat_name: str,
     stem: Path,
 ) -> None:
+    """Contingency table of two labellings, drawn as a heatmap."""
     cats = np.unique(cat_labels)
     mat = np.zeros((3, len(cats)), dtype=int)
     for k in range(3):
@@ -487,6 +501,7 @@ def plot_contingency_heatmap(
 
 def save_cache(out_dir: Path, variables: pd.DataFrame, z: np.ndarray, kmeans_labels: np.ndarray,
                positions: np.ndarray, obs: np.ndarray) -> None:
+    """Write the variable table, embedding and label arrays to the cache directory."""
     cache = ensure_dir(out_dir / "cache")
     variables.to_pickle(cache / "variables.pkl")
     np.save(cache / "z.npy", z)
@@ -496,6 +511,7 @@ def save_cache(out_dir: Path, variables: pd.DataFrame, z: np.ndarray, kmeans_lab
 
 
 def load_cache(out_dir: Path) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+    """Read back what `save_cache` wrote, or None if the cache is absent or incomplete."""
     cache = out_dir / "cache"
     pkl = cache / "variables.pkl"
     paths = [pkl, cache / "z.npy", cache / "kmeans_labels.npy",
@@ -521,6 +537,7 @@ def run_categorical_analysis(
     out_dir: Path,
     seed: int = SEED,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Run the categorical screens (Cramer's V and multinomial) and write both as CSV."""
     print("  Building categorical features...")
     categorical = build_categorical_features(variables, z, positions, beh)
     cat_df = run_categorical_correlation(categorical, kmeans_labels)
@@ -544,6 +561,7 @@ def run_categorical_analysis(
 
 
 def print_categorical_interpretation(cat_df: pd.DataFrame, multi_df: pd.DataFrame) -> None:
+    """Print the categorical results in readable form."""
     top = cat_df.iloc[0]
     beh_top = cat_df[~cat_df["variable"].str.startswith(("pc1", "pc2"))].iloc[0]
     oracle = cat_df[cat_df["variable"] == "pc1_tertile"]
@@ -582,6 +600,7 @@ def run_stats_battery(
     evr: np.ndarray,
     seed: int = SEED,
 ) -> tuple[pd.DataFrame, dict]:
+    """Run `run_stats_for_partition` over every partition and build the summary."""
     parts = [
         ("kmeans", kmeans_labels),
         ("x_tertile", x_tert),
@@ -597,6 +616,7 @@ def run_stats_battery(
 
 
 def plot_pca_grid(z: np.ndarray, color_dict: dict[str, np.ndarray], evr: np.ndarray, stem: Path) -> None:
+    """PCA embedding drawn once per colouring variable, on a shared grid."""
     keys = list(color_dict.keys())
     fig, axes = plt.subplots(2, 4, figsize=(7.2, 3.6))
     axes_flat = axes.flatten()
@@ -626,6 +646,7 @@ def plot_pca_grid(z: np.ndarray, color_dict: dict[str, np.ndarray], evr: np.ndar
 
 
 def plot_arena_clusters(x: np.ndarray, y: np.ndarray, labels: np.ndarray, stem: Path, title: str = "Arena") -> None:
+    """Cluster membership plotted at each point's arena position."""
     fig, ax = plt.subplots(figsize=(2.8, 2.8))
     sc = ax.scatter(x, y, c=labels, s=1, alpha=0.25, cmap="Set1", vmin=0, vmax=2, rasterized=True)
     for k in range(3):
@@ -643,6 +664,7 @@ def plot_arena_clusters(x: np.ndarray, y: np.ndarray, labels: np.ndarray, stem: 
 
 
 def plot_effect_sizes(stats_df: pd.DataFrame, stem: Path, partition: str = "x_tertile", top_n: int = 15) -> None:
+    """Bar chart of the strongest effect sizes for one partition."""
     sub = stats_df[stats_df["partition"] == partition].head(top_n).iloc[::-1]
     fig, ax = plt.subplots(figsize=(4.5, 4.0))
     y_pos = np.arange(len(sub))
@@ -656,6 +678,7 @@ def plot_effect_sizes(stats_df: pd.DataFrame, stem: Path, partition: str = "x_te
 
 
 def plot_confusion(labels_a: np.ndarray, labels_b: np.ndarray, names: tuple[str, str], stem: Path) -> None:
+    """Confusion matrix between two labellings."""
     mat = np.zeros((3, 3), dtype=int)
     for a, b in zip(labels_a, labels_b):
         mat[int(a), int(b)] += 1
@@ -678,6 +701,7 @@ def plot_confusion(labels_a: np.ndarray, labels_b: np.ndarray, names: tuple[str,
 
 
 def plot_summary_panel(summary: dict, stats_df: pd.DataFrame, stem: Path) -> None:
+    """One-page summary: variance explained, partition agreement and the leading effect sizes."""
     ari = summary["adjusted_rand_index"]
     x_top = stats_df[stats_df["partition"] == "x_tertile"].head(5)
     km_top = stats_df[stats_df["partition"] == "kmeans"].head(3)
@@ -717,6 +741,7 @@ def plot_summary_panel(summary: dict, stats_df: pd.DataFrame, stem: Path) -> Non
 
 
 def print_interpretation(summary: dict, stats_df: pd.DataFrame) -> None:
+    """Print the summary and the ranked effect sizes in readable form."""
     ari = summary["adjusted_rand_index"]
     x_top = stats_df[stats_df["partition"] == "x_tertile"].iloc[0]
     x_row = stats_df[(stats_df["partition"] == "x_tertile") & (stats_df["variable"] == "x")].iloc[0]
@@ -752,6 +777,7 @@ def run_analysis(
     skip_obs: bool = False,
     subsample: int = 0,
 ) -> None:
+    """Full panel-d analysis: load, build variables, embed, cluster, score, plot and cache."""
     data_dir = run_dir / "data"
     out_dir = ensure_dir(output_dir)
 
@@ -869,6 +895,7 @@ def run_categorical_only(output_dir: Path, seed: int = SEED) -> None:
 
 
 def parse_args():
+    """Command-line arguments: run directory, output directory, seed, cache behaviour."""
     p = argparse.ArgumentParser(description="Panel d cluster driver analysis.")
     p.add_argument("--run_dir", default=str(DEFAULT_RUN))
     p.add_argument("--output_dir", default=str(ANALYSIS_DIR))

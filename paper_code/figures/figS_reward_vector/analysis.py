@@ -2,7 +2,7 @@
 Reward-vector supplementary figure — cross-seed analysis helpers.
 
 Loads per-seed results from paper_code/lib/reward_vector_analysis.py, applies an
-entropy-collapse gate re-checked on THIS analysis's own periods (not the
+entropy-collapse gate re-checked on this analysis's own periods (not the
 frozen-replay-triple gate used elsewhere in the paper, since this analysis's
 primary tuning-curve-construction periods are goal-directed, not replay),
 and caches per-condition summaries to <condition_dir>/aggregate/
@@ -39,6 +39,7 @@ RELOC_GATE_PERIODS = ["cycle_1_goal", "cycle_2_goal", "goal_conditioned"]
 # ---------------------------------------------------------------------------
 
 def discover_seeds(cond_dir: Path, prefix: str) -> list[int]:
+    """Seed numbers under `cond_dir` matching `<prefix>seed<N>` that have a data/ subdirectory."""
     cond_dir = Path(cond_dir)
     seeds = []
     for p in sorted(cond_dir.glob(f"{prefix}seed*")):
@@ -55,7 +56,7 @@ def discover_seeds(cond_dir: Path, prefix: str) -> list[int]:
 
 def clean_seeds_for_reward_vector(cond_dir: Path, prefix: str, seeds: list[int],
                                    periods: list[str], min_entropy: float = 5.5) -> list[int]:
-    """Re-gate on the periods THIS analysis actually uses (goal-directed
+    """Re-gate on the periods this analysis actually uses (goal-directed
     periods), rather than assuming the existing replay-triple-based gate
     (used elsewhere, e.g. Figure 5) applies unchanged here."""
     clean = []
@@ -176,6 +177,7 @@ def per_seed_rotation_test(run_dir: Path, period_a: str, period_b: str,
 
 def load_reloc_rotation_summary(reloc_dir: Path, seeds: list[int],
                                  period_a: str, period_b: str) -> list[dict]:
+    """Per-seed rotation test across relocation seeds, skipping runs that are missing or fail."""
     rows = []
     for s in seeds:
         run_dir = Path(reloc_dir) / f"reloc_seed{s}"
@@ -194,6 +196,7 @@ def load_reloc_rotation_summary(reloc_dir: Path, seeds: list[int],
 # ---------------------------------------------------------------------------
 
 def _jsonable(obj):
+    """Recursively convert numpy types to JSON-serializable ones, dropping private `_`-prefixed keys."""
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     if isinstance(obj, (np.floating, np.integer)):
@@ -206,6 +209,7 @@ def _jsonable(obj):
 
 
 def save_summary_cache(cond_dir: Path, rows: list[dict], name: str = "reward_vector_summary.json"):
+    """Write the per-seed rows to `<cond_dir>/aggregate/<name>` as JSON and return the path."""
     out_dir = Path(cond_dir) / "aggregate"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / name

@@ -4,7 +4,7 @@ Aggregate paper_code/lib/reward_relative_analysis.per_seed_row over all
 entropy-gated relocation seeds and cache group-level statistics to
 Repro/multi_seed_reloc/aggregate/reward_relative_summary.json.
 
-WHY THIS FILE EXISTS: that JSON is read by figures/fig5/generate_figure5_data.py
+why this file exists: that JSON is read by figures/fig5/generate_figure5_data.py
 (panel comparing model reward-relative fractions against the Sosa 2025
 reanalysis), and it is committed to the repo -- but no driver that produces it
 survived. `reward_relative_analysis.py` states "entropy gate handled by the
@@ -19,7 +19,7 @@ Skaggs>=0.15 gate inside reward_relative_analysis itself.
 
 Reported per read-out (behavioural = cycle_1_goal vs cycle_2_goal, what an
 experimenter without occupancy control sees; controlled = replay_reloc_postA vs
-postB on an identical frozen trajectory, PRIMARY):
+postB on an identical frozen trajectory, primary):
   frac_reward_relative / frac_place_anchored group mean+SD, and for the
   controlled read-out the RRI mean, the count of seeds with
   place-anchored > reward-relative, and the paired Wilcoxon between them.

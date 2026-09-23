@@ -14,19 +14,19 @@ Computes and caches to cache/krishnan_data.json:
                          region vs the uniform expectation (region width /
                          track length); near-reward (end-of-track) enrichment.
   4. spatial_correlation_by_region -- what the Figure2 sheet actually provides
-                         (it does NOT contain field density; see utils docstrings).
+                         (it does not contain field density; see utils docstrings).
 
 House rules honoured: every empirical number comes from MOESM4_source_data.xlsx
 via utils.py; values quoted from the paper text appear only inside
 'annotation_*' fields, clearly marked as annotations.
 
 Track-orientation choice for the DA overlay (documented): the reward sits at
-the END of the 200 cm track -- the sheet's rewarded-condition DA signal ramps
+the end of the 200 cm track -- the sheet's rewarded-condition DA signal ramps
 Start < Middle < End, and the paper describes a reward-proximity ramp rising
 toward the reward zone at track end. Hence
-    Start (0-50 cm)   = FAR  from reward  (normalized distance-to-reward ~0.875)
-    Middle (50-150 cm) = MID                (~0.5)
-    End (150-200 cm)   = NEAR reward       (~0.125)
+    Start (0-50 cm)   = far  from reward  (normalized distance-to-reward ~0.875)
+    Middle (50-150 cm) = mid                (~0.5)
+    End (150-200 cm)   = near reward       (~0.125)
 using region centers on a track normalized to length 1. Bin-averaged model
 values (mean of the kernel over each region span) are also provided, since the
 data are per-region means rather than point samples.
@@ -88,7 +88,7 @@ def reliability_analysis() -> dict:
     df = load_reliability()
     n = len(df)
 
-    # Paired tests; pairing variable: ANIMAL (each row = one animal measured
+    # Paired tests; pairing variable: animal (each row = one animal measured
     # in all three conditions).
     def paired(a, b):
         w = stats.wilcoxon(df[a], df[b], alternative="two-sided", method="exact")
@@ -270,7 +270,7 @@ def field_density_analysis() -> dict:
             "chi2_vs_uniform": {"chi2": float(chi2.statistic), "p": float(chi2.pvalue)},
         }
 
-    # Per-animal end-of-track (reward-zone) fraction; paired tests, pairing: ANIMAL.
+    # Per-animal end-of-track (reward-zone) fraction; paired tests, pairing: animal.
     piv = frac_df.pivot(index="animal", columns="condition", values="pct_end") / 100.0
     piv = piv[["rewarded", "re_low", "re_rewarded"]]
 

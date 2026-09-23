@@ -44,3 +44,9 @@ external_data/sosa2025/code_sosa/
 /paper/
 # regenerate_all.py per-figure run logs (transient; warnings + progress)
 paper_code/figures/_logs/
+
+# --- code-review scratch output (not part of the paper) ---
+# Reconstruction/diagnostic figures written by the code review. The write-up
+# itself (paper_code/code_review.md) stays tracked; these are regenerable and
+# must not be mistaken for assembled paper figures.
+paper_code/code_review_figures/

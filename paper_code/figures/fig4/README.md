@@ -11,11 +11,11 @@ Because trajectory and occupancy are identical in all three, any field movement 
 
 ## Data
 
-- Training: `Code/ratinabox_relocation.py`, seeds 0–9
+- Training: `paper_code/model/ratinabox_relocation.py`, seeds 0–9
 - Config: `--n_cycles 2 --max_episodes 2000 --reward_pred_head --rnn_rl_lr 5e-5`
 - Reward A: (0.3, 0.3), Reward B: (0.7, 0.7)
 - Outputs: `Repro/multi_seed_reloc/reloc_seed{N}/`
-- Seed ranking (entropy gate + tracking score): `New_Code/select_best_seed_fig4.py`
+- Seed ranking (entropy gate + tracking score): `paper_code/runs/select_best_seed_fig4.py`
 - Displayed network: the MEDIAN entropy-gate-passing seed by tracking quality
   (`reloc_seed9`, rank 17 of 32 clean seeds; entropy 7.55 / 7.60 / 7.47 bits
   across the three periods, gate ≥ 5.5). Set in `utils.py` (`DEFAULT_RUN`).
@@ -44,16 +44,16 @@ Because trajectory and occupancy are identical in all three, any field movement 
 # Run from repo root
 
 # Training (parallel with Fig 3, ~70 min on 2 GPUs):
-python New_Code/run_fig34_parallel.py --only fig4 --gpus 0 1
+python paper_code/runs/run_fig34_parallel.py --only fig4 --gpus 0 1
 
 # Pick best seed and regenerate:
-python New_Code/select_best_seed_fig4.py
+python paper_code/runs/select_best_seed_fig4.py
 
 # Or manually:
-python "code_analysis/figure 4/generate_figure4.py" \
+python paper_code/figures/fig4/generate_figure4.py \
     --run_dir Repro/multi_seed_reloc/reloc_seed9 --no_show
 
-python "code_analysis/figure 4/generate_figure4_supp.py" \
+python paper_code/figures/fig4/generate_figure4_supp.py \
     --multi_seed_dir Repro/multi_seed_reloc \
     --no_show
 ```

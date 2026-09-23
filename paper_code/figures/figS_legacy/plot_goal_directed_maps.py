@@ -31,6 +31,7 @@ def save_figure(fig, save_path, no_show=False, despine=True):
     plt.close(fig)
 
 def build_rate_maps(df_beh, df_act, m=32, hidden_dim=512):
+    """Bin hidden-unit activity into (hidden_dim, m, m) rate maps indexed [x_bin, y_bin], plus the occupancy map."""
     n_steps = len(df_beh)
     act_mat = df_act["activity"].values.reshape(n_steps, hidden_dim)
     x_bin = np.clip((df_beh["x"].values * m).astype(int), 0, m - 1)
@@ -48,6 +49,7 @@ def build_rate_maps(df_beh, df_act, m=32, hidden_dim=512):
 
 
 def compute_skaggs(rate_maps, occupancy):
+    """Skaggs spatial information per unit, normalised by the unweighted mean over all m*m bins."""
     hidden_dim = rate_maps.shape[0]
     occ_flat = occupancy.reshape(-1)                    # (m*m,)
     rate_flat = rate_maps.reshape(hidden_dim, -1).T     # (m*m, N)
@@ -58,6 +60,7 @@ def compute_skaggs(rate_maps, occupancy):
 
 
 def smooth_and_norm(rm, sigma=1.5):
+    """Gaussian-smooth one rate map and min-max normalise it to [0, 1]."""
     s = gaussian_filter(rm, sigma=sigma)
     if s.max() > 0:
         s = (s - s.min()) / (s.max() - s.min())
@@ -65,6 +68,7 @@ def smooth_and_norm(rm, sigma=1.5):
 
 
 def field_center_of_mass(rm):
+    """Activity-weighted field centre. Returns its two components in (y, x) order, matching `field_peak`."""
     m = rm.shape[0]
     total = rm.sum()
     if total <= 0:
@@ -76,6 +80,7 @@ def field_center_of_mass(rm):
     return (cx, cy)
 
 def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title_suffix="", save_path=None, no_show=False):
+    """Grid contrasting each cell's random-walk rate map (top block) with its goal-directed one (bottom)."""
     n = len(top_idx)
     ncols = min(10, n)
     nrows_per = int(np.ceil(n / ncols))
@@ -112,6 +117,7 @@ def fig_comparison(rm_rw, skaggs_rw, rm_gc, skaggs_gc,top_idx, reward_bin, title
 
 def fig_occupancy(occ_rw, occ_gc, reward_bin, save_path=None, no_show=False,
                    label_a="Random Walk", label_b="Goal-Directed"):
+    """Side-by-side occupancy maps for the random-walk and goal-directed probes."""
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
     rx, ry = reward_bin
     for ax, occ, label in zip(axes, [occ_rw, occ_gc], [label_a, label_b]):
@@ -128,6 +134,7 @@ def fig_occupancy(occ_rw, occ_gc, reward_bin, save_path=None, no_show=False,
 
 def fig_ori(rm_rw, skaggs_rw, rm_gc, skaggs_gc, reward_pos, threshold=0.05, save_path=None, no_show=False,
             label_a="Random walk", label_b="Goal-directed"):
+    """Over-representation index: how field density near the reward compares between the two probes."""
     def centres(rm, sk):
         place_ids = np.where(sk >= threshold)[0]
         if len(place_ids) == 0:
@@ -168,6 +175,7 @@ def fig_ori(rm_rw, skaggs_rw, rm_gc, skaggs_gc, reward_pos, threshold=0.05, save
 
 
 def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", save_path=None, no_show=False):
+    """10x10 grid of the top units' smoothed rate maps, with the reward marked."""
     n_show = min(100, len(top_idx))
     rx, ry = reward_bin
 
@@ -186,6 +194,7 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title="Cognitive Map", 
     save_figure(fig, save_path, no_show, despine=False)
 
 def _load_cycle_rate_maps(data_dir, m=32, hidden_dim=512, probe_type="goal"):
+    """Rate maps and Skaggs scores for every cycle of one probe type."""
     if probe_type == "goal":
         cycle_files = sorted([
             f for f in os.listdir(data_dir)
@@ -326,6 +335,7 @@ def fig_100cells_random(rate_maps, reward_bin, mean_rate_threshold=0.01,n_show=1
 
 
 def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_path=None, no_show=False):
+    """One row per cycle, showing how the selected units' maps evolve across training."""
     cycle_files = sorted([
         f for f in os.listdir(data_dir)
         if f.startswith("df_activations_cycle_") and f.endswith(".pkl")
@@ -364,7 +374,7 @@ def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_
 
 
 def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin,save_path=None, no_show=False):
-    """For ONE neuron: top row = prediction (random-walk probe), bottom row = RL (goal-directed probe); one column per cycle."""
+    """For one neuron: top row = prediction (random-walk probe), bottom row = RL (goal-directed probe); one column per cycle."""
     rw_labels = sorted(rw_cycles.keys(), key=_cycle_num)
     goal_labels = sorted(goal_cycles.keys(), key=_cycle_num)
     n = max(len(rw_labels), len(goal_labels))
@@ -513,6 +523,7 @@ def fig_drift_rdm_10(rw_cycles, goal_cycles, skaggs_gc, n_cells=100,save_path=No
 
 
 def main():
+    """Parse arguments, load both probes, and write every figure in this module."""
     parser = argparse.ArgumentParser(
         description="Re-plot cognitive maps from saved pkl data (no retraining needed)."
     )

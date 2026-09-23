@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Smoke test for the paper_code/ pipeline.
 
-Verifies that the code *runs* -- it deliberately does NOT regenerate any figure
+Verifies that the code *runs* -- it deliberately does not regenerate any figure
 (that is slow, and it would overwrite the PDFs the manuscript currently points at).
 
-SIDE-EFFECT FREE BY CONSTRUCTION, and that took a bug to learn: scripts without
+side-effect free by construction, and that took a bug to learn: scripts without
 an `if __name__ == "__main__"` guard do their work at *import* time, and scripts
 without argparse ignore `--help` and do their work anyway. An earlier version of
 this file hit both -- it rewrote external_data/sosa2025/MANIFEST.json (destroying
@@ -13,7 +13,7 @@ classes are now detected and skipped with a `warn`; see has_main_guard() and
 uses_argparse(). Keep it that way.
 
 Phases:
-  deps     every third-party import resolves, + pdftoppm on PATH (Poppler is
+  deps     every third-party import resolves, + pdftoppm on $PATH (Poppler is
            shelled out to by every figure assembler)
   imports  every library module and every figure dir's utils/analysis import
            cleanly, using the same sys.path shims the generators use
@@ -81,7 +81,7 @@ def phase_deps() -> None:
 def has_main_guard(path: Path) -> bool:
     """True if the file's work is behind `if __name__ == "__main__"`.
 
-    Files WITHOUT a guard execute their work at import time. This matters: an
+    Files without a guard execute their work at import time. This matters: an
     early version of this smoke test imported every file under external/, which
     executed build_manifest.py's unguarded top-level code and rewrote
     external_data/sosa2025/MANIFEST.json, replacing the real dataset download
@@ -94,7 +94,7 @@ def has_main_guard(path: Path) -> bool:
 def uses_argparse(path: Path) -> bool:
     """True if the script actually parses argv.
 
-    A script without argparse IGNORES `--help` and just does its work: that is
+    A script without argparse ignores `--help` and just does its work: that is
     how the same early version regenerated figS_sosa's PDF, because
     generate_figure_sosa.py takes no arguments at all. Only pass --help to
     scripts that will honour it.
@@ -180,7 +180,7 @@ def phase_cli() -> None:
     print("\n== cli (--help) ==")
     for p in _entry_points():
         rel = str(p.relative_to(PC))
-        # Executing a script that ignores argv would DO ITS WORK -- regenerating
+        # Executing a script that ignores argv would do its work -- regenerating
         # figures or rewriting data. Only --help scripts that parse argv.
         if not uses_argparse(p):
             # Fall back to an import test where that is safe: with the work

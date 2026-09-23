@@ -9,12 +9,12 @@ Panels
   c  Behavior/remapping decoupling: cycle-2 test success vs % cells toward B
   e  Predictions table for real hippocampal experiments
 
-Panels d (proactive interference) and f (SR comparison) were REMOVED; see the
+Panels d (proactive interference) and f (SR comparison) were removed; see the
 comments at their former call sites for why. Panel keys are left unrenumbered
 so that cached panel_*.pdf files and downstream references stay unambiguous.
 
 Usage:
-    python "code_analysis/figure 5/generate_figure5.py" --no_show
+    python paper_code/figures/fig5/generate_figure5.py --no_show
 """
 from __future__ import annotations
 
@@ -48,13 +48,13 @@ from utils import (  # noqa: E402
 )
 
 sys.path.insert(0, str(REPO / "paper_code" / "lib"))
-# NOTE: the former panel f (SR comparison, via the retired New_Code/sr_vs_model_panel.py)
-# has been REMOVED. Its metric projected each cell's shift onto a toward-reward
+# NOTE: the former panel f (SR comparison) has been removed. Its metric
+# projected each cell's shift onto a toward-reward
 # direction taken from that cell's PRE position, which scores generic drift
-# toward the arena centre as "toward reward"; a shuffled-cell null returned MORE
+# toward the arena centre as "toward reward"; a shuffled-cell null returned more
 # than the observed value, and the panel consequently reported head-ON and
 # no-head as indistinguishable (p = 0.83). The corrected SR comparison now lives
-# in code_analysis/figure_sr/ as its own supplementary figure. Panel b of THIS
+# in paper_code/figures/figS_sr/ as its own supplementary figure. Panel b of this
 # figure uses the correct change-in-distance metric and is unaffected.
 from analysis_helpers import seed_is_clean  # noqa: E402
 
@@ -84,6 +84,7 @@ def _discover_reloc_clean_seeds(reloc_dir: Path) -> list[int]:
 
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -98,6 +99,7 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
 # ---------------------------------------------------------------------------
 
 def fig_schematic(stem) -> Path:
+    """Panel a -- schematic contrasting occupancy-driven and weight-driven remapping."""
     fig, ax = plt.subplots(figsize=(7.2, 3.0))
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 4.2)
@@ -166,6 +168,7 @@ def fig_schematic(stem) -> Path:
 # ---------------------------------------------------------------------------
 
 def fig_double_dissociation(rows: list[dict], stem) -> Path:
+    """Panel b -- frozen-replay weight-driven shift, head-ON against no-head, paired by seed."""
     stats = double_dissociation_stats(rows)
     # analysis.py returns positive = toward reward, but Figures 2-4 and the
     # manuscript all use negative = toward reward. Negate here, at the plotting
@@ -216,6 +219,7 @@ def fig_double_dissociation(rows: list[dict], stem) -> Path:
 # ---------------------------------------------------------------------------
 
 def fig_behavior_decoupling(rows: list[dict], stem) -> Path:
+    """Panel c -- cycle-2 test success against the percentage of cells moving toward reward B."""
     xs = np.array([r["succ_c2"] for r in rows])
     ys = np.array([r["frac_B"] for r in rows]) * 100
     seeds = [r["seed"] for r in rows]
@@ -243,6 +247,7 @@ def fig_behavior_decoupling(rows: list[dict], stem) -> Path:
 # ---------------------------------------------------------------------------
 
 def fig_proactive_interference(rows: list[dict], stem) -> Path:
+    """Retired panel d (A-encoding strength against B-remapping). Kept for reference; nothing calls it -- see the note at the top of this module for why it was dropped."""
     xs = np.array([r["delta_A"] for r in rows])
     ys = np.array([r["delta_B"] for r in rows])
     seeds = [r["seed"] for r in rows]
@@ -283,8 +288,8 @@ PREDICTIONS = [
      "Correlate per-animal learning\nspeed with remapping magnitude",
      "strong positive\ncorrelation",
      "weak / no\ncorrelation"),
-    # Row 4 (proactive interference) REMOVED together with panel d: the model
-    # data show r=+0.26, p=0.152, i.e. the OPPOSITE sign to the "negative
+    # Row 4 (proactive interference) removed together with panel d: the model
+    # data show r=+0.26, p=0.152, i.e. the opposite sign to the "negative
     # correlation" this row predicted under H2. Publishing a prediction the
     # model itself contradicts would be indefensible.
     ("4. Goal-vector vs\nfield density",
@@ -295,6 +300,7 @@ PREDICTIONS = [
 
 
 def fig_predictions_table(stem) -> Path:
+    """Panel e -- the predictions table, rendered as a figure."""
     n_rows = len(PREDICTIONS)
     fig, ax = plt.subplots(figsize=(7.2, 1.9))
     ax.axis("off")
@@ -331,6 +337,7 @@ def fig_predictions_table(stem) -> Path:
 # ---------------------------------------------------------------------------
 
 def assemble_figure(panel_pdfs: dict[str, Path], stem, save_dpi: int = 300):
+    """Place each panel PDF in its slot and write the composite page as PDF and PNG."""
     stem = Path(stem).with_suffix("")
     ensure_dir(stem.parent)
     pdf_path = stem.with_suffix(".pdf")
@@ -393,10 +400,11 @@ def assemble_figure(panel_pdfs: dict[str, Path], stem, save_dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 # fig_sr_comparison() removed — see the note at the top of this file.
-# The corrected version is code_analysis/figure_sr/generate_figure_sr_supp.py.
+# The corrected version is paper_code/figures/figS_sr/generate_figure_sr_supp.py.
 
 
 def parse_args():
+    """Command-line arguments: run directories, output directory, panel subset."""
     p = argparse.ArgumentParser(description="Generate Figure 5 (dissociating the two hypotheses).")
     p.add_argument("--output_dir", default=str(FIGURES_DIR))
     p.add_argument("--panels", default="a,b,c,e")
@@ -408,6 +416,7 @@ def parse_args():
 
 
 def main():
+    """Build every requested panel and assemble the figure."""
     args = parse_args()
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")
     figures_dir = ensure_dir(Path(args.output_dir))
@@ -444,7 +453,7 @@ def main():
             _, pdf = fig_behavior_decoupling(reloc_rows, panels_dir / "panel_c")
             panel_pdfs["c"] = pdf
 
-        # Panel d (proactive interference) REMOVED. It reported
+        # Panel d (proactive interference) removed. It reported
         # Spearman r=+0.26, p=0.152 under a title asserting "strong A-encoding
         # predicts resistance to B-remapping": not significant, and the sign is
         # opposite to the claim (with negative = toward reward, a positive

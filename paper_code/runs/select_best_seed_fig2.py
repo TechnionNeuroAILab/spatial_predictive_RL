@@ -312,7 +312,7 @@ def main() -> None:
 To regenerate Figure 2 with the best seed ({best['seed']}), run:
 
     cd {REPO}
-    python "code_analysis/figure 2/generate_figure2.py" \\
+    python paper_code/figures/fig2/generate_figure2.py \\
         --run_dir "{best_run_dir}" \\
         --output_dir "{fig2_out}" \\
         --reward_pos 0.3 0.3 \\

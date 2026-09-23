@@ -5,7 +5,7 @@ counterparts on everything except the recurrent learning rate.
 
 Three independent checks per seed:
 
-1. **Config symmetric difference.** rigid vs no-head must differ ONLY in
+1. **Config symmetric difference.** rigid vs no-head must differ only in
    {output_dir, rnn_rl_learning_rate}; rigid vs head additionally in the two
    reward-head keys. Anything else means the arg lists have drifted apart.
 
@@ -16,7 +16,7 @@ Three independent checks per seed:
    the same map. This is the strong check: it cannot be satisfied by accident.
 
 3. **Rigidity signature.** The frozen-replay shift should be ~0. Crucially we
-   also report the mean per-cell DISPLACEMENT MAGNITUDE, which distinguishes
+   also report the mean per-cell displacement magnitude, which distinguishes
    "fields moved but not net-toward-reward" from "fields did not move at all".
    Only the latter supports the claim that plasticity is the gate.
 
@@ -79,9 +79,9 @@ def main():
                    for p in RIGID.glob("rigid_seed*") if p.is_dir())
     # Seed 42 began as the reproducibility smoke test, but it is a fully valid
     # matched triple (gate-clean, with plastic partners in both conditions), so
-    # it is INCLUDED here — excluding valid data to obtain a round n would be
+    # it is included here — excluding valid data to obtain a round n would be
     # worse than reporting it. This keeps the verifier's seed set identical to
-    # the one code_analysis/figure_sr/ discovers, so their counts agree.
+    # the one paper_code/figures/figS_sr/ discovers, so their counts agree.
     if not seeds:
         print("No rigid seeds found yet.")
         return
@@ -113,7 +113,7 @@ def main():
         rg = rigidity(r)
         ok_cfg += cfg_ok
         ok_p1 += p1_ok
-        # The paper's rigid statistic must be filtered by the SAME pre-specified
+        # The paper's rigid statistic must be filtered by the same pre-specified
         # entropy gate as every other condition, so apply it here rather than
         # reporting an unfiltered number that would not match the manuscript.
         gated = seed_is_clean(str(r / "data"), [PRE, POST], 5.5)

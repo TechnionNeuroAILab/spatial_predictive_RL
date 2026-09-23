@@ -3,7 +3,7 @@
 Supplementary Figure 2 — aggregate statistics across all seeds (for Figure 2).
 
 Figure 2 asks: does remapping come from exploration (A→B) or just weight updates
-on the SAME frozen trajectory (C:pre→post)? This supplement shows that contrast
+on the same frozen trajectory (C:pre→post)? This supplement shows that contrast
 generalises across all seeds.
 
 Panels:
@@ -14,8 +14,8 @@ Panels:
   e  Peak vs COM convergent-validity scatter for the corrected C:pre→post contrast
 
 Usage (run from repo root):
-    python "code_analysis/figure 2/generate_figure2_supp.py" --no_show
-    python "code_analysis/figure 2/generate_figure2_supp.py" \
+    python paper_code/figures/fig2/generate_figure2_supp.py --no_show
+    python paper_code/figures/fig2/generate_figure2_supp.py \
         --multi_seed_dir Repro/multi_seed --seeds 0 1 2 ... 49 --no_show
 """
 from __future__ import annotations
@@ -56,6 +56,7 @@ REWARD_POS = np.asarray(DEFAULT_REWARD, dtype=float)
 # ---------------------------------------------------------------------------
 
 def load_seed(seed: int, multi_seed_dir: Path, skaggs_threshold: float = 0.05):
+    """Per-seed summary row for the A->B and frozen-replay contrasts; None if the run is missing or fails."""
     run_dir = multi_seed_dir / f"nohead_seed{seed}"
     data_dir = run_dir / "data"
     if not data_dir.exists():
@@ -87,6 +88,7 @@ def load_seed(seed: int, multi_seed_dir: Path, skaggs_threshold: float = 0.05):
 # ---------------------------------------------------------------------------
 
 def _wilcoxon_p(vals, alternative="less"):
+    """Paired two-sided Wilcoxon p-value; NaN when there are too few pairs or no differences."""
     try:
         _, p = _wilcoxon(vals, alternative=alternative)
         return float(p)
@@ -95,6 +97,7 @@ def _wilcoxon_p(vals, alternative="less"):
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return ""
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
@@ -265,6 +268,7 @@ def fig_supp_peak_vs_com(rows, stem):
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -333,6 +337,7 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 def parse_args():
+    """Command-line arguments: multi-seed directory, seed list, output directory."""
     p = argparse.ArgumentParser()
     p.add_argument("--multi_seed_dir", default=str(REPO / "Repro" / "multi_seed"))
     p.add_argument("--seeds", type=int, nargs="+", default=list(range(50)))
@@ -347,6 +352,7 @@ def parse_args():
 
 
 def main():
+    """Load every seed, build the panels, and assemble the supplementary figure."""
     args = parse_args()
     multi_seed_dir = Path(args.multi_seed_dir)
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")

@@ -28,6 +28,7 @@ def x_tertile_labels(x: np.ndarray) -> np.ndarray:
 
 
 def load_phase_probe(data_dir: Path):
+    """Load one probe period as (positions, heading, activations)."""
     beh = pd.read_pickle(data_dir / "df_behavior_before.pkl")
     act = pd.read_pickle(data_dir / "df_activations_before.pkl")
     n = len(beh)
@@ -38,6 +39,7 @@ def load_phase_probe(data_dir: Path):
 
 
 def _subsample(n: int, max_points: int, seed: int = 42) -> np.ndarray:
+    """Sorted random subset of `n` row indices, capped at `max_points`."""
     if n <= max_points:
         return np.arange(n)
     rng = np.random.default_rng(seed)

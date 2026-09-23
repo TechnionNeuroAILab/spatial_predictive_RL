@@ -2,9 +2,9 @@
 """
 Self-contained Figure 1 panel generator.
 
-All outputs (PNG + PDF) go to Code/figure 1/figures/ by default.
+All outputs (PNG + PDF) go to paper_code/figures/fig1/figures/ by default.
 
-    python "Code/figure 1/generate_figure1.py" --no_show
+    python paper_code/figures/fig1/generate_figure1.py --no_show
 """
 from __future__ import annotations
 
@@ -68,6 +68,7 @@ REPO_ROOT = SCRIPT_DIR.parents[2]
 
 
 def placeholder_panel(stem, label: str):
+    """Draw a dashed 'replace manually' box, for panels that are hand-made assets."""
     fig, ax = plt.subplots(figsize=(1.6, 1.6))
     ax.axis("off")
     ax.text(0.5, 0.55, label, ha="center", va="center", fontsize=7, transform=ax.transAxes)
@@ -307,6 +308,7 @@ def assemble_figure(panel_paths: dict[str, Path], stem, save_dpi: int = 300):
 
 
 def render_top_skaggs(df_beh, df_act, reward_bin, stem, m=32, hidden_dim=512, n_top=38, skaggs_threshold=0.05):
+    """Rate-map grid of the highest-Skaggs units, each titled with its score."""
     n_steps = len(df_beh)
     if len(df_act) == n_steps * hidden_dim:
         act_mat = df_act["activity"].values.reshape(n_steps, hidden_dim)
@@ -362,6 +364,7 @@ def render_top_skaggs(df_beh, df_act, reward_bin, stem, m=32, hidden_dim=512, n_
 
 
 def stitch_pngs_horiz(png_paths: list[Path], stem):
+    """Paste PNG panels side by side on a white canvas; write the result as PNG and PDF."""
     images = [Image.open(p).convert("RGB") for p in png_paths]
     gap = 8
     h = max(im.height for im in images)
@@ -384,6 +387,7 @@ def stitch_pngs_horiz(png_paths: list[Path], stem):
 
 
 def generate_all(args):
+    """Render every requested panel, then assemble the composite figure."""
     run_dir = Path(args.run_dir).resolve()
     data_dir = run_dir / "data"
     panels_dir = Path(args.output_dir).resolve() / "panels"
@@ -564,6 +568,7 @@ def generate_all(args):
 
 
 def parse_args():
+    """Command-line arguments: run directory, reward position, output paths, panel subset."""
     p = argparse.ArgumentParser(description="Generate Figure 1 panels (self-contained).")
     p.add_argument("--run_dir", default=str(DEFAULT_RUN))
     p.add_argument("--output_dir", default=str(FIGURES_DIR))

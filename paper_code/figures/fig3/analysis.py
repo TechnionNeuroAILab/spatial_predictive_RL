@@ -16,8 +16,8 @@ _HERE = Path(__file__).resolve().parent
 # Figure 2's analysis.py (and figure 1's rate_maps.py, which it imports) do a
 # bare `from utils import ...`, which resolves against whatever `utils`
 # module is currently cached in sys.modules. Since figure 2 and figure 3 each
-# have their own utils.py, we must pop the cache before AND after exec'ing
-# figure 2's module so that THIS figure's own `from utils import ...` (in
+# have their own utils.py, we must pop the cache before and after exec'ing
+# figure 2's module so that this figure's own `from utils import ...` (in
 # generate_figure3.py) picks up figure 3's utils.py, not a stale figure-2
 # one left behind in sys.modules (same pattern as figure 5/analysis.py).
 _saved_utils = sys.modules.pop("utils", None)
@@ -37,7 +37,7 @@ for _p in (str(_FIG1), str(_FIG2_DIR)):
 sys.modules.pop("utils", None)
 _spec.loader.exec_module(_fig2)
 
-# Restore (or clear) the utils cache so THIS figure's own `from utils import ...`
+# Restore (or clear) the utils cache so this figure's own `from utils import ...`
 # (in generate_figure3.py) picks up figure 3's utils.py, not figure 2's.
 sys.modules.pop("utils", None)
 if _saved_utils is not None:

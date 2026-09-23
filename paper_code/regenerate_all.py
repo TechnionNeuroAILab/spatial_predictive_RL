@@ -3,10 +3,10 @@
 
 This encodes the canonical invocation of each generator -- in particular the
 explicit `--run_dir` for fig2/fig3, whose `utils.py` DEFAULT_RUN points at a
-different run from the shipped exemplar (see CLEANUP_TODO item 4). Before this
+different run from the shipped exemplar (see cleanup_todo item 4). Before this
 file existed those arguments lived only in README prose.
 
-It does NOT train anything: every figure is built from the run data already in
+It does not train anything: every figure is built from the run data already in
 Repro/ and New_Results_v3/. Rebuilding the JSON caches is a separate, much more
 expensive step (see --with-caches).
 
@@ -38,7 +38,7 @@ LOGS = PC / "figures" / "_logs"
 # (provenance: Repro/*/aggregate/fig*_multi_seed_summary.json + the
 # select_best_seed_fig*.py rankings).
 JOBS: dict[str, tuple[Path, list[str], str]] = {
-    # fig1's exemplar run is nohead_seed0, NOT its utils.py DEFAULT_RUN
+    # fig1's exemplar run is nohead_seed0, not its utils.py DEFAULT_RUN
     # (nohead_seed42). Established by re-deriving the panel-d neuron selection
     # (seed 42, 8 cells) across all 24 candidate run dirs: only nohead_seed0
     # reproduces the shipped IDs [509, 352, 439, 324, 222, 227, 45, 391];
@@ -83,7 +83,7 @@ JOBS: dict[str, tuple[Path, list[str], str]] = {
                   "figS_sosa/figures_supp/figure_sosa_supp_raw.pdf"),
 }
 
-# `--no_show` is universal EXCEPT for generate_figure_sosa.py, which parses no
+# `--no_show` is universal except for generate_figure_sosa.py, which parses no
 # arguments at all and would choke on an unknown flag being ignored silently.
 NO_SHOW_UNSUPPORTED = {"figS_sosa"}
 

@@ -5,11 +5,11 @@ claim.
 
 Every existing run in Repro/ uses rnn_rl_lr = 5e-5. The only rigid-weight run in
 the repo at the time of writing is single-seed. This runner produces a 20-seed
-rigid condition MATCHED to the no-head condition on every other axis, so
+rigid condition matched to the no-head condition on every other axis, so
 "plasticity gates remapping" becomes a clean multi-seed contrast rather than an
 n=1 anecdote.
 
-The match is enforced STRUCTURALLY: RIGID_BASE is derived from
+The match is enforced structurally: RIGID_BASE is derived from
 run_fig23_extra_seeds.FIG2_BASE by swapping a single value, and an assertion
 checks that the symmetric difference is exactly {"5e-5", "2e-6"}. Editing the
 no-head arg list without editing this one is therefore a loud failure, not a
@@ -63,7 +63,7 @@ PRUNE_KEEP = ["replay_c1_pred", "replay_c1_postrl", "cycle_1", "cycle_1_goal"]
 def _already_done(seed: int) -> bool:
     """Completion sentinel.
 
-    Deliberately metrics.json, NOT df_activations_cycle_1.pkl (which the other
+    Deliberately metrics.json, not df_activations_cycle_1.pkl (which the other
     runners use): cycle_1 is written ~5 minutes before the run actually
     finishes, so a crash in that window would be silently treated as complete.
     metrics.json is written last.

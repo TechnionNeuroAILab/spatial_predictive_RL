@@ -8,13 +8,13 @@ Panels:
   a  Entropy-gate (MIN_ENTROPY) sensitivity sweep: double-dissociation stat
      (panel b of the main figure) and relocation clean-seed count vs threshold
   b  Skaggs-threshold sensitivity for the same double-dissociation stat
-  c  SR-predicted shift DIRECTION test (A→B contrast): pooled angle histogram
+  c  SR-predicted shift direction test (A→B contrast): pooled angle histogram
      (Rayleigh test) + residual-vs-distance-to-reward correlation
   d  Relocation correlation-vs-n-seeds robustness: how panels c/d of the main
      figure (Spearman rho) stabilize as the clean-seed pool grows
 
 Usage (run from repo root):
-    python "code_analysis/figure 5/generate_figure5_supp.py" --no_show
+    python paper_code/figures/fig5/generate_figure5_supp.py --no_show
 """
 from __future__ import annotations
 
@@ -82,13 +82,14 @@ def _discover_reloc_seeds(reloc_dir: Path) -> list[int]:
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return "n/a"
     return f"{p:.1e}" if p < 0.001 else f"{p:.3f}"
 
 
 # ---------------------------------------------------------------------------
-# Shared expensive precomputation (loaded ONCE, reused across every threshold
+# Shared expensive precomputation (loaded once, reused across every threshold
 # in the entropy/Skaggs sweeps below -- avoids reloading multi-hundred-MB
 # rate-map pickles once per sweep point).
 # ---------------------------------------------------------------------------
@@ -109,7 +110,7 @@ def _M_GRID_entropy(peak_xy, place_mask, m_grid=32):
 
 
 def _precompute_frozen_replay_raw(cond_dir, prefix, seeds):
-    """Load (sk_pre, pk_pre, sk_post, pk_post) ONCE per seed for the cycle-1
+    """Load (sk_pre, pk_pre, sk_post, pk_post) once per seed for the cycle-1
     frozen-replay periods. Reused by both the entropy sweep (panel a) and
     the Skaggs sweep (panel b) so rate maps are only loaded from disk once."""
     out = {}
@@ -153,11 +154,12 @@ def _delta_at_skaggs_threshold(raw, reward, skaggs_thr, min_cells=10):
 # ---------------------------------------------------------------------------
 
 def fig_supp_entropy_sensitivity(raw_nh, raw_hd, reloc_dir, stem):
+    """Panel a -- how the double-dissociation statistic and the clean-seed count move with the entropy gate."""
     from scipy.stats import wilcoxon as _wilcoxon
     common_seeds = sorted(set(raw_nh) & set(raw_hd))
     REWARD_A = np.array([0.3, 0.3])
 
-    # entropy + delta computed ONCE per seed (independent of the swept threshold)
+    # entropy + delta computed once per seed (independent of the swept threshold)
     ent_nh = {s: _entropy_at_threshold(raw_nh[s]) for s in common_seeds}
     ent_hd = {s: _entropy_at_threshold(raw_hd[s]) for s in common_seeds}
     delta_nh = {s: _delta_at_skaggs_threshold(raw_nh[s], REWARD_A, SKAGGS_THRESHOLD) for s in common_seeds}
@@ -185,7 +187,7 @@ def fig_supp_entropy_sensitivity(raw_nh, raw_hd, reloc_dir, stem):
 
     print("  Precomputing relocation entropy sensitivity...")
     all_reloc_seeds = _discover_reloc_seeds(reloc_dir)
-    # entropy VALUE per seed computed ONCE (independent of min_entropy --
+    # entropy value per seed computed once (independent of min_entropy --
     # min_entropy only thresholds the already-computed value below)
     reloc_min_ent = {}
     for s in all_reloc_seeds:
@@ -227,6 +229,7 @@ def fig_supp_entropy_sensitivity(raw_nh, raw_hd, reloc_dir, stem):
 # ---------------------------------------------------------------------------
 
 def fig_supp_skaggs_sensitivity(raw_nh, raw_hd, stem):
+    """Panel b -- the same double-dissociation statistic swept over the Skaggs threshold."""
     from scipy.stats import wilcoxon as _wilcoxon
     common_seeds = sorted(set(raw_nh) & set(raw_hd))
     # seed selection (entropy gate) fixed at MIN_ENTROPY / default SKAGGS_THRESHOLD,
@@ -275,10 +278,11 @@ def fig_supp_skaggs_sensitivity(raw_nh, raw_hd, stem):
 
 
 # ---------------------------------------------------------------------------
-# Panel c — SR-predicted shift DIRECTION test
+# Panel c — SR-predicted shift direction test
 # ---------------------------------------------------------------------------
 
 def fig_supp_sr_direction(nohead_dir, head_dir, seeds, stem):
+    """Panel c -- SR-predicted against actual shift direction: pooled angle histogram and residual against distance to reward."""
     rows_nh = load_all_seeds_direction(nohead_dir, "nohead_", seeds)
     rows_hd = load_all_seeds_direction(head_dir, "head_", seeds)
 
@@ -331,6 +335,7 @@ def fig_supp_sr_direction(nohead_dir, head_dir, seeds, stem):
 # ---------------------------------------------------------------------------
 
 def fig_supp_reloc_robustness(reloc_dir, clean_seeds, stem, n_resamples=200):
+    """Panel d -- how the relocation Spearman correlations stabilise as the clean-seed pool grows."""
     n_clean = len(clean_seeds)
     if n_clean < 4:
         print(f"  WARNING: only {n_clean} clean relocation seeds -- robustness curve will be short.")
@@ -389,6 +394,7 @@ def fig_supp_reloc_robustness(reloc_dir, clean_seeds, stem, n_resamples=200):
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -454,6 +460,7 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 def parse_args():
+    """Command-line arguments: condition directories, seed list, output directory, panel subset."""
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--nohead_dir", default=str(NOHEAD_DIR))
@@ -474,6 +481,7 @@ def parse_args():
 
 
 def main():
+    """Precompute the shared frozen-replay maps, build the requested panels, and assemble the figure."""
     args = parse_args()
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")
     ensure_dir(Path(args.output_dir))
@@ -481,7 +489,7 @@ def main():
     nohead_dir, head_dir, reloc_dir = Path(args.nohead_dir), Path(args.head_dir), Path(args.reloc_dir)
     panel_pdfs: dict[str, Path] = {}
 
-    # Panels a and b both sweep thresholds over the SAME underlying
+    # Panels a and b both sweep thresholds over the same underlying
     # frozen-replay rate maps -- precompute once here and reuse, rather than
     # each panel independently reloading from disk.
     if {"a", "b"} & args.panels:

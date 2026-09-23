@@ -3,7 +3,7 @@ Successor-representation supplementary figure — analysis.
 
 Why this figure exists
 ----------------------
-The previous SR panel (the retired New_Code/sr_vs_model_panel.py, Figure 5 panel f)
+The previous SR panel (the retired Figure 5 panel f)
 reported that head-ON and no-head networks were indistinguishable
 (0.2554 vs 0.2556, p = 0.83) — erasing the paper's central effect. It was
 wrong. Its metric projected each cell's displacement onto a toward-reward
@@ -14,7 +14,7 @@ unit vector computed from that cell's PRE position:
 With an off-centre reward, any drift toward the middle of the arena scores
 as "toward reward" for the many cells on the far side, so the statistic
 measures regression to the centre. A shuffled-cell null (re-pair post cells
-with pre cells at random) returns MORE than the observed value, which is the
+with pre cells at random) returns more than the observed value, which is the
 signature of a metric with no signal in it.
 
 The correct statistic is the change in distance to reward,
@@ -24,15 +24,15 @@ Figure 5 panel b already uses.
 
 Choosing nulls
 --------------
-A cell-identity shuffle is ANALYTICALLY INERT for mean dd, because
+A cell-identity shuffle is analytically inert for mean dd, because
 
     mean_i ||post_sigma(i) - R|| == mean_i ||post_i - R||
 
 for any permutation sigma — the mean is a difference of two means, and
 permuting one of them changes nothing. So the shuffle is:
-  - a valid null for the PAIRED statistics (frac_toward, signed-rank), which
+  - a valid null for the paired statistics (frac_toward, signed-rank), which
     it does destroy, and
-  - useless for the mean, for which we instead use a REWARD-LOCATION null:
+  - useless for the mean, for which we instead use a reward-location null:
     recompute dd toward other arena locations. If the shift is genuinely
     reward-directed, dd toward the true reward should stand out against dd
     toward its mirror images and random points.
@@ -74,7 +74,7 @@ MIRROR_LOCATIONS = {
 # ---------------------------------------------------------------------------
 
 def load_pair(run_dir: Path, skaggs_thr: float = SKAGGS_THR):
-    """Gated pre/post PEAK field centres for the frozen-replay pair."""
+    """Gated pre/post peak field centres for the frozen-replay pair."""
     d = Path(run_dir) / "data"
     try:
         sk_a, _, pk_a = load_period_centers(str(d), PRE_PERIOD)
@@ -94,7 +94,7 @@ def delta_distance(pre: np.ndarray, post: np.ndarray, reward=REWARD) -> np.ndarr
 
 
 def projection_toward_reward(pre: np.ndarray, post: np.ndarray, reward=REWARD) -> np.ndarray:
-    """The RETIRED, biased metric — kept only as a labelled negative control.
+    """The retired, biased metric — kept only as a labelled negative control.
 
     Positive = "toward reward" by its own convention. See module docstring for
     why this is not a usable measure of remapping.
@@ -116,6 +116,36 @@ def shuffle_null(pre: np.ndarray, post: np.ndarray, fn, n_perm: int = 200,
 
 
 def per_seed_metrics(run_dir: Path, n_perm: int = 200, seed: int = 0) -> dict | None:
+    """Every shift metric and its null for one seed.
+
+    Reports both the correct metric (`dd_*`, change in distance to reward) and
+    the retired `proj_*` projection alongside the null that exposes its bias,
+    so the two can be compared in the same figure rather than argued about.
+
+    Parameters
+    ----------
+    run_dir : Path
+        One seed's run directory.
+    n_perm : int
+        Permutations for each shuffle null.
+    seed : int
+        rng seed for the nulls.
+
+    Returns
+    -------
+    dict or None
+        Per-seed metrics, or None if the pre/post centre pair will not load.
+
+    Notes
+    -----
+    `disp_mean` is the per-cell displacement magnitude and exists for the rigid
+    control: a near-zero `dd_mean` is ambiguous between "fields did not move"
+    and "fields moved in directions that cancel", and only the former supports
+    the claim that plasticity is the gate.
+
+    `dd_at::<name>` repeats the distance metric against each mirrored reward
+    location -- same cells, different target -- as a location null.
+    """
     pair = load_pair(run_dir)
     if pair is None:
         return None
@@ -129,7 +159,7 @@ def per_seed_metrics(run_dir: Path, n_perm: int = 200, seed: int = 0) -> dict | 
         # correct metric
         "dd_mean": float(dd.mean()),
         "dd_frac_toward": float((dd < 0).mean()),
-        # per-cell displacement MAGNITUDE. Essential for the rigid control:
+        # per-cell displacement magnitude. Essential for the rigid control:
         # a near-zero dd_mean is ambiguous between "fields did not move" and
         # "fields moved in directions that cancel". Only the former supports
         # the claim that plasticity is the gate.
@@ -158,6 +188,7 @@ def per_seed_metrics(run_dir: Path, n_perm: int = 200, seed: int = 0) -> dict | 
 # ---------------------------------------------------------------------------
 
 def discover_seeds(cond_dir: Path, prefix: str) -> list[int]:
+    """Seed numbers under `cond_dir` matching `<prefix>seed<N>` that have a data/ subdirectory."""
     out = []
     for p in sorted(Path(cond_dir).glob(f"{prefix}seed*")):
         if p.is_dir() and (p / "data").exists():
@@ -170,6 +201,7 @@ def discover_seeds(cond_dir: Path, prefix: str) -> list[int]:
 
 def load_condition(cond_dir: Path, prefix: str, seeds=None, min_entropy: float = 5.5,
                    n_perm: int = 200) -> list[dict]:
+    """Per-seed metrics for one condition, skipping seeds that fail the entropy-collapse gate."""
     cond_dir = Path(cond_dir)
     if not cond_dir.exists():
         return []

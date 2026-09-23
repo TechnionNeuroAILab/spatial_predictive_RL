@@ -1,48 +1,21 @@
-#!/usr/bin/env python3
 """
 Occupancy-matched estimator of weight-driven place-field remapping.
 
-THE PROBLEM. An experimenter comparing rate maps between a free-foraging epoch
-and a goal-directed epoch confounds two things: the weights changed (learning)
-and the sampling changed (behaviour). Occupancy-NORMALIZED rate maps do not fix
-this — in this model the naive normalized contrast misestimates the weight-driven
-shift badly enough to reverse the head vs no-head ordering. The frozen-weight
-replay control fixes it in silico but has no experimental counterpart.
+Comparing a free-foraging epoch with a goal-directed one confounds two things:
+the weights changed and the sampling changed. Occupancy-normalized rate maps do
+not separate them -- in this model the naive contrast misestimates the
+weight-driven shift badly enough to reverse the head vs no-head ordering.
+Frozen-weight replay does separate them exactly, but only in silico: you cannot
+replay an animal's trajectory through its own earlier brain. This module is the
+experimentally realizable substitute: it rebuilds both periods' rate maps from
+timestep subsets whose sampling is identical by construction (position, or
+position x heading), plus an inverse-propensity reweighting variant and the
+naive estimator for reference.
 
-THE ESTIMATOR. Rebuild both periods' rate maps from timestep subsets whose
-sampling distributions are IDENTICAL by construction:
-  - position-matched: per 32x32 bin, keep min(count_pre, count_post) samples;
-  - joint position x heading matched: same, on 32x32x8 strata (heading is
-    exactly 8-valued in this model -- matched by exact value, never binned).
-    Heading matters because the network's input depends on it; the biological
-    analogue is head-direction sampling bias near a goal.
-Plus an inverse-propensity REWEIGHTING variant (deterministic cross-check) and
-the naive (unmatched) estimator for reference.
+Delta-d negative = fields moved toward the reward.
 
-VALIDATION TARGETS (computed by the driver, cached to Repro/aggregate/):
-  - per-seed agreement with frozen-replay ground truth (replay_c1_pred ->
-    replay_c1_postrl), 40 no-head + 40 head seeds;
-  - specificity: the same-weights contrast cycle_1 -> cycle_1_goal must return
-    ~0 (cycle_1, cycle_1_goal and replay_c1_postrl share identical weights);
-  - ordering: paired head-vs-no-head must recover the ground-truth ordering
-    (head more toward-reward) that the naive contrast reverses.
-
-CONVENTIONS. Delta-d NEGATIVE = toward reward (matches the manuscript).
-Skaggs is the occupancy-WEIGHTED form (the canonical compute_skaggs in
-plot_goal_directed_maps uses an unweighted mean over bins -- do not use it
-here). Rate maps / centre extraction reuse the existing pipeline unchanged,
-including its documented (y,x) transposition, which is distance-preserving for
-the on-diagonal rewards used throughout this project.
-
-PITFALLS HANDLED.
-  - run_goal_conditioned_probe zeroes the RNN hidden state at every goal
-    arrival with no warm-up (~2.5k resets per 50k steps): teleports are
-    detected via |dpos| > 0.05 (one diagonal grid step = 0.0442) and
-    N_TRIM_AFTER_RESET steps after each reset are dropped BEFORE matching.
-  - Subsampling is stochastic: K repetitions with rng default_rng([seed, rep]);
-    inference must use per-seed rep-means only.
-  - Subsampling pins most peaks exactly: frac_toward is reported tie-aware
-    (ties excluded from the denominator).
+Other modules reuse its loading / rate-map / weighted-Skaggs primitives:
+extinction_analysis, reward_relative_analysis and runs/verify_extinction_match.
 """
 from __future__ import annotations
 
@@ -58,8 +31,7 @@ _NEW_CODE = _REPO / "paper_code" / "lib"
 if str(_NEW_CODE) not in sys.path:
     sys.path.insert(0, str(_NEW_CODE))
 
-from plot_goal_directed_maps import field_center_of_mass  # noqa: E402
-from plot_replay_v11 import field_peak  # noqa: E402
+from ratemaps import field_center_of_mass, field_peak  # noqa: E402
 
 M = 32
 HIDDEN = 512
@@ -76,7 +48,7 @@ N_HEADINGS = 8
 # ---------------------------------------------------------------------------
 
 def load_period_arrays(data_dir: Path, period: str):
-    """(pos (n,2) float64, theta (n,) float64, act (n,512) float32)."""
+    """Load one period as (pos (n,2), theta (n,), act (n,512) float32)."""
     data_dir = Path(data_dir)
     beh = pd.read_pickle(data_dir / f"df_behavior_{period}.pkl")
     act = pd.read_pickle(data_dir / f"df_activations_{period}.pkl")
@@ -90,10 +62,10 @@ def load_period_arrays(data_dir: Path, period: str):
 
 
 def trim_teleports(pos: np.ndarray, n_trim: int = N_TRIM_AFTER_RESET) -> np.ndarray:
-    """Boolean keep-mask dropping n_trim steps after every teleport (hidden-state
-    reset). Step t is a teleport if |pos_t - pos_{t-1}| > TELEPORT_THR."""
+    """Keep-mask dropping `n_trim` steps after every hidden-state reset."""
     n = len(pos)
     keep = np.ones(n, dtype=bool)
+    # run_goal_conditioned_probe zeroes the hidden state at every goal arrival
     step = np.linalg.norm(np.diff(pos, axis=0), axis=1)
     resets = np.where(step > TELEPORT_THR)[0] + 1     # index of the post-jump step
     for r in resets:
@@ -106,9 +78,10 @@ def trim_teleports(pos: np.ndarray, n_trim: int = N_TRIM_AFTER_RESET) -> np.ndar
 # ---------------------------------------------------------------------------
 
 def position_bins(pos: np.ndarray) -> np.ndarray:
+    """Flat 32x32 position-bin index per timestep, in canonical gc ordering."""
     xb = np.clip((pos[:, 0] * M).astype(int), 0, M - 1)
     yb = np.clip((pos[:, 1] * M).astype(int), 0, M - 1)
-    return xb * M + yb                                  # canonical gc index
+    return xb * M + yb
 
 
 def heading_codes(theta: np.ndarray) -> np.ndarray:
@@ -127,38 +100,60 @@ def strata_ids(pos: np.ndarray, theta: np.ndarray | None) -> np.ndarray:
     return gc * N_HEADINGS + heading_codes(theta)
 
 
-def match_indices(strata_a: np.ndarray, strata_b: np.ndarray,
+def match_indices(strata_pre: np.ndarray, strata_post: np.ndarray,
                   rng: np.random.Generator):
-    """Per-stratum min-count subsampling. Returns (idx_a, idx_b) such that the
-    stratum histograms of a[idx_a] and b[idx_b] are identical."""
-    n_strata = int(max(strata_a.max(), strata_b.max())) + 1
-    ca = np.bincount(strata_a, minlength=n_strata)
-    cb = np.bincount(strata_b, minlength=n_strata)
-    target = np.minimum(ca, cb)
+    """Per-stratum min-count subsampling, the core of the matching estimator.
 
-    idx_a, idx_b = [], []
-    order_a = np.argsort(strata_a, kind="stable")
-    order_b = np.argsort(strata_b, kind="stable")
-    bounds_a = np.searchsorted(strata_a[order_a], np.arange(n_strata + 1))
-    bounds_b = np.searchsorted(strata_b[order_b], np.arange(n_strata + 1))
+    For every stratum present in either period, keep min(count_pre, count_post)
+    timesteps from each, drawing without replacement when a period has more
+    than the target. The two returned subsets therefore have identical stratum
+    histograms, so any remaining difference between their rate maps cannot come
+    from sampling.
+
+    Parameters
+    ----------
+    strata_pre, strata_post : ndarray (n,), int
+        Stratum id per timestep for the two periods, from `strata_ids`.
+    rng : numpy.random.Generator
+        Draws the subsample. Results are stochastic; see `estimate`, which
+        averages over repetitions.
+
+    Returns
+    -------
+    (idx_pre, idx_post) : tuple of ndarray
+        Indices into each period. Strata absent from either period contribute
+        nothing, so both may be much shorter than the inputs.
+    """
+    n_strata = int(max(strata_pre.max(), strata_post.max())) + 1
+    count_pre = np.bincount(strata_pre, minlength=n_strata)
+    count_post = np.bincount(strata_post, minlength=n_strata)
+    # keep as many as the scarcer period has -- samples can be dropped, not invented
+    target = np.minimum(count_pre, count_post)
+
+    idx_pre, idx_post = [], []
+    order_pre = np.argsort(strata_pre, kind="stable")
+    order_post = np.argsort(strata_post, kind="stable")
+    bounds_pre = np.searchsorted(strata_pre[order_pre], np.arange(n_strata + 1))
+    bounds_post = np.searchsorted(strata_post[order_post], np.arange(n_strata + 1))
     for s in np.nonzero(target)[0]:
         t = target[s]
-        pool_a = order_a[bounds_a[s]:bounds_a[s + 1]]
-        pool_b = order_b[bounds_b[s]:bounds_b[s + 1]]
-        idx_a.append(pool_a if len(pool_a) == t else rng.choice(pool_a, t, replace=False))
-        idx_b.append(pool_b if len(pool_b) == t else rng.choice(pool_b, t, replace=False))
-    return np.concatenate(idx_a), np.concatenate(idx_b)
+        pool_pre = order_pre[bounds_pre[s]:bounds_pre[s + 1]]
+        pool_post = order_post[bounds_post[s]:bounds_post[s + 1]]
+        idx_pre.append(pool_pre if len(pool_pre) == t else rng.choice(pool_pre, t, replace=False))
+        idx_post.append(pool_post if len(pool_post) == t else rng.choice(pool_post, t, replace=False))
+    return np.concatenate(idx_pre), np.concatenate(idx_post)
 
 
 def propensity_weights(strata: np.ndarray, strata_other: np.ndarray) -> np.ndarray:
-    """Inverse-propensity weights taking this period's stratum distribution to
-    the per-stratum min of the two periods (deterministic reweighting variant)."""
+    """Inverse-propensity weights: the deterministic alternative to subsampling."""
     n_strata = int(max(strata.max(), strata_other.max())) + 1
     c_self = np.bincount(strata, minlength=n_strata).astype(float)
     c_other = np.bincount(strata_other, minlength=n_strata).astype(float)
+    # same per-stratum target match_indices subsamples to, but reached by
+    # downweighting instead of discarding: no run-to-run variance, all samples used
     target = np.minimum(c_self, c_other)
     with np.errstate(divide="ignore", invalid="ignore"):
-        w_per = np.where(c_self > 0, target / c_self, 0.0)
+        w_per = np.where(c_self > 0, target / c_self, 0.0)   # unvisited strata -> 0
     return w_per[strata]
 
 
@@ -168,8 +163,9 @@ def propensity_weights(strata: np.ndarray, strata_other: np.ndarray) -> np.ndarr
 
 def rate_maps_from(act: np.ndarray, gc: np.ndarray,
                    weights: np.ndarray | None = None):
-    """(512, M, M) mean-activity maps + occupancy probability map."""
+    """Per-cell mean-activity maps (512, M, M) plus the occupancy probability map."""
     nb = M * M
+    # weights let the "reweight" mode match occupancy without discarding samples
     if weights is None:
         weights = np.ones(len(gc), dtype=np.float64)
     occ = np.zeros(nb)
@@ -184,7 +180,7 @@ def rate_maps_from(act: np.ndarray, gc: np.ndarray,
 
 
 def skaggs_weighted(rm: np.ndarray, occ_p: np.ndarray) -> np.ndarray:
-    """Occupancy-WEIGHTED Skaggs information (bits/spike)."""
+    """Occupancy-weighted Skaggs information (bits/spike), r_bar = sum_i p_i * r_i."""
     p = occ_p.reshape(-1)
     r = rm.reshape(HIDDEN, -1)
     mean_rate = r @ p
@@ -198,13 +194,15 @@ def skaggs_weighted(rm: np.ndarray, occ_p: np.ndarray) -> np.ndarray:
 
 
 def centres_from(rm: np.ndarray):
-    """Smoothed peak + COM per cell, existing pipeline conventions."""
+    """Smoothed field peak and COM per cell, using the shared ratemaps conventions."""
     peaks = np.zeros((HIDDEN, 2))
     coms = np.zeros((HIDDEN, 2))
     for i in range(HIDDEN):
         sm = gaussian_filter(rm[i], sigma=SIGMA)
         mx = sm.max()
         smn = sm / mx if mx > 0 else sm
+        # both apply the project's (y,x) swap -- distance-preserving for the
+        # on-diagonal rewards used here (see ratemaps).
         peaks[i] = field_peak(smn)
         coms[i] = field_center_of_mass(smn)
     return peaks, coms
@@ -212,13 +210,15 @@ def centres_from(rm: np.ndarray):
 
 def delta_stats(c_pre, c_post, sk_pre, sk_post, reward=REWARD,
                 thr: float = SKAGGS_THR):
-    """Gated per-cell Delta-d. NEGATIVE = toward reward. Tie-aware frac."""
+    """Gated per-cell Delta-d; negative = fields moved toward the reward."""
     gate = (sk_pre >= thr) & (sk_post >= thr)
     n = int(gate.sum())
     if n < 10:
-        return None
+        return None                      # too few gated cells to average
     d = (np.linalg.norm(c_post[gate] - reward, axis=1)
          - np.linalg.norm(c_pre[gate] - reward, axis=1))
+    # subsampling pins most peaks to the same bin, so exact ties are excluded
+    # from frac_toward_moved rather than counted as "away"
     moved = d != 0
     return {
         "n": n,
@@ -235,35 +235,69 @@ def delta_stats(c_pre, c_post, sk_pre, sk_post, reward=REWARD,
 def estimate(pos_pre, th_pre, act_pre, pos_post, th_post, act_post,
              mode: str, seed: int, n_reps: int = 20, frac: float = 1.0,
              reward=REWARD):
-    """mode in {'naive', 'pos', 'joint', 'reweight'}. Returns dict with
-    mean_dd (rep-mean), rep_sd, n_cells (rep-mean), n_matched, coverage."""
+    """Run one estimator to completion and summarize it across repetitions.
+
+    Parameters
+    ----------
+    pos_pre, th_pre, act_pre : ndarray
+        Position, heading and activity for the earlier period.
+    pos_post, th_post, act_post : ndarray
+        The same for the later period.
+    mode : {"naive", "pos", "joint", "reweight"}
+        "naive" contrasts the periods as-is; "pos" matches on position bins;
+        "joint" matches on position x heading (the primary estimator);
+        "reweight" uses inverse-propensity weights instead of subsampling.
+    seed : int
+        Base seed; each repetition draws from default_rng([seed, rep, mode]).
+    n_reps : int
+        Repetitions for the subsampling modes. "naive" and "reweight" are
+        deterministic and always run once.
+    frac : float
+        Keep only this fraction of the matched samples, for the sample-size
+        curve. 1.0 keeps all of them.
+    reward : array-like (2,)
+        Reward position passed through to `delta_stats`.
+
+    Returns
+    -------
+    dict or None
+        {"mean_dd", "rep_sd", "n_cells", "frac_toward_moved", "n_matched",
+        "n_reps"}. None if no repetition produced enough gated cells.
+
+    Notes
+    -----
+    The subsampling modes are stochastic, so mean_dd is a mean over
+    repetitions and rep_sd is their spread. Downstream inference must use these
+    per-seed rep-means, never individual repetitions.
+    """
     if mode == "naive":
         rows = [_single_pass(pos_pre, act_pre, pos_post, act_post,
                              None, None, reward)]
         n_matched = len(pos_post)
     elif mode == "reweight":
-        sa = strata_ids(pos_pre, th_pre)
-        sb = strata_ids(pos_post, th_post)
-        wa = propensity_weights(sa, sb)
-        wb = propensity_weights(sb, sa)
+        s_pre = strata_ids(pos_pre, th_pre)
+        s_post = strata_ids(pos_post, th_post)
+        w_pre = propensity_weights(s_pre, s_post)
+        w_post = propensity_weights(s_post, s_pre)
         rows = [_single_pass(pos_pre, act_pre, pos_post, act_post,
-                             wa, wb, reward, weighted=True)]
-        n_matched = int(round(wb.sum()))
+                             w_pre, w_post, reward, weighted=True)]
+        n_matched = int(round(w_post.sum()))
     else:
-        theta_a = th_pre if mode == "joint" else None
-        theta_b = th_post if mode == "joint" else None
-        sa = strata_ids(pos_pre, theta_a)
-        sb = strata_ids(pos_post, theta_b)
+        theta_pre = th_pre if mode == "joint" else None
+        theta_post = th_post if mode == "joint" else None
+        s_pre = strata_ids(pos_pre, theta_pre)
+        s_post = strata_ids(pos_post, theta_post)
         rows, n_matched = [], 0
         for rep in range(n_reps):
             rng = np.random.default_rng([seed, rep, hash(mode) % (2**31)])
-            ia, ib = match_indices(sa, sb, rng)
+            i_pre, i_post = match_indices(s_pre, s_post, rng)
             if frac < 1.0:
-                ka = rng.choice(len(ia), max(50, int(len(ia) * frac)), replace=False)
-                kb = rng.choice(len(ib), max(50, int(len(ib) * frac)), replace=False)
-                ia, ib = ia[ka], ib[kb]
-            n_matched = len(ib)
-            r = _single_pass(pos_pre[ia], act_pre[ia], pos_post[ib], act_post[ib],
+                k_pre = rng.choice(len(i_pre), max(50, int(len(i_pre) * frac)), replace=False)
+                k_post = rng.choice(len(i_post), max(50, int(len(i_post) * frac)), replace=False)
+                i_pre, i_post = i_pre[k_pre], i_post[k_post]
+            n_matched = len(i_post)
+            r = _single_pass(pos_pre[i_pre], act_pre[i_pre],
+                             pos_post[i_post], act_post[i_post],
                              None, None, reward)
             if r:
                 rows.append(r)
@@ -281,15 +315,17 @@ def estimate(pos_pre, th_pre, act_pre, pos_post, th_post, act_post,
     }
 
 
-def _single_pass(pos_a, act_a, pos_b, act_b, w_a, w_b, reward, weighted=False):
-    gc_a, gc_b = position_bins(pos_a), position_bins(pos_b)
-    rm_a, occ_a = rate_maps_from(act_a, gc_a, w_a if weighted else None)
-    rm_b, occ_b = rate_maps_from(act_b, gc_b, w_b if weighted else None)
-    sk_a = skaggs_weighted(rm_a, occ_a)
-    sk_b = skaggs_weighted(rm_b, occ_b)
-    pk_a, _ = centres_from(rm_a)
-    pk_b, _ = centres_from(rm_b)
-    return delta_stats(pk_a, pk_b, sk_a, sk_b, reward)
+def _single_pass(pos_pre, act_pre, pos_post, act_post, w_pre, w_post,
+                 reward, weighted=False):
+    """One pass: rate maps -> weighted Skaggs -> peaks -> gated Delta-d."""
+    gc_pre, gc_post = position_bins(pos_pre), position_bins(pos_post)
+    rm_pre, occ_pre = rate_maps_from(act_pre, gc_pre, w_pre if weighted else None)
+    rm_post, occ_post = rate_maps_from(act_post, gc_post, w_post if weighted else None)
+    sk_pre = skaggs_weighted(rm_pre, occ_pre)
+    sk_post = skaggs_weighted(rm_post, occ_post)
+    pk_pre, _ = centres_from(rm_pre)
+    pk_post, _ = centres_from(rm_post)
+    return delta_stats(pk_pre, pk_post, sk_pre, sk_post, reward)
 
 
 # ---------------------------------------------------------------------------
@@ -299,7 +335,39 @@ def _single_pass(pos_a, act_a, pos_b, act_b, w_a, w_b, reward, weighted=False):
 def estimator_row(run_dir: Path, seed: int, n_reps: int = 20,
                   post_period: str = "goal_conditioned",
                   size_fracs=(0.125, 0.25, 0.5, 1.0)) -> dict | None:
-    """All estimators + ground truth + specificity control for one network."""
+    """All estimators, plus ground truth and controls, for one network.
+
+    Parameters
+    ----------
+    run_dir : Path
+        Run directory; periods are read from `run_dir/data`.
+    seed : int
+        Seed label for this network, also the base rng seed. The control and
+        size-curve calls offset it so they do not share draws.
+    n_reps : int
+        Repetitions per subsampling estimator.
+    post_period : str
+        The goal-directed period to contrast against `replay_c1_pred`.
+    size_fracs : sequence of float
+        Fractions of the matched sample for the sample-size curve.
+
+    Returns
+    -------
+    dict or None
+        One flat row: gt_*, est_<mode>*, null_<mode>*, and a nested
+        "size_curve". None if any period fails to load or ground truth does
+        not clear the cell gate.
+
+    Notes
+    -----
+    Three things the caller is expected to check across seeds:
+    agreement of each est_* with gt_mean_dd, the frozen-replay ground truth
+    (replay_c1_pred -> replay_c1_postrl, same metric and gate); specificity,
+    where null_* must come out near zero because cycle_1, cycle_1_goal and
+    replay_c1_postrl share identical weights so the true weight-driven shift is
+    exactly 0; and ordering, where paired head vs no-head must recover the
+    ground-truth direction that the naive contrast reverses.
+    """
     d = Path(run_dir) / "data"
     try:
         pos_pre, th_pre, act_pre = load_period_arrays(d, "replay_c1_pred")

@@ -1,6 +1,6 @@
 """Successor-representation supplementary figure — shared constants and styling.
 
-Replaces the retired the retired New_Code/sr_vs_model_panel.py, whose headline metric
+Replaces the retired Figure 5 panel f, whose headline metric
 (shift projected onto a toward-reward direction taken from each cell's PRE
 position) was biased by regression toward the arena centre.
 """

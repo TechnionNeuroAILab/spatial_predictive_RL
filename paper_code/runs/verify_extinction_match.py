@@ -6,7 +6,7 @@ extinction-specific code changes are confined to cycle 2.
 
 Three independent checks per seed:
 
-1. **Config symmetric difference.** ext vs head-ON must differ ONLY in
+1. **Config symmetric difference.** ext vs head-ON must differ only in
    {output_dir, n_cycles, max_episodes} (extinguish_at_cycle is a runtime-only
    flag, not written into the tracked config dict -- the runner already
    asserts the CLI-level diff at launch time; this is the saved-config-level
@@ -20,7 +20,7 @@ Three independent checks per seed:
 
 3. **Strong check: bit-identical cycle-1 replication.** replay_ext_postLearn
    (ext run, end of cycle 1 = before extinction starts) must be bit-identical
-   -- same positions AND same activations, not just same field centres -- to
+   -- same positions and same activations, not just same field centres -- to
    head's replay_c1_postrl (same weights, same frozen trajectory). This
    proves the extinction-specific code path (r=0, head loss gated out) is
    completely confined to cycle 2 and never leaks into cycle 1.

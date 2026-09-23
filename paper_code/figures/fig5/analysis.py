@@ -27,7 +27,7 @@ _REPO = _HERE.parents[2]
 # Both figure 2's and figure 4's analysis.py do a bare `from utils import ...`,
 # which resolves against whatever `utils` module is currently cached in
 # sys.modules. Since each figure has its own utils.py, we must pop the cache
-# between loads so each analysis module picks up ITS OWN utils.py, not a
+# between loads so each analysis module picks up its own utils.py, not a
 # previously-cached one from a different figure directory.
 _saved_utils = sys.modules.pop("utils", None)
 
@@ -51,16 +51,16 @@ _spec4 = importlib.util.spec_from_file_location("fig4_analysis", _FIG4_DIR / "an
 _fig4 = importlib.util.module_from_spec(_spec4)
 _spec4.loader.exec_module(_fig4)
 
-# Restore (or clear) the utils cache so THIS file's own `from utils import ...`
+# Restore (or clear) the utils cache so this file's own `from utils import ...`
 # below picks up figure 5's utils.py, not figure 2's/4's.
 sys.modules.pop("utils", None)
 if _saved_utils is not None:
     sys.modules["utils"] = _saved_utils
 
-# ── New_Code utilities for the entropy collapse gate + frozen-replay diagnostic ──
-_NEW_CODE = _REPO / "paper_code" / "lib"
-if str(_NEW_CODE) not in sys.path:
-    sys.path.insert(0, str(_NEW_CODE))
+# ── lib/ utilities for the entropy collapse gate + frozen-replay diagnostic ──
+_LIB = _REPO / "paper_code" / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
 from analysis_helpers import (  # noqa: E402
     load_period_centers, has_period,
     peak_entropy, seed_is_clean,
@@ -102,14 +102,14 @@ def load_double_dissociation(nohead_dir: Path, head_dir: Path, seeds=range(10),
 
     The frozen-replay contrast (H1 vs H2 diagnostic) compares:
         replay_c1_pred   — pre-RL weights on the fixed cycle-1 trajectory
-        replay_c1_postrl — post-RL weights on the SAME fixed trajectory
+        replay_c1_postrl — post-RL weights on the same fixed trajectory
 
     Because the trajectory is identical, any field-center shift can only come
     from weight changes — a genuine H2 (RPE-driven, real-remapping) signal.
     SR predicts zero shift here (occupancy is unchanged), so head > no-head
     in frozen replay is the hallmark of real remapping that SR cannot explain.
 
-    Seeds are restricted to those passing the entropy collapse gate in BOTH
+    Seeds are restricted to those passing the entropy collapse gate in both
     conditions (paired comparison — same seed = same phase-1 initialization).
 
     min_entropy/skaggs_thr are exposed for sensitivity sweeps (see
@@ -148,6 +148,7 @@ def load_double_dissociation(nohead_dir: Path, head_dir: Path, seeds=range(10),
 
 
 def double_dissociation_stats(rows: list[dict]) -> dict:
+    """Per-condition mean/SD of the head vs no-head deltas, plus their paired Wilcoxon p."""
     d_nh = np.array([r["delta_nohead"] for r in rows])
     d_hd = np.array([r["delta_head"] for r in rows])
     try:

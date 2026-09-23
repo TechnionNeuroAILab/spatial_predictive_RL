@@ -3,7 +3,7 @@
 Same run as Figure 1 (`Repro/nohead_seed42`, no head, lr=`5e-5`, reward `(0.3, 0.3)`), with **Phase C** frozen-replay probes.
 
 ```bash
-python "code_analysis/figure 2/generate_figure2.py" --no_show
+python paper_code/figures/fig2/generate_figure2.py --no_show
 ```
 
 ## Phases

@@ -3,7 +3,7 @@
 Panel-h style grids (cycle_1 Prediction vs RL) across learning rates, no reward head.
 
 Example:
-  python "code_analysis/figure 1/plot_panel_h_across_lrs.py" \\
+  python paper_code/figures/fig1/plot_panel_h_across_lrs.py \\
       --scan-root New_Results_v3/dose_sweep_lr_nohead \\
       --output figures/panels/panel_h_nohead_across_lrs \\
       --n-neurons 10 --no_show
@@ -73,17 +73,20 @@ def discover_runs(scan_root: Path, explicit: list[Path] | None) -> list[tuple[fl
 
 
 def reward_bin_from_cfg(cfg: dict, fallback=(0.3, 0.3)) -> tuple[int, int]:
+    """Reward position from a run config, converted to grid-bin coordinates."""
     pos = cfg.get("reward_pos", list(fallback))
     return int(float(pos[0]) * M), int(float(pos[1]) * M)
 
 
 def top_neuron_ids(goal_cycles: dict, n: int) -> np.ndarray:
+    """Indices of the `n` units with the highest Skaggs score."""
     key = next(k for k in goal_cycles if "cycle_1" in k)
     sk = goal_cycles[key][2]
     return np.argsort(sk)[::-1][:n]
 
 
 def plot_lr_block(axes_row0, axes_row1, rw_cycles, goal_cycles, neuron_ids, reward_bin):
+    """Draw one learning rate's row-pair: prediction maps above, RL maps below."""
     rw_key = next(k for k in rw_cycles if "cycle_1" in k and "goal" not in k)
     goal_key = next(k for k in goal_cycles if "cycle_1" in k)
     rx, ry = reward_bin
@@ -103,12 +106,14 @@ def plot_lr_block(axes_row0, axes_row1, rw_cycles, goal_cycles, neuron_ids, rewa
 
 
 def format_lr(lr: float) -> str:
+    """Compact learning-rate label, e.g. '5e-5'."""
     if lr >= 1e-3:
         return f"{lr:g}"
     return f"{lr:.0e}".replace("e-0", "e-").replace("e+0", "e+")
 
 
 def main():
+    """Scan the sweep directory and draw one panel-h block per learning rate."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scan-root", type=str, default="New_Results_v3/dose_sweep_lr_nohead")
     ap.add_argument("--run-dirs", nargs="*", default=None,

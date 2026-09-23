@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Extinction seeds: head-ON learning at A (cycle 1, episode-identical to the head
-condition), then a cycle with reward delivery AND the head objective switched
-off (see Code/ratinabox_extinction.py), with a frozen-replay triple.
+condition), then a cycle with reward delivery and the head objective switched
+off (see paper_code/model/ratinabox_extinction.py), with a frozen-replay triple.
 
-Matching is enforced STRUCTURALLY, but NOT with run_rigid_seeds.py's
+Matching is enforced structurally, but not with run_rigid_seeds.py's
 set-symmetric-difference trick — that breaks here because the changed values
 ("1", "2000", ...) collide with other flags' values in a flat token set.
 Instead the arg list is parsed into a flag->value dict and the dict diff is
-asserted to be EXACTLY the three intended changes.
+asserted to be exactly the three intended changes.
 
 Usage:
     python paper_code/runs/run_extinction_seeds.py --seeds 0 --dry_run
@@ -79,7 +79,7 @@ PRUNE_KEEP = ["replay_ext_pred", "replay_ext_postLearn", "replay_ext_postExt",
 
 
 def _already_done(seed: int) -> bool:
-    # metrics.json is written LAST (cycle_1 lands ~5 min before the run ends,
+    # metrics.json is written last (cycle_1 lands ~5 min before the run ends,
     # so it would silently mark crashed runs as complete).
     return (EXT_OUT / f"ext_seed{seed}" / "metrics.json").exists()
 

@@ -3,7 +3,7 @@
 Generates Figure 1 panels as **PNG + PDF** under `figures/`.
 
 ```bash
-python "code_analysis/figure 1/generate_figure1.py" --no_show
+python paper_code/figures/fig1/generate_figure1.py --no_show
 # defaults: Repro/nohead_seed42 (no head, lr=5e-5), reward (0.3, 0.3)
 ```
 
@@ -37,7 +37,7 @@ The composite PDF is built with `pypdf` by placing each panel PDF into equal-hei
 
 ### Panel b — dots on the walls?
 
-The **hollow coloured circles** are **landmark objects** (3 types × 12), placed on **all four walls** only (none in the interior; 3 per wall per type). This is a schematic for the FoV panel — training (`Code/ratinabox_v11.py`) places objects uniformly in the arena.
+The **hollow coloured circles** are **landmark objects** (3 types × 12), placed on **all four walls** only (none in the interior; 3 per wall per type). This is a schematic for the FoV panel — training (`paper_code/model/ratinabox_v11.py`) places objects uniformly in the arena.
 
 - Edge colour = object type (blue / orange / green)
 - Filled grey ellipses = egocentric **field-of-view (FoV) cells** tuned to objects

@@ -1,20 +1,20 @@
 """
 v11 experience-replay analysis.
-Compares the SAME place cells along the SAME (frozen) trajectory before vs after
+Compares the same place cells along the same (frozen) trajectory before vs after
 cycle-1 RL:
     replay_c{N}_pred    -> F_pre   (pre-RL weights,  trajectory T)
     replay_c{N}_postrl  -> F_post  (post-RL weights, trajectory T, frozen)
-Because the trajectory (hence occupancy AND recurrent input history) is identical,
+Because the trajectory (hence occupancy and recurrent input history) is identical,
 any field change is purely representational -- not trajectory skew. This is the
 whole point of the v11 replay experiment. In addition to the pre/post-RL shift
 figures, this script also runs the ORI (over-representation index) and
 occupancy-comparison analyses -- normally used for random-walk-vs-goal-directed
-comparisons in plot_goal_directed_maps.py -- on this SAME pre/post-RL replay
+comparisons in plot_goal_directed_maps.py -- on this same pre/post-RL replay
 pair, plus a recruitment analysis (which cells cross the place-cell threshold
 only after RL). The core question throughout:
     "Holding the path fixed, did the weights move the fields toward the reward?"
 Run:
-  python New_Code/plot_replay_v11.py --run_dir New_Results_v2/final_v11_fixed --no_show
+  python paper_code/figures/figS_legacy/plot_replay_v11.py --run_dir New_Results_v2/final_v11_fixed --no_show
 """
 import argparse
 import os
@@ -35,6 +35,7 @@ from plot_goal_directed_maps import (
 from pc_common import append_stat, resolve_reward_pos, write_stats_report
 
 def load_maps(data_dir, period, m, hidden_dim):
+    """Rate maps, occupancy and Skaggs scores for one replay period."""
     beh_path = os.path.join(data_dir, f"df_behavior_{period}.pkl")
     act_path = os.path.join(data_dir, f"df_activations_{period}.pkl")
     if not (os.path.exists(beh_path) and os.path.exists(act_path)):
@@ -48,10 +49,12 @@ def load_maps(data_dir, period, m, hidden_dim):
     return rm, occ, sk
 
 def centres_for(rm, ids):
+    """{neuron id: field centre of mass} for the given ids, measured on the smoothed map."""
     return {int(nid): np.array(field_center_of_mass(smooth_and_norm(rm[nid]))) for nid in ids}
 
 
 def field_peak(rm2d):
+    """Peak location of one smoothed map. Returns its two components in (y, x) order, matching `field_center_of_mass`."""
     m = rm2d.shape[0]
     row, col = np.unravel_index(int(np.argmax(rm2d)), rm2d.shape)
     x = col / m + 0.5 / m
@@ -60,9 +63,11 @@ def field_peak(rm2d):
 
 
 def peaks_for(rm, ids):
+    """{neuron id: field peak} for the given ids, measured on the smoothed map."""
     return {int(nid): field_peak(smooth_and_norm(rm[nid])) for nid in ids}
 
 def fig_replay_grid(rm_pre, rm_post, rank_score, reward_bin, n_cells=20,save_path=None, no_show=False):
+    """Pre-over-post rate-map grid for the top cells by rank score."""
     top = np.argsort(rank_score)[::-1][:n_cells]
     ncols = min(10, n_cells)
     nrows_per = int(np.ceil(n_cells / ncols))
@@ -92,6 +97,7 @@ def fig_replay_grid(rm_pre, rm_post, rank_score, reward_bin, n_cells=20,save_pat
 
 
 def _draw_map_grid(rm, ids, reward_bin, title, save_path, no_show):
+    """One 10-wide page of rate maps; shared by the pre and post map figures."""
     rx, ry = reward_bin
     n = len(ids)
     ncols = 10
@@ -110,6 +116,7 @@ def _draw_map_grid(rm, ids, reward_bin, title, save_path, no_show):
 
 
 def fig_replay_maps(rm_pre, rm_post, rank_score, reward_bin, n_cells=100,save_dir=None, period_tag="c1", no_show=False):
+    """Pre and post cognitive maps as two PNGs. Returns the cell ids drawn."""
     ids = np.argsort(rank_score)[::-1][:n_cells]
     pre_path = os.path.join(save_dir, f"replay_{period_tag}_map_PRE.png")
     post_path = os.path.join(save_dir, f"replay_{period_tag}_map_POST.png")
@@ -123,6 +130,7 @@ def fig_replay_maps(rm_pre, rm_post, rank_score, reward_bin, n_cells=100,save_di
 
 
 def select_example_cells(active, sk_pre, sk_post, d_pre, d_post, reward_pos,thr, n=12, max_post_dist=0.22):
+    """Cells that pass the Skaggs gate in both periods and moved toward the reward, best first."""
     sk_pre_a = sk_pre[active]
     sk_post_a = sk_post[active]
     delta = d_post - d_pre # < 0 => moved toward reward
@@ -140,6 +148,7 @@ def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_
                          title="Example cells: place fields drift toward the reward (frozen trajectory)",
                          sk_pre=None, sk_post=None, pre_label="Pre-RL", post_label="Post-RL\n(replay)",
                          draw_arrow=True):
+    """Example cells: pre map above, post below, with an arrow from the old centre to the new one."""
     n = len(ids)
     if n == 0:
         print("  (no qualifying example cells to plot)")
@@ -179,7 +188,8 @@ def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_
 
 
 def fig_replay_shift(d_pre, d_post, save_path=None, no_show=False):
-    delta = d_post - d_pre # negative = field moved TOWARD reward
+    """Distance-to-reward histograms (pre vs post) beside the delta-distance histogram."""
+    delta = d_post - d_pre # negative = field moved toward reward
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
     ax = axes[0]
     bins = np.linspace(0, 0.8, 26)
@@ -208,6 +218,7 @@ def fig_replay_shift(d_pre, d_post, save_path=None, no_show=False):
 
 
 def fig_replay_quiver(c_pre, c_post, reward_pos, save_path=None, no_show=False):
+    """Field centres before and after, joined by arrows, over the arena."""
     fig, ax = plt.subplots(figsize=(6.5, 6.5))
     for nid in c_pre:
         p0 = c_pre[nid]; p1 = c_post[nid]
@@ -231,9 +242,9 @@ def shift_vs_empty_filter(rm_pre, rm_post, sk_pre, sk_post, reward_pos,
     """
     Robustness sweep for the empty-cell confound: recompute the toward-reward
     shift while progressively demanding a stronger real field (higher Skaggs)
-    in BOTH pre- and post-RL states. If the shift were an artifact of empty /
+    in both pre- and post-RL states. If the shift were an artifact of empty /
     diffuse cells' COM regressing to the arena centre, gating them out would
-    kill it. A shift that is flat or GROWS as the gate tightens (and stays
+    kill it. A shift that is flat or grows as the gate tightens (and stays
     significant on the shrinking, ever-cleaner survivor set) is genuine.
     Returns a per-gate list of dicts.
     """
@@ -265,6 +276,7 @@ def shift_vs_empty_filter(rm_pre, rm_post, sk_pre, sk_post, reward_pos,
 
 
 def fig_shift_vs_empty_filter(rows, reward_pos, save_path=None, no_show=False):
+    """Toward-reward shift recomputed at progressively stricter Skaggs gates, testing the empty-cell confound."""
     valid = [r for r in rows if "delta" in r]
     if not valid:
         print("  (no gate levels with enough survivors to plot)")
@@ -330,6 +342,7 @@ def recruitment_analysis(sk_pre, sk_post, rm_post, reward_pos, threshold, R=0.15
 
 
 def fig_replay_recruitment(sk_pre, sk_post, threshold, save_path=None, no_show=False):
+    """Place-cell counts pre and post, showing how many cells cross the Skaggs threshold only after RL."""
     is_place_pre = sk_pre >= threshold
     is_place_post = sk_post >= threshold
     counts = {
@@ -449,6 +462,7 @@ def recruitment_fate_analysis(rm_pre, rm_post, sk_pre, sk_post, reward_pos, thre
 
 
 def fig_recruitment_fate(sk_pre, sk_post, rm_pre, rm_post, reward_pos, threshold, save_path=None, no_show=False):
+    """Place-cell status migration: how each cell's pre-RL status maps to its post-RL one, with activity and distance by fate."""
     is_place_pre = sk_pre >= threshold
     is_place_post = sk_post >= threshold
     lost = np.where(is_place_pre & ~is_place_post)[0]
@@ -518,6 +532,7 @@ def fig_recruitment_fate(sk_pre, sk_post, rm_pre, rm_post, reward_pos, threshold
 
 
 def fig_confident_cells(d_pre, d_post, icl_pre_vals, icl_post_vals, save_path=None, no_show=False):
+    """Distance to reward, pre against post, for cells selected as confidently fit before RL."""
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
     ax = axes[0]
     ax.scatter(d_pre, d_post, alpha=0.5, s=15, color="steelblue")
@@ -546,9 +561,9 @@ def fig_confident_cells(d_pre, d_post, icl_pre_vals, icl_post_vals, save_path=No
 def confident_place_cell_analysis(run_dir, N, rm_pre, rm_post, sk_pre, sk_post, reward_pos,
                                    skaggs_threshold, fig_dir, no_show, k_max=3, icl_quantile=0.5):
     """
-    Selects a confidently-fit place-cell population using ONLY the PRE-RL GMM
+    Selects a confidently-fit place-cell population using only the pre-RL GMM
     fit (k<=k_max, and ICL score at or below the icl_quantile of that state's
-    OWN icl_score distribution -- a within-state relative criterion, so it
+    own icl_score distribution -- a within-state relative criterion, so it
     doesn't inherit the cross-run absolute-ICL miscalibration problem). This
     matches the original design intent: choose confident cells based on
     'before', then track what happened to them after the reward.
@@ -675,6 +690,7 @@ def confident_place_cell_analysis(run_dir, N, rm_pre, rm_post, sk_pre, sk_post, 
 
 
 def main():
+    """Parse arguments, load the replay pair, and write every figure in this module."""
     ap = argparse.ArgumentParser(description="v11 experience-replay analysis (pre vs post RL, frozen trajectory).")
     ap.add_argument("--run_dir", type=str, required=True,help="v11 run directory, e.g. New_Results_v2/final_v11_fixed")
     ap.add_argument("--replay_cycle", type=int, default=1,help="Which cycle's replay to analyse (matches --replay_cycle of the run)")
@@ -709,9 +725,9 @@ def main():
     print(f"  place cells (Skaggs >= {thr}):  pre={n_pre_place}  post={n_post_place}")
     active = np.where(np.maximum(sk_pre, sk_post) >= thr)[0]
 
-    # EMPTY-CELL FILTER: the shift-toward-reward analysis is computed ONLY on
+    # empty-cell filter: the shift-toward-reward analysis is computed only on
     # cells that hold a real, spatially-informative field (Skaggs >= thr) in
-    # BOTH the pre- and post-RL states ("stable" cells). An empty / non-spatial
+    # both the pre- and post-RL states ("stable" cells). An empty / non-spatial
     # cell has a meaningless centre of mass -- its normalized rate map is
     # near-uniform, so its COM collapses to the arena centre (0.5, 0.5), which
     # is closer to an off-centre reward than a typical field. Including such
@@ -858,9 +874,9 @@ def main():
     recruited_ids = np.where(~is_place_pre & is_place_post)[0]
     n_gallery = 12
 
-    # Lost cells: rank by how far the field-centre moved TOWARD the reward
+    # Lost cells: rank by how far the field-centre moved toward the reward
     # (pre-RL distance minus post-RL distance; larger = moved further toward
-    # reward) -- but ONLY among lost cells that still retain a visible field
+    # reward) -- but only among lost cells that still retain a visible field
     # post-RL. A lost cell that collapsed to near-silence has an empty map
     # whose COM defaults to the arena centre; that fake "movement toward
     # reward" is the meaningless-COM artifact, not a real relocation, so those

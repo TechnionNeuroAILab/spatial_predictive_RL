@@ -12,7 +12,7 @@ Experiment conditions (in-sheet spellings vary; we normalize to snake_case):
     re_high      -> Reward Extinction, early laps (expectation still high)
     re_low       -> Reward Extinction, late laps (expectation extinguished)
     re_rewarded  -> reward re-introduced
-Track: 200 cm virtual linear track, reward zone at the END of the track.
+Track: 200 cm virtual linear track, reward zone at the end of the track.
 Track regions used throughout the source data:
     start  =   0-50 cm  (farthest from reward)
     middle =  50-150 cm
@@ -142,7 +142,7 @@ def load_da_ramp(condition: str = "rewarded") -> pd.DataFrame:
     '<Condition> Normalized Mean F' with header Start | Middle | End (cols C-E)
     and rows Axon1..Axon7. `condition` in {'rewarded', 're_high', 're_low'}.
 
-    Track orientation: values RAMP UP from Start to End in the rewarded
+    Track orientation: values ramp up from Start to End in the rewarded
     condition, i.e. End of track = reward zone (reward at track end).
 
     Returns DataFrame(axon:int, start, middle, end), one row per axon (n=7).
@@ -208,25 +208,25 @@ def load_da_ramp_sheet_ci(condition: str = "rewarded") -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Figure 2D: spatial correlation by track region (NOT field density)           #
+# Figure 2D: spatial correlation by track region (not field density)           #
 # --------------------------------------------------------------------------- #
 def load_field_density_profiles() -> pd.DataFrame:
     """Per-track-region, per-condition profiles with 95% CIs from sheet 'Figure2'.
 
-    EXACT BLOCK PARSED: 'Figure 2D' (anchor cell 'Figure 2D', region titles
+    exact BLOCK parsed: 'Figure 2D' (anchor cell 'Figure 2D', region titles
     'Start of track (0-50cm)' / 'Middle of track (50-150 cm)' /
     'End of track (150-200cm)' one row below the anchor, each region a triplet
     Sample Size (cells) | Mean | 95% CI; condition rows Rewarded / RE Low /
     ReRewarded).
 
-    WHAT THIS ACTUALLY IS (decided after inspection): these are SPATIAL
-    CORRELATION values (correlation of each cell's spatial activity with its
+    what this actually is (decided after inspection): these are spatial
+    correlation values (correlation of each cell's spatial activity with its
     rewarded-session template) for place cells grouped by field position on
-    the track -- NOT place-field density. The sample sizes are identical
+    the track -- not place-field density. The sample sizes are identical
     across conditions (133 / 262 / 207 cells for start/middle/end) because the
     same rewarded-session cells are tracked across conditions (paired t-tests
     in the sheet's Stats block confirm the pairing). Therefore this block
-    CANNOT be used for per-condition field-density; per-condition field counts
+    cannot be used for per-condition field-density; per-condition field counts
     by region live in sheet 'Figure3' (Fig 3C sample sizes and Fig 3E
     per-animal percentages) -- see load_field_counts_by_region() and
     load_pf_fraction_by_region().
@@ -282,15 +282,15 @@ def load_field_density_profiles() -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------- #
-# Figure 3C: per-condition place-field COUNTS by region (usable as density)    #
+# Figure 3C: per-condition place-field counts by region (usable as density)    #
 # --------------------------------------------------------------------------- #
 def load_field_counts_by_region() -> pd.DataFrame:
     """Per-condition place-field counts by track region (sheet 'Figure3', Fig 3C).
 
-    EXACT BLOCK PARSED: 'Figure 3C' -> 'Reliability' sub-table (region titles
+    exact BLOCK parsed: 'Figure 3C' -> 'Reliability' sub-table (region titles
     'Start of track (0-50cm)' etc., triplets Sample Size (cells)|Mean|95% CI,
     condition rows Rewarded / RE Low / ReRewarded). Unlike Figure 2D, the
-    sample sizes here DIFFER by condition (each condition's own detected place
+    sample sizes here differ by condition (each condition's own detected place
     fields), so n_fields is a per-condition count of place fields whose
     centroid falls in each region -> usable for density/enrichment.
 
@@ -337,7 +337,7 @@ def load_field_counts_by_region() -> pd.DataFrame:
     assert len(df) == 9, f"expected 3 conditions x 3 regions, got {len(df)}"
     assert df["mean_reliability"].between(0, 1).all()
     assert (df["n_fields"] > 50).all()
-    # Density signal requires n to VARY by condition (unlike Fig 2D).
+    # Density signal requires n to vary by condition (unlike Fig 2D).
     assert (df.groupby("region")["n_fields"].nunique() > 1).any()
     return df
 
@@ -348,7 +348,7 @@ def load_field_counts_by_region() -> pd.DataFrame:
 def load_pf_fraction_by_region() -> pd.DataFrame:
     """Per-animal percentage of place fields by track region (sheet 'Figure3', Fig 3E).
 
-    EXACT BLOCKS PARSED: under anchor 'Figure 3E' (col M), three sub-tables
+    exact blocks parsed: under anchor 'Figure 3E' (col M), three sub-tables
     labelled 'Rewarded' / 'RE low' / 'RE Rewarded', each with header
     Animal | Middle of Track | End of Track and 3 animal rows. The sheet gives
     '% placefields' for middle (50-150 cm) and end (150-200 cm) only;

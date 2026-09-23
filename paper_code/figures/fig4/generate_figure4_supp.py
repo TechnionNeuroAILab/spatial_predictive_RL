@@ -14,8 +14,8 @@ Panels:
      exactly which seeds are gate-clean vs collapsed
 
 Usage:
-    python "code_analysis/figure 4/generate_figure4_supp.py" --no_show
-    python "code_analysis/figure 4/generate_figure4_supp.py" \\
+    python paper_code/figures/fig4/generate_figure4_supp.py --no_show
+    python paper_code/figures/fig4/generate_figure4_supp.py \\
         --multi_seed_dir Repro/multi_seed_reloc \\
         --seeds 0 1 2 ... 44 --no_show
 """
@@ -58,6 +58,7 @@ SUPP_FIGURES_DIR = FIG4_DIR / "figures_supp"
 # ---------------------------------------------------------------------------
 
 def load_seed(seed: int, multi_seed_dir: Path, skaggs_threshold: float = SKAGGS_THRESHOLD):
+    """Per-seed relocation summary row (tracking toward A and B); None if the run is missing or fails."""
     run_dir = multi_seed_dir / f"reloc_seed{seed}"
     data_dir = run_dir / "data"
     if not data_dir.exists():
@@ -91,12 +92,14 @@ def load_seed(seed: int, multi_seed_dir: Path, skaggs_threshold: float = SKAGGS_
 # ---------------------------------------------------------------------------
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return ""
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
 
 def _wil_p(vals, alternative="greater"):
+    """Paired two-sided Wilcoxon p-value; NaN when there are too few pairs or no differences."""
     try:
         _, p = _wilcoxon(np.array(vals) - 0.5, alternative=alternative)
         return float(p)
@@ -263,6 +266,7 @@ def fig_supp_entropy_strip(rows, stem):
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -273,6 +277,7 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
 
 
 def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
+    """Place each panel PDF in its slot and write the composite page as PDF and PNG."""
     out_stem = Path(out_stem).with_suffix("")
     pdf_path = out_stem.with_suffix(".pdf")
     png_path = out_stem.with_suffix(".png")
@@ -330,6 +335,7 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 def parse_args():
+    """Command-line arguments: multi-seed directory, seed list, output directory."""
     p = argparse.ArgumentParser()
     p.add_argument("--multi_seed_dir", default=str(REPO / "Repro" / "multi_seed_reloc"))
     p.add_argument("--seeds", type=int, nargs="+", default=list(range(45)))
@@ -344,6 +350,7 @@ def parse_args():
 
 
 def main():
+    """Load every seed, build the panels, and assemble the supplementary figure."""
     args = parse_args()
     multi_seed_dir = Path(args.multi_seed_dir)
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")

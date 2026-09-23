@@ -29,7 +29,7 @@ import urllib.request
 
 MAILTO = "stefano.recanatesi@alleninstitute.org"  # Crossref polite pool
 
-# Keys whose Crossref top hit is NOT the paper we want. Verified by hand from
+# Keys whose Crossref top hit is not the paper we want. Verified by hand from
 # --resolve-only output: Crossref ranks "Faculty Opinions recommendation of X"
 # stubs and errata above the real article for these queries.
 PINNED_DOI: dict[str, str] = {
@@ -65,7 +65,7 @@ QUERIES: dict[str, str] = {
     "mcnamara2014dopaminergic": "Dopaminergic neurons promote hippocampal reactivation and spatial memory persistence McNamara",
     "ito2015prefrontal":       "A prefrontal-thalamo-hippocampal circuit for goal-directed spatial navigation Ito",
     "spellman2015hippocampal": "Hippocampal-prefrontal input supports spatial encoding in working memory Spellman",
-    # Renamed from ormond2015place: the sentence cites the RODENT counterpart to
+    # Renamed from ormond2015place: the sentence cites the rodent counterpart to
     # Sarel 2017's bat goal-vector code, which is Ormond & O'Keefe 2022 Nature.
     # (Ormond & McNaughton 2015 PNAS is about MEC inactivation and does not fit.)
     "ormond2022goal":          "Hippocampal place cells have goal-oriented vector fields during navigation Ormond O'Keefe",
@@ -124,7 +124,7 @@ KEEP = ["title", "author", "journal", "volume", "number", "pages", "year", "publ
 def _parse_fields(raw: str) -> dict[str, str]:
     """Extract field={value} pairs with brace matching.
 
-    Crossref returns the whole entry on ONE line, so a line-oriented parser
+    Crossref returns the whole entry on one line, so a line-oriented parser
     sees nothing. Values may themselves contain braces, hence explicit depth
     tracking rather than a regex.
     """

@@ -4,7 +4,7 @@ Figure 2 — frozen replay (Phase C) and policy vs weight-change remapping.
 
 Same simulation as Figure 1 (no head, lr=5e-5), plus Phase C frozen-replay probes.
 
-    python "code_analysis/figure 2/generate_figure2.py" --no_show
+    python paper_code/figures/fig2/generate_figure2.py --no_show
 
 Panels
   a  Frozen-replay remapping (same cells as Figure 1d)
@@ -57,6 +57,7 @@ apply_nature_style()
 
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -67,6 +68,7 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
 
 
 def _panel_slot_geometry(panel_sizes: dict[str, tuple[float, float]]):
+    """Work out each panel's slot on the page: column widths, per-row heights, and the rectangle every panel is contain-fitted into."""
     col_w = (PAGE_W - 2 * PAGE_MARGIN - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS
     n_rows = 1 + max(r for _, r, _, _ in FIGURE_LAYOUT)
     # Per-row heights: each row is only as tall as its own tallest fitted panel
@@ -109,6 +111,7 @@ def _panel_slot_geometry(panel_sizes: dict[str, tuple[float, float]]):
 
 
 def _write_letter_overlay_pdf(placements, page_h: float, out_path: Path) -> Path:
+    """Write a transparent overlay PDF carrying the panel letters, to be merged onto the assembled page."""
     ensure_dir(out_path.parent)
     fig = plt.figure(figsize=(PAGE_W / 72.0, page_h / 72.0))
     fig.patch.set_facecolor("none")
@@ -168,6 +171,7 @@ def assemble_figure(panel_pdfs: dict[str, Path], stem, save_dpi: int = 300):
 
 
 def _jsonable_stats(stats: dict) -> dict:
+    """Narrow the stats dict to plain JSON-serialisable scalars for the cached summary."""
     return {
         "n": int(stats["n"]),
         "n_ac": int(stats["n_ac"]),
@@ -188,6 +192,7 @@ def _jsonable_stats(stats: dict) -> dict:
 
 
 def generate_all(args):
+    """Render every requested panel, then assemble the composite figure."""
     run_dir = Path(args.run_dir).resolve()
     data_dir = run_dir / "data"
     panels_dir = Path(args.output_dir).resolve() / "panels"
@@ -262,6 +267,7 @@ def generate_all(args):
 
 
 def parse_args():
+    """Command-line arguments: run directory, reward position, output paths, panel subset."""
     p = argparse.ArgumentParser(description="Generate Figure 2 (frozen replay / policy remapping).")
     p.add_argument("--run_dir", default=str(DEFAULT_RUN))
     p.add_argument("--output_dir", default=str(FIGURES_DIR))

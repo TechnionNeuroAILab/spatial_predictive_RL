@@ -13,8 +13,8 @@ Panels:
      weight-only change) and is the paper's definitive H1-vs-H2 test.
 
 Usage:
-    python "code_analysis/figure 3/generate_figure3_supp.py" --no_show
-    python "code_analysis/figure 3/generate_figure3_supp.py" \\
+    python paper_code/figures/fig3/generate_figure3_supp.py --no_show
+    python paper_code/figures/fig3/generate_figure3_supp.py \\
         --multi_seed_dir Repro/multi_seed_head \\
         --nohead_dir Repro/multi_seed \\
         --seeds 0 1 2 ... 49 --no_show
@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import subprocess
 import sys
 import tempfile
@@ -38,11 +39,29 @@ FIG3_DIR = REPO / "paper_code" / "figures" / "fig3"
 FIG2_DIR = REPO / "paper_code" / "figures" / "fig2"
 FIG1_DIR = REPO / "paper_code" / "figures" / "fig1"
 
+# fig2 first: `analysis` is fig2's shared implementation and must execute with
+# fig2's utils, which alone defines PHASE_A/PHASE_B/PHASE_C_*. fig1 stays on the
+# path because fig2/analysis.py imports fig1's rate_maps.
 sys.path.insert(0, str(FIG1_DIR))
 sys.path.insert(0, str(FIG2_DIR))
 
 from analysis import load_phases, shared_place_cell_ids, paired_distance_stats  # noqa: E402
-from utils import DEFAULT_REWARD, apply_nature_style, ensure_dir, save_figure, PAGE_W, MM_TO_PT  # noqa: E402
+
+# fig3's utils, loaded by path on purpose. FIG3_DIR was never placed on sys.path,
+# so a bare `from utils import ...` here resolved to fig2's copy -- and would keep
+# doing so even if it were, because importing `analysis` above already bound the
+# name "utils" to fig2's module in sys.modules.
+_spec = importlib.util.spec_from_file_location("fig3_utils", FIG3_DIR / "utils.py")
+_fig3_utils = importlib.util.module_from_spec(_spec)
+sys.modules["fig3_utils"] = _fig3_utils
+_spec.loader.exec_module(_fig3_utils)
+
+DEFAULT_REWARD = _fig3_utils.DEFAULT_REWARD
+apply_nature_style = _fig3_utils.apply_nature_style
+ensure_dir = _fig3_utils.ensure_dir
+save_figure = _fig3_utils.save_figure
+PAGE_W = _fig3_utils.PAGE_W
+MM_TO_PT = _fig3_utils.MM_TO_PT
 
 apply_nature_style()
 
@@ -55,6 +74,7 @@ REWARD_POS = np.asarray(DEFAULT_REWARD, dtype=float)
 # ---------------------------------------------------------------------------
 
 def load_seed(seed: int, multi_seed_dir: Path, prefix: str, skaggs_threshold: float = 0.05):
+    """Per-seed summary row for the head-ON contrasts; None if the run is missing or fails."""
     run_dir = multi_seed_dir / f"{prefix}seed{seed}"
     data_dir = run_dir / "data"
     if not data_dir.exists():
@@ -80,6 +100,7 @@ def load_seed(seed: int, multi_seed_dir: Path, prefix: str, skaggs_threshold: fl
 # ---------------------------------------------------------------------------
 
 def _wilcoxon_p(vals, alternative="less"):
+    """Paired two-sided Wilcoxon p-value; NaN when there are too few pairs or no differences."""
     try:
         _, p = _wilcoxon(vals, alternative=alternative)
         return float(p)
@@ -88,6 +109,7 @@ def _wilcoxon_p(vals, alternative="less"):
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return ""
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
@@ -225,6 +247,7 @@ def fig_supp_head_vs_nohead(head_rows, nohead_rows, stem):
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -235,6 +258,7 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
 
 
 def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
+    """Place each panel PDF in its slot and write the composite page as PDF and PNG."""
     out_stem = Path(out_stem).with_suffix("")
     pdf_path = out_stem.with_suffix(".pdf")
     png_path = out_stem.with_suffix(".png")
@@ -289,6 +313,7 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 def parse_args():
+    """Command-line arguments: multi-seed directories, seed list, output directory."""
     p = argparse.ArgumentParser()
     p.add_argument("--multi_seed_dir", default=str(REPO / "Repro" / "multi_seed_head"),
                    help="Root dir for head-condition seeds (head_seed{N}/)")
@@ -306,6 +331,7 @@ def parse_args():
 
 
 def main():
+    """Load every seed, build the panels, and assemble the supplementary figure."""
     args = parse_args()
     multi_seed_dir = Path(args.multi_seed_dir)
     nohead_dir = Path(args.nohead_dir)

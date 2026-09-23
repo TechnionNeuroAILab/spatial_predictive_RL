@@ -1,4 +1,8 @@
-"""Rate-map construction and plotting helpers (self-contained)."""
+"""Figure-1 rate-map plotting helpers.
+
+The rate-map primitives themselves come from lib/ratemaps.py -- this module
+used to carry its own verbatim copy of them.
+"""
 from __future__ import annotations
 
 import os
@@ -7,7 +11,6 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.ndimage import gaussian_filter
 from scipy.stats import wilcoxon as _wilcoxon
 
 from utils import FS_SMALL, FS_TICK, arena_axes, reward_marker, thin_colorbar, C, fmt_p, hist_outline, stat_annot, RATEMAP_CMAP, apply_nature_style, save_figure
@@ -18,68 +21,17 @@ _LIB = _Path(__file__).resolve().parents[2] / "lib"
 if str(_LIB) not in _sys.path:
     _sys.path.insert(0, str(_LIB))
 from pubstyle import RATEMAP as _RATEMAP, DIVERGING as _DIVERGING, SEQUENTIAL as _SEQUENTIAL  # noqa: E402
+from ratemaps import (  # noqa: E402
+    build_rate_maps, compute_skaggs, smooth_and_norm,
+    field_center_of_mass, field_peak,
+)
 
 
 apply_nature_style()
 
 
-def build_rate_maps(df_beh, df_act, m: int = 32, hidden_dim: int = 512):
-    n_steps = len(df_beh)
-    act_mat = df_act["activity"].values.reshape(n_steps, hidden_dim)
-    x_bin = np.clip((df_beh["x"].values * m).astype(int), 0, m - 1)
-    y_bin = np.clip((df_beh["y"].values * m).astype(int), 0, m - 1)
-    gc = x_bin * m + y_bin
-    n_bins = m * m
-    bin_sum = np.zeros((n_bins, hidden_dim), dtype=np.float64)
-    np.add.at(bin_sum, gc, act_mat)
-    bin_count = np.bincount(gc, minlength=n_bins).astype(float)
-    rate_flat = np.divide(
-        bin_sum, bin_count[:, None],
-        out=np.zeros_like(bin_sum), where=bin_count[:, None] > 0,
-    )
-    rate_maps = rate_flat.T.reshape(hidden_dim, m, m)
-    occupancy = (bin_count / n_steps).reshape(m, m)
-    return rate_maps, occupancy
-
-
-def compute_skaggs(rate_maps, occupancy):
-    hidden_dim = rate_maps.shape[0]
-    occ_flat = occupancy.reshape(-1)
-    rate_flat = rate_maps.reshape(hidden_dim, -1).T
-    mean_rate = rate_flat.mean(axis=0)
-    ratio = np.where(mean_rate[None, :] > 1e-10, rate_flat / mean_rate[None, :], 0.0)
-    log_ratio = np.where(ratio > 0, np.log2(np.maximum(ratio, 1e-300)), 0.0)
-    return (occ_flat[:, None] * ratio * log_ratio).sum(axis=0)
-
-
-def smooth_and_norm(rm, sigma: float = 1.5):
-    s = gaussian_filter(rm, sigma=sigma)
-    if s.max() > 0:
-        s = (s - s.min()) / (s.max() - s.min())
-    return s
-
-
-def field_peak(rm2d) -> np.ndarray:
-    """Peak location in arena coords [0, 1]^2 from a smoothed/normalized rate map."""
-    m = rm2d.shape[0]
-    row, col = np.unravel_index(int(np.argmax(rm2d)), rm2d.shape)
-    return np.array([col / m + 0.5 / m, row / m + 0.5 / m], dtype=float)
-
-
-def field_center_of_mass(rm) -> tuple[float, float]:
-    """Activity-weighted COM in arena coords [0, 1]^2."""
-    m = rm.shape[0]
-    total = float(rm.sum())
-    if total <= 0:
-        return (0.5, 0.5)
-    xs = np.arange(m) / m + 0.5 / m
-    ys = np.arange(m) / m + 0.5 / m
-    cx = float((rm * xs[None, :]).sum() / total)
-    cy = float((rm * ys[:, None]).sum() / total)
-    return (cx, cy)
-
-
 def dist_to_reward(centers: np.ndarray, reward) -> np.ndarray:
+    """Euclidean distance from each field centre to `reward`."""
     reward = np.asarray(reward, dtype=float)
     return np.linalg.norm(np.asarray(centers, dtype=float) - reward[None, :], axis=1)
 
@@ -146,7 +98,7 @@ def analyse_peak_com_distances(
 def _fmt_p(p: float) -> str:
     """Format a p-value for figure annotation.
 
-    An unavailable p-value prints NOTHING. The previous version rendered the
+    An unavailable p-value prints nothing. The previous version rendered the
     literal "p = n/a" onto the panel, which both looks unfinished and, because
     it was drawn in the same corner as the legend, overlapped the legend text.
     """
@@ -211,11 +163,13 @@ def fig_dist_histogram(
 
 
 def cycle_num(label: str) -> int:
+    """Cycle number parsed out of a period label; -1 when there is none."""
     mobj = re.search(r"cycle_(\d+)", label)
     return int(mobj.group(1)) if mobj else -1
 
 
 def load_cycle_rate_maps(data_dir, m: int = 32, hidden_dim: int = 512, probe_type: str = "goal"):
+    """Rate maps and Skaggs scores for every cycle of one probe type ('goal' or random-walk)."""
     if probe_type == "goal":
         cycle_files = sorted(
             f for f in os.listdir(data_dir)
@@ -239,6 +193,7 @@ def load_cycle_rate_maps(data_dir, m: int = 32, hidden_dim: int = 512, probe_typ
 
 
 def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title: str = "Cognitive Map", stem=None):
+    """10x10 grid of the top units' smoothed rate maps, with the reward marked."""
     n_show = min(100, len(top_idx))
     rx, ry = reward_bin
     fig = plt.figure(figsize=(15, 15), dpi=150)
@@ -260,6 +215,7 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title: str = "Cognitive
 
 
 def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin, stem=None):
+    """One unit across cycles: prediction probe on the top row, RL probe below."""
     rw_labels = sorted(rw_cycles.keys(), key=cycle_num)
     goal_labels = sorted(goal_cycles.keys(), key=cycle_num)
     n = max(len(rw_labels), len(goal_labels))

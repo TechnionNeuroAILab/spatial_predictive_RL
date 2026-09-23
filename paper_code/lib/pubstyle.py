@@ -8,18 +8,18 @@ re-exports these names so existing call sites keep working.
 
 Design decisions and why:
 
-TYPEFACE -- TeX Gyre Heros, a high-quality Helvetica clone. Arial and Helvetica
+typeface -- TeX Gyre Heros, a high-quality Helvetica clone. Arial and Helvetica
 are not installed on this machine, so the previous font stack silently fell back
 to DejaVu Sans (matplotlib's default, and instantly recognisable as such).
 Nature/Science figures are set in Helvetica or Arial; Heros matches those metrics.
 
-COLOUR -- the Okabe-Ito colourblind-safe qualitative palette, which is the
+colour -- the Okabe-Ito colourblind-safe qualitative palette, which is the
 accessibility reference set: distinguishable under deuteranopia, protanopia and
-tritanopia, and separable in greyscale. Colours are exposed by ROLE
+tritanopia, and separable in greyscale. Colours are exposed by role
 (`C["pre"]`, `C["head"]`, ...) not by hue, so a condition keeps one colour in
 every panel of every figure.
 
-RATE MAPS -- `RATEMAP`, a custom white -> amber -> vermillion -> maroon ramp,
+rate maps -- `RATEMAP`, a custom white -> amber -> vermillion -> maroon ramp,
 chosen by rendering real sparse place fields through eight candidates as an
 actual 2x8 tile grid (the way they appear in figs 1-4) and comparing:
   jet/turbo      perceptually non-uniform; invents structure in flat background
@@ -31,7 +31,7 @@ photocopying), reads intuitively as hot = active, and keeps the page white.
 The floor is a barely-tinted white rather than pure white so the arena is still
 distinguishable from the page, with a light grey frame for the same reason.
 
-SIZES -- Nature: 89 mm single column, 183 mm double, and no text below 5 pt at
+sizes -- Nature: 89 mm single column, 183 mm double, and no text below 5 pt at
 final size. Type scale here is 7 pt body / 6 pt ticks / 8 pt bold panel letters.
 """
 from __future__ import annotations
@@ -120,7 +120,7 @@ COLOR_REWARD = C["reward"]
 COLOR_MUTED = C["muted"]
 
 # ------------------------------------------------------------------- colormaps
-# Stops are POSITIONED, not evenly spaced: the low third stays almost white so a
+# Stops are positioned, not evenly spaced: the low third stays almost white so a
 # sparse place field still reads as sparse. With evenly spaced stops the ramp
 # reaches full amber by 0.33 and small fields visually inflate into fat blobs --
 # a real perceptual change relative to the jet original, not just a recolour.
@@ -243,7 +243,7 @@ def title(ax, text: str, **kw):
 
 
 def fmt_p(p: float | None, italic: bool = True) -> str:
-    """APA-ish p formatting: no '0.05000000001', no 'p = n/a'."""
+    """apa-ish p formatting: no '0.05000000001', no 'p = n/a'."""
     if p is None or (isinstance(p, float) and not np.isfinite(p)):
         return ""
     lead = "$P$" if italic else "P"
@@ -257,7 +257,7 @@ def fmt_p(p: float | None, italic: bool = True) -> str:
 
 def stat_annot(ax, text: str, loc: str = "upper right", size: float = FS_SMALL,
                color: str | None = None, pad: float = 0.02, **kw):
-    """Put statistics INSIDE the axes in small grey type.
+    """Put statistics inside the axes in small grey type.
 
     Statistics stacked above a panel as a multi-line title (the previous
     pattern) reads as a caption fragment and pushes panels apart.

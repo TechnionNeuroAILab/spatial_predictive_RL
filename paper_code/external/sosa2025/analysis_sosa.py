@@ -1,11 +1,11 @@
 """Reanalysis of Sosa, Plitt & Giocomo 2025 (DANDI 001361) switch sessions.
 
 Tests (per within-environment reward-relocation session):
-  i   Apparent vs occupancy-matched shift of place-field peaks toward the NEW
+  i   Apparent vs occupancy-matched shift of place-field peaks toward the new
       reward zone (raw vs per-(position-bin x speed-tercile) frame-matched).
-  ii  Reward-relative fraction using THEIR criterion (circular rel-peak within
+  ii  Reward-relative fraction using their criterion (circular rel-peak within
       50 cm of unity + circular-roll null; simplified: 500 rolls of the post
-      map, RR iff |rel_pre - rel_post| < 50 cm AND < 5th pct of the cell's
+      map, RR iff |rel_pre - rel_post| < 50 cm and < 5th pct of the cell's
       null distances), plus place-anchored fraction.
   iii Latencies: behavioural retargeting (anticipatory licking) vs map
       transfer (place-cell peaks near the new zone), in trials after switch.
@@ -13,7 +13,7 @@ Tests (per within-environment reward-relocation session):
 Sessions: all downloaded NWBs whose scene contains "_to_" within a single
 environment (env-switch sessions like Env1_B_to_Env2_C are skipped).
 That is m11 ses-03/05/07/10/12/14 + m19 ses-05 (NB: m11 lacks ses-01/02, so
-its Env2 switch days fall on EVEN session numbers).
+its Env2 switch days fall on even session numbers).
 
 All outputs cached to cache/sosa_tests.json. Run from this directory:
     python analysis_sosa.py
@@ -355,10 +355,10 @@ def analyze_session(path, sess_seed):
     pk_pre = peaks_cm(map_pre[place])
     pk_post = peaks_cm(map_post[place])
 
-    # ---- TEST i: raw vs occupancy-matched shift toward NEW zone -------------
+    # ---- test i: raw vs occupancy-matched shift toward new zone -------------
     # raw + matched both use aggregate (frame-level) maps with the same
     # occupancy floor, so the matching is the only difference between the two
-    # estimates. Matched counts are POOLED across subsample repeats before
+    # estimates. Matched counts are pooled across subsample repeats before
     # normalising (mean-of-noisy-maps / per-repeat peaks are both biased).
     agg_pre, occ_pre = aggregate_map(ev_pre, bi_pre, dt, OCC_FLOOR_S)
     agg_post, occ_post = aggregate_map(ev_post, bi_post, dt, OCC_FLOOR_S)
@@ -406,7 +406,7 @@ def analyze_session(path, sess_seed):
         n_lowocc_bins_pre=n_lowocc0, n_lowocc_bins_post=n_lowocc1,
     )
 
-    # ---- TEST ii: reward-relative fraction (their criterion, simplified) ----
+    # ---- test ii: reward-relative fraction (their criterion, simplified) ----
     rel_pre = circ_signed(pk_pre, rz_pre[0])
     rel_post = circ_signed(pk_post, rz_post[0])
     d_rel = circ_dist(rel_post, rel_pre)
@@ -432,7 +432,7 @@ def analyze_session(path, sess_seed):
     for k in ("rr_frac", "rr_frac_50cm_only", "place_anchored_frac"):
         assert 0.0 <= row[k] <= 1.0
 
-    # ---- TEST iii: lick latency vs map latency ------------------------------
+    # ---- test iii: lick latency vs map latency ------------------------------
     licks_bin, bad_lick_trials = corrected_binary_licks(lick, tdf, trial)
     lick_lat = None
     lick_rates = []

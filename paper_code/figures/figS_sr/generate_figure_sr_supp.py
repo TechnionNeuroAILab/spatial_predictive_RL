@@ -9,7 +9,7 @@ Replaces the retired Figure 5 panel f. Panels:
   d  Spatial specificity: Delta-d toward the true reward vs other locations
 
 Usage:
-    python code_analysis/figure_sr/generate_figure_sr_supp.py --no_show
+    python paper_code/figures/figS_sr/generate_figure_sr_supp.py --no_show
 """
 from __future__ import annotations
 
@@ -42,12 +42,14 @@ FIGURES_DIR = HERE / "figures_supp"
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; 'n/a' when it is not finite."""
     if not np.isfinite(p):
         return "n/a"
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
 
 def _arr(rows, key):
+    """Pull one key out of a list of per-seed rows as a float array."""
     return np.array([r[key] for r in rows], dtype=float)
 
 
@@ -56,6 +58,7 @@ def _arr(rows, key):
 # ---------------------------------------------------------------------------
 
 def fig_diagnosis(rows_nh, rows_hd, stem):
+    """Panel a -- the retired projection metric against its own shuffle null."""
     fig, ax = plt.subplots(figsize=(3.2, 2.4))
     groups = [
         ("no-head\nobserved", _arr(rows_nh, "proj_mean"), COLOR_NOHEAD, False),
@@ -115,6 +118,7 @@ def fig_correct_metric(conds, stem):
 # ---------------------------------------------------------------------------
 
 def fig_nulls(rows_nh, rows_hd, stem):
+    """Panel b -- why the cell-shuffle null is inert for the mean but valid for the paired statistic."""
     fig, axes = plt.subplots(1, 2, figsize=(4.4, 2.3))
 
     ax = axes[0]
@@ -157,6 +161,7 @@ def fig_nulls(rows_nh, rows_hd, stem):
 # ---------------------------------------------------------------------------
 
 def fig_specificity(rows_nh, rows_hd, stem):
+    """Panel d -- Delta-d toward the true reward against the mirrored reward locations."""
     names = list(MIRROR_LOCATIONS)
     fig, ax = plt.subplots(figsize=(3.4, 2.4))
     w = 0.36
@@ -182,6 +187,7 @@ def fig_specificity(rows_nh, rows_hd, stem):
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         pre = Path(tmp) / "page"
         subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile",
@@ -190,6 +196,7 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
 
 
 def assemble(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
+    """Lay the panel PDFs out 2x2 on one page and write the composite as PDF and PNG."""
     out_stem = Path(out_stem).with_suffix("")
     pdf_path, png_path = out_stem.with_suffix(".pdf"), out_stem.with_suffix(".png")
     MARGIN, GAP = 10 * MM_TO_PT, 5 * MM_TO_PT
@@ -231,6 +238,7 @@ def assemble(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 
 
 def main():
+    """Load both conditions, build every panel, and assemble the figure."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--n_perm", type=int, default=200)
     ap.add_argument("--seeds", type=int, nargs="+", default=None)

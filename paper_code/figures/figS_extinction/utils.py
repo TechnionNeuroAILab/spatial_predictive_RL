@@ -1,7 +1,7 @@
 """Extinction figure — shared constants and styling.
 
 Group-level (n=13 entropy-gated seeds) frozen-replay analysis of the
-extinction simulation (Code/ratinabox_extinction.py), confronted with
+extinction simulation (paper_code/model/ratinabox_extinction.py), confronted with
 Krishnan et al. 2022's published source data.
 """
 from __future__ import annotations

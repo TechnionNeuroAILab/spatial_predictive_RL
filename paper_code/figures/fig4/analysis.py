@@ -22,8 +22,7 @@ _NEW_CODE = Path(__file__).parents[2] / "lib"
 sys.path.insert(0, str(_NEW_CODE))
 
 from analysis_helpers import load_period_centers, has_period, seed_is_clean  # noqa: E402
-from plot_goal_directed_maps import build_rate_maps, compute_skaggs, smooth_and_norm  # noqa: E402
-from plot_replay_v11 import field_peak  # noqa: E402
+from ratemaps import build_rate_maps, compute_skaggs, smooth_and_norm, field_peak  # noqa: E402
 
 from utils import (
     C, FS_BASE, FS_SMALL, fmt_p, stat_annot, style_violin, title, zero_line,
@@ -64,6 +63,7 @@ def load_reloc_states(data_dir, skaggs_threshold: float = SKAGGS_THRESHOLD) -> d
 
 
 def _wilcoxon_p(a, b):
+    """Paired two-sided Wilcoxon p; NaN for n < 5 or when the two arrays are identical."""
     if len(a) < 5 or np.all(np.abs(a - b) < 1e-12):
         return float("nan")
     try:
@@ -232,15 +232,16 @@ def fig_com_scatter_three(states: dict, stem, reward_a=REWARD_A, reward_b=REWARD
 # ---------------------------------------------------------------------------
 # Panel a — example tracking cells (local implementation)
 #
-# Replaces the the retired New_Code/reward_relocation_maps.py exemplar panel, whose
-# quality score REWARDED field sharpness (quality = minsk + 0.7*sharp - ...),
-# so needle-thin "speckle" fields won even when they did not track the reward.
-# Here exemplars must (i) pass the Skaggs gate in ALL three periods,
+# Replaces an earlier exemplar panel whose quality score rewarded field sharpness
+# (quality = minsk + 0.7*sharp - ...), so needle-thin "speckle" fields won even
+# when they did not track the reward.
+# Here exemplars must (i) pass the Skaggs gate in all three periods,
 # (ii) have a minimum smoothed-field area (anti-speckle), and (iii) genuinely
 # track: move toward A in phase A and toward B in phase B, ending near each.
 # ---------------------------------------------------------------------------
 
 def _load_rate_maps(data_dir, period, m: int = M, hidden_dim: int = HIDDEN_DIM):
+    """Rate maps and occupancy for one period's pickles."""
     beh = pd.read_pickle(os.path.join(str(data_dir), f"df_behavior_{period}.pkl"))
     act = pd.read_pickle(os.path.join(str(data_dir), f"df_activations_{period}.pkl"))
     rm, occ = build_rate_maps(beh, act, m, hidden_dim)

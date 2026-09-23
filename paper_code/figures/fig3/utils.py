@@ -1,7 +1,7 @@
 """Figure 3 shared constants and Nature styling.
 
 Data structure is identical to Figure 2 (same phase names, same file layout).
-Only the run directory and interpretation differ (head=ON → fields DO move).
+Only the run directory and interpretation differ (head=ON → fields do move).
 """
 from __future__ import annotations
 

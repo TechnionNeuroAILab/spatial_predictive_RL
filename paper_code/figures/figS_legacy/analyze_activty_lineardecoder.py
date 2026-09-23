@@ -1,3 +1,11 @@
+"""Linear (ridge) decoding of position and distance-to-reward from hidden activity.
+
+Fits a decoder within one period and tests it both within that period and on a
+second period at the same timesteps, so a drop in cross-period R^2 separates a
+genuinely remapped population code from one that is merely noisier.
+Generates the panels behind the figS_decoder supplementary figure.
+
+"""
 import argparse
 import sys
 import pandas as pd
@@ -100,7 +108,7 @@ def run_cross_decoding(data_dir, period_a, period_b, reward_pos, test_size=0.2):
 
     Trains a Ridge decoder on period_a's activity and tests it both on
     held-out period_a activity (within-state) and on period_b's activity at
-    the SAME timesteps (cross-state), and vice versa. If the population code
+    the same timesteps (cross-state), and vice versa. If the population code
     genuinely remapped between A and B, cross-state R^2 should drop much more
     than within-state R^2; if it's just noisier decoding of the same
     underlying code, within and cross should degrade similarly.
@@ -135,7 +143,7 @@ def run_cross_decoding(data_dir, period_a, period_b, reward_pos, test_size=0.2):
 
         res_a = run_decoder_split(Xa_train, y_train, Xa_test, y_test, f"{target_name}_within_{period_a}")
         res_b = run_decoder_split(Xb_train, y_train, Xb_test, y_test, f"{target_name}_within_{period_b}")
-        # Cross: reuse the model trained above, apply to the OTHER period's test activity.
+        # Cross: reuse the model trained above, apply to the other period's test activity.
         r2_a_to_b = r2_score(y_test, res_a["model"].predict(Xb_test))
         r2_b_to_a = r2_score(y_test, res_b["model"].predict(Xa_test))
 
@@ -224,6 +232,7 @@ def plot_cross_decoding_results(results, period_a, period_b, output):
 
 
 def parse_args():
+    """Command-line arguments: run directory, periods to decode, reward position, output options."""
     p = argparse.ArgumentParser(description="Linear decoder analysis for place-cell activity.")
     p.add_argument("--run_dir", type=str, default=".",
                     help="Run directory containing data/ and figures/ (e.g. Negative_Results).")

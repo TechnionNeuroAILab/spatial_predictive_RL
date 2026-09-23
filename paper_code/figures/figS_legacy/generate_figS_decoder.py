@@ -8,7 +8,7 @@ That is the only generator in the repo that emits the shipped panel: the string
 file, together with the "Within\\n{period}" / "{a}\\n↓\\n{b}" tick labels and the
 grey footer "cross bars: trained on top period, tested on bottom period".
 
-Cross-decoding mode requires BOTH --period and --period_b; the shipped figure
+Cross-decoding mode requires both --period and --period_b; the shipped figure
 compares the pre-RL frozen-replay period against the post-RL one
 (replay_c1_pred vs replay_c1_postrl). The legacy script writes to
 `<run_dir>/figures/`; this wrapper copies the PDF to
@@ -42,6 +42,7 @@ PERIOD_B = "replay_c1_postrl"
 
 
 def main() -> int:
+    """Run the decoder script on a run directory and copy its PDF to figures_supp/."""
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run_dir", type=str, default=str(DEFAULT_RUN))

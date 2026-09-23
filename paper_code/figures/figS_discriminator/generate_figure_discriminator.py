@@ -8,21 +8,21 @@ paper_code/aggregate/run_estimator_validation.py; 79 gate-passing networks x 2 p
 periods, K=20 subsample reps per estimate).
 
 Story the panels tell (honest version -- the pre-registered ordering-recovery
-criterion FAILED and is reported as such):
+criterion failed and is reported as such):
   a  The estimator ladder: naive rate-map contrast overestimates the
      weight-driven shift ~6x; position matching helps; joint position x
      heading matching brings the population magnitude into range.
   b  Specificity: on a same-weights contrast (true shift exactly 0) the naive
      read-out reports a large false shift; the matched estimator reports ~0.
   c  The limit: per-seed agreement with frozen-replay ground truth is weak
-     (r ~ 0.1-0.3) and the head-vs-no-head ordering is NOT recovered --
-     because the recurrent state is PATH-dependent, matching instantaneous
+     (r ~ 0.1-0.3) and the head-vs-no-head ordering is not recovered --
+     because the recurrent state is path-dependent, matching instantaneous
      (position, heading) marginals cannot equate state distributions. Only
      trajectory-level control identifies the weight-driven component.
   d  Sample-size dependence of the matched estimator (practical guidance).
 
 Usage:
-    python code_analysis/figure_discriminator/generate_figure_discriminator.py --no_show
+    python paper_code/figures/figS_discriminator/generate_figure_discriminator.py --no_show
 """
 from __future__ import annotations
 
@@ -55,10 +55,12 @@ POST = "cycle_1_goal"          # weight-aligned variant (post weights == GT post
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
 
 def load():
+    """Read the cached estimator-validation JSON; return it with the no-head and head row lists."""
     with open(CACHE) as f:
         d = json.load(f)
     rows = d["per_seed"][POST]
@@ -66,10 +68,12 @@ def load():
 
 
 def _arr(rows, key):
+    """Pull one key out of a list of per-seed rows as a float array (missing -> NaN)."""
     return np.array([r.get(key) for r in rows], dtype=float)
 
 
 def fig_ladder(nh, hd, stem):
+    """Panel a -- the estimator ladder: naive vs position- vs joint-matched vs reweighted Delta-d, per condition."""
     fig, ax = plt.subplots(figsize=(3.4, 2.6))
     rng = np.random.default_rng(0)
     labels = ["naive", "position\nmatched", "pos x heading\nmatched", "frozen replay\n(ground truth)"]
@@ -92,6 +96,7 @@ def fig_ladder(nh, hd, stem):
 
 
 def fig_specificity(nh, hd, stem):
+    """Panel b -- specificity on a same-weights contrast, where the true shift is exactly zero."""
     fig, ax = plt.subplots(figsize=(2.6, 2.6))
     rng = np.random.default_rng(1)
     rows_all = nh + hd
@@ -162,6 +167,7 @@ def fig_limit(nh, hd, stem):
 
 
 def fig_samplesize(nh, hd, stem):
+    """Panel d -- matched-estimator Delta-d against the number of matched timesteps."""
     fig, ax = plt.subplots(figsize=(2.8, 2.4))
     for rows, c, lab in [(nh, COLOR_NOHEAD, "no-head"), (hd, COLOR_HEAD, "head-ON")]:
         fracs, means, sds, ns = [], [], [], []
@@ -186,6 +192,7 @@ def fig_samplesize(nh, hd, stem):
 
 
 def _pdf_to_png(pdf, png, dpi=300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         pre = Path(tmp) / "p"
         subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile", str(pdf), str(pre)], check=True)
@@ -193,6 +200,7 @@ def _pdf_to_png(pdf, png, dpi=300):
 
 
 def assemble(pdfs, out_stem, dpi=300):
+    """Lay the panel PDFs out 2x2 on one page and write the composite as PDF and PNG."""
     out_stem = Path(out_stem).with_suffix("")
     M_, G = 10 * MM_TO_PT, 5 * MM_TO_PT
     rows = [[k for k in ("a", "b") if k in pdfs], [k for k in ("c", "d") if k in pdfs]]
@@ -225,6 +233,7 @@ def assemble(pdfs, out_stem, dpi=300):
 
 
 def main():
+    """Build every panel from the cached JSON and assemble the figure."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--no_show", action="store_true")
     args = ap.parse_args()

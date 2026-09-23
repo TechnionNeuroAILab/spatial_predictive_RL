@@ -14,12 +14,12 @@ Panels:
   b  Sarel goal-vector summary (no-head vs head-ON)
   c  Relocation rotation test, behavioral version (cycle_1_goal vs cycle_2_goal)
   d  Relocation rotation test, occupancy-controlled version (frozen-replay triple)
-  e  Example tuning curves (one distance cell, one goal-vector cell, one HD-only cell)
+  e  Example tuning curves (one distance cell, one goal-vector cell, one hd-only cell)
   f  Wall-buffer / border-effect sensitivity sweep
   g  Frozen-replay negative control (validity check, reproduces legacy null result)
 
 Usage (run from repo root):
-    python "code_analysis/figure_reward_vector/generate_figure_reward_vector_supp.py" --no_show
+    python paper_code/figures/figS_reward_vector/generate_figure_reward_vector_supp.py --no_show
 """
 from __future__ import annotations
 
@@ -62,6 +62,7 @@ SUPP_FIGURES_DIR = HERE / "figures_supp"
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return "n/a"
     return f"{p:.1e}" if p < 0.001 else f"{p:.3f}"
@@ -118,6 +119,7 @@ def fig_gauthier_summary(rows_nh, rows_hd, stem):
 # ---------------------------------------------------------------------------
 
 def fig_sarel_summary(rows_nh, rows_hd, stem):
+    """Panel b -- ego-bearing against head-direction tuning strength (mean MRL), no-head vs head-ON."""
     fig, axes = plt.subplots(1, 2, figsize=(4.4, 2.3))
 
     ax = axes[0]
@@ -168,7 +170,7 @@ def fig_rotation_test(rot_rows, title, stem):
     A->B rotation test. Works for either the behavioral or occupancy-
     controlled period pair (caller supplies pre-computed rot_rows).
 
-    The headline statistic is the POOLED cell-level circular mean +- bootstrap
+    The headline statistic is the pooled cell-level circular mean +- bootstrap
     CI (large n across all stable goal-vector cells pooled over seeds) -- this
     is far better powered than eyeballing the noisy per-seed circular-mean
     scatter (each seed's own mean is based on only ~300 cells and single-
@@ -177,7 +179,7 @@ def fig_rotation_test(rot_rows, title, stem):
     rigorous test of "is the population-level shift ~0", while the per-seed
     paired magnitude comparison (Wilcoxon, |obs| vs |geom|) tests whether
     individual seeds' rotations track the geometric artifact less than
-    expected under an HD-driven account."""
+    expected under an hd-driven account."""
     all_dphi_goal = np.concatenate([np.asarray(r["dphi_goal_arr"]) for r in rot_rows if len(r["dphi_goal_arr"])])
     delta_geoms = np.array([r["delta_geom"] for r in rot_rows])
     circ_means = np.array([r["circ_mean_dphi_goal"] for r in rot_rows])
@@ -240,6 +242,7 @@ def fig_rotation_test(rot_rows, title, stem):
 # ---------------------------------------------------------------------------
 
 def fig_example_curves(nohead_seed_dir, reloc_seed_dir, reloc_period_a, reloc_period_b, stem):
+    """Panel e -- one example tuning curve each for a distance cell, a goal-direction cell and a head-direction-only cell."""
     res_nh = analyze_period(nohead_seed_dir, "goal_conditioned", n_null=50, seed=0)
     labels_nh = classify_cells(res_nh["ramp"], res_nh["ramp_p"], res_nh["mrl_ego"], res_nh["mrl_ego_p"],
                                 res_nh["mrl_hd"], res_nh["mrl_hd_p"], ring_mrl=res_nh["ring_mrl"])
@@ -283,7 +286,7 @@ def fig_example_curves(nohead_seed_dir, reloc_seed_dir, reloc_period_a, reloc_pe
         ax.set_title("Goal-direction cell", fontsize=6)
     ax.set_xlabel("ego-bearing to goal (deg)"); ax.set_ylabel("norm. activity")
 
-    # (3) HD-only cell (should visibly rotate in ego-bearing terms)
+    # (3) hd-only cell (should visibly rotate in ego-bearing terms)
     ax = axes[2]
     stable_hd_only = (labels_a["head_direction_cell"] & labels_b["head_direction_cell"]
                        & ~labels_a["goal_direction_cell"] & ~labels_b["goal_direction_cell"])
@@ -402,6 +405,7 @@ def fig_frozen_replay_control(rows_nh_replay, rows_hd_replay, rows_nh_goal, rows
 # ---------------------------------------------------------------------------
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -467,6 +471,7 @@ def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
 # ---------------------------------------------------------------------------
 
 def parse_args():
+    """Command-line arguments: condition directories, seed list, output directory, panel subset."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--nohead_seeds", type=int, nargs="+", default=None)
     p.add_argument("--head_seeds", type=int, nargs="+", default=None)
@@ -481,6 +486,7 @@ def parse_args():
 
 
 def main():
+    """Load or rebuild the per-condition summaries, build the panels, and assemble the figure."""
     args = parse_args()
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")
     ensure_dir(Path(args.output_dir))

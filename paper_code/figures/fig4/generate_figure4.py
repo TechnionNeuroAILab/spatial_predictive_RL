@@ -6,8 +6,8 @@ Place fields leave reward A and migrate to reward B when the reward is relocated
 Demonstrated on a frozen random-walk trajectory replayed through three weight
 snapshots (baseline / postA / postB) — occupancy is identical in all three.
 
-    python "code_analysis/figure 4/generate_figure4.py" --no_show
-    python "code_analysis/figure 4/generate_figure4.py" \\
+    python paper_code/figures/fig4/generate_figure4.py --no_show
+    python paper_code/figures/fig4/generate_figure4.py \\
         --run_dir Repro/multi_seed_reloc/reloc_seed9 --no_show
 
 Panels
@@ -64,6 +64,7 @@ FIG_PAGE_W = 150.0 * MM_TO_PT
 
 
 def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         out_prefix = Path(tmp) / "page"
         subprocess.run(
@@ -160,6 +161,7 @@ def assemble_figure(panel_pdfs: dict[str, Path], stem, save_dpi: int = 300):
 
 
 def generate_all(args):
+    """Report the entropy gate, render every requested panel, then assemble the figure."""
     run_dir = Path(args.run_dir).resolve()
     data_dir = run_dir / "data"
     panels_dir = Path(args.output_dir).resolve() / "panels"
@@ -168,9 +170,9 @@ def generate_all(args):
 
     panel_pdfs: dict[str, Path] = {}
 
-    # Entropy-collapse gate (shared diagnostic; must hold in EVERY period)
+    # Entropy-collapse gate (shared diagnostic; must hold in every period)
     print("Entropy-collapse gate (>= %.1f bits in every period):" % MIN_ENTROPY)
-    from analysis_helpers import peak_entropy  # noqa: E402 (New_Code on path)
+    from analysis_helpers import peak_entropy  # noqa: E402 (lib/ on path)
     ents = {p: peak_entropy(data_dir, p) for p, _ in PERIODS}
     for (p, label), e in zip(PERIODS, ents.values()):
         print(f"  {label.replace(chr(10), ' '):22s} {p}: "
@@ -227,6 +229,7 @@ def generate_all(args):
 
 
 def parse_args():
+    """Command-line arguments: run directory, output paths, panel subset."""
     p = argparse.ArgumentParser(description="Generate Figure 4 (reward relocation).")
     p.add_argument("--run_dir", default=str(DEFAULT_RUN))
     p.add_argument("--output_dir", default=str(FIGURES_DIR))

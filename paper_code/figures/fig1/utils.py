@@ -1,3 +1,10 @@
+"""Figure 1 shared constants, page geometry and Nature styling.
+
+Re-exports the publication style from lib/pubstyle.py so panel modules can
+import it from here, and defines the composite page layout: which panel sits
+in which grid slot, and how wide that slot is on the final page.
+
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -66,7 +73,7 @@ ROW_MAX_H = {0: 150.0}
 def slot_width_pt(key: str) -> float:
     """Final on-page width of a panel's slot, in points.
 
-    Panels must be RENDERED at the width they are DISPLAYED at. The assembler
+    Panels must be rendered at the width they are displayed at. The assembler
     contain-fits each panel PDF into its slot, so a panel rendered 570 pt wide
     and shown in a 253 pt slot has all of its type scaled to 44% -- which is how
     7 pt labels ended up at ~3 pt on the page. Renderers take their figsize from
@@ -80,6 +87,7 @@ def slot_width_pt(key: str) -> float:
 
 
 def slot_width_in(key: str) -> float:
+    """`slot_width_pt` in inches, for passing straight to matplotlib figsize."""
     return slot_width_pt(key) / 72.0
 PANEL_ORDER = ["a", "b", "c", "d", "e", "f"]
 
@@ -122,6 +130,7 @@ DIST_RAY_COLOR = (0.55, 0.34, 0.75)
 
 
 def png_to_pdf(png_path: Path, pdf_path: Path) -> None:
+    """Convert a rendered PNG panel to a single-page PDF at 150 dpi."""
     from PIL import Image
 
     ensure_dir(pdf_path.parent)

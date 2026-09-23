@@ -12,11 +12,11 @@ external_data/krishnan2022/cache/krishnan_data.json (published source data).
 Panels:
   a  K1 over-representation: per-seed mean distance-to-A across the triple
      (pred -> postLearn -> postExt), paired lines; delta_learn/delta_ext/
-     recovery-fraction annotated. Model predicts NOT JUST recovery but
+     recovery-fraction annotated. Model predicts not just recovery but
      overshoot past the pre-learning baseline (recovery fraction > 1).
   b  K2 reliability analogue: split-half rate-map correlation, postLearn vs
      postExt, split by near-A/far-A strata (n=13 paired). The model's drop is
-     significant overall but concentrated in FAR cells, not near cells --
+     significant overall but concentrated in far cells, not near cells --
      flagged explicitly as a divergence from Krishnan's zone-specific pattern.
   c  K3 dopamine proxy: same (postLearn) head evaluated on postLearn vs
      postExt replay activity -- the readout-vs-map-drift analogue of an
@@ -26,7 +26,7 @@ Panels:
      contrast collapse, so the confrontation is not just qualitative.
 
 Usage:
-    python code_analysis/figure_extinction/generate_figure_extinction.py --no_show
+    python paper_code/figures/figS_extinction/generate_figure_extinction.py --no_show
 """
 from __future__ import annotations
 
@@ -59,12 +59,14 @@ PERIOD_LABELS = ["pre-learning\n(pred)", "learned\n(postLearn)", "extinguished\n
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if p is None:
         return "p=n/a"
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
 
 def load():
+    """Read the two cached JSONs this figure needs: the extinction summary and the Krishnan data."""
     with open(CACHE) as f:
         d = json.load(f)
     with open(KRISHNAN_CACHE) as f:
@@ -73,6 +75,7 @@ def load():
 
 
 def fig_k1(d, stem):
+    """Panel a -- K1: mean peak distance to reward A across the frozen triple, one line per seed."""
     rows = d["per_seed"]
     k1 = d["k1"]
     fig, ax = plt.subplots(figsize=(3.0, 2.6))
@@ -103,6 +106,7 @@ def fig_k1(d, stem):
 
 
 def fig_k2(d, stem):
+    """Panel b -- K2: split-half rate-map reliability, postLearn vs postExt, by near/far stratum."""
     k2 = d["k2"]
     fig, ax = plt.subplots(figsize=(2.9, 2.6))
     strata = ["all", "near", "far"]
@@ -130,6 +134,7 @@ def fig_k2(d, stem):
 
 
 def fig_k3(d, stem):
+    """Panel c -- K3: head output against distance to reward A, postLearn vs postExt."""
     k3 = d["k3"]
     fig, ax = plt.subplots(figsize=(2.9, 2.6))
     c = np.array(k3["dist_bin_centres"])
@@ -154,7 +159,7 @@ def fig_k3(d, stem):
 
 def fig_confrontation(d, kr, stem):
     """Model (n=13 seeds) vs Krishnan (n=3 imaged mice, published source data)
-    side by side, on two INDEPENDENTLY-derived fractional-change metrics:
+    side by side, on two independently-derived fractional-change metrics:
     (1) split-half reliability drop; (2) fraction of the near-reward
     field-density enrichment above its uniform/pre-learning baseline that is
     lost under extinction (model: postLearn->postExt near-A fraction relative
@@ -197,6 +202,7 @@ def fig_confrontation(d, kr, stem):
 
 
 def _pdf_to_png(pdf, png, dpi=300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         pre = Path(tmp) / "p"
         subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile", str(pdf), str(pre)], check=True)
@@ -204,6 +210,7 @@ def _pdf_to_png(pdf, png, dpi=300):
 
 
 def assemble(pdfs, out_stem, dpi=300):
+    """Lay the panel PDFs out 2x2 on one page and write the composite as PDF and PNG."""
     out_stem = Path(out_stem).with_suffix("")
     M_, G = 10 * MM_TO_PT, 5 * MM_TO_PT
     rows = [[k for k in ("a", "b") if k in pdfs], [k for k in ("c", "d") if k in pdfs]]
@@ -236,6 +243,7 @@ def assemble(pdfs, out_stem, dpi=300):
 
 
 def main():
+    """Build every panel from the cached JSONs and assemble the figure."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--no_show", action="store_true")
     args = ap.parse_args()

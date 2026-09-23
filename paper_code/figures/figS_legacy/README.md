@@ -1,8 +1,8 @@
 # figS_legacy — recovered generators for `figS_fate` and `figS_decoder`
 
 `main_v4_reframed.tex` includes two supplementary figures whose generators were not
-part of the current figure pipeline. They were traced to the pre-consolidation
-`Code/place_cell_analysis/` tree and rescued here rather than deleted with it.
+part of the current figure pipeline. They are kept here as standalone copies of the
+older analysis scripts that produced the shipped panels.
 
 | tex figure | generator | wrapper |
 |---|---|---|

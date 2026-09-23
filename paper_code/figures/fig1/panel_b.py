@@ -31,6 +31,7 @@ FOV_EXAMPLE_POSES = [
 
 
 def build_v10_fov_env(seed: int = 42):
+    """Build the schematic arena for this panel: wall-mounted landmark objects plus the agent's field-of-view cells. Returns (env, agent, fov_cells)."""
     from ratinabox import utils
     from ratinabox.Agent import Agent
     from ratinabox.Environment import Environment
@@ -114,6 +115,7 @@ def build_v10_fov_env(seed: int = 42):
 
 
 def get_observation_vector(fov_cells) -> np.ndarray:
+    """The agent's observation at its current pose: normalised FoV firing rates concatenated with the wall distances."""
     for cell in fov_cells:
         cell.update_cell_locations()
         cell.update()
@@ -145,6 +147,7 @@ def observation_rgb_image(obs: np.ndarray) -> np.ndarray:
 
 
 def plot_observation_rgb(ax, obs: np.ndarray) -> None:
+    """Draw one observation vector as a labelled image, three object-type rows over a wall row."""
     img = observation_rgb_image(obs)
     ax.imshow(img, aspect="auto", interpolation="nearest")
     ax.set_xticks(np.arange(6))
@@ -158,6 +161,7 @@ def plot_observation_rgb(ax, obs: np.ndarray) -> None:
 
 
 def render_fov_pose(ax_arena, ax_obs, env, agent, fov_cells, coords, hd_idx, title: str) -> None:
+    """Place the agent at one grid cell and heading, then draw the arena with its receptive fields beside the resulting observation."""
     agent.reset_history()
     for cell in fov_cells:
         cell.reset_history()
@@ -187,6 +191,7 @@ def render_fov_pose(ax_arena, ax_obs, env, agent, fov_cells, coords, hd_idx, tit
 
 
 def render_panel_b(stem_examples, stem_compact, compact_pose_idx: int = 0, seed: int = 42):
+    """Render panel b: one arena/observation row per example pose, plus a single-pose compact version."""
     env, agent, fov_cells = build_v10_fov_env(seed=seed)
 
     legend_handles = [

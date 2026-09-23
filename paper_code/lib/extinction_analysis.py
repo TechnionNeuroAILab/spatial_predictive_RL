@@ -1,30 +1,18 @@
-#!/usr/bin/env python3
 """
 Extinction analysis: Krishnan-analogue metrics on the frozen-replay triple.
 
-Runs produced by Code/ratinabox_extinction.py: head-ON learning at reward A
-(cycle 1, bit-identical to the head condition -- verified), then a cycle with
-reward delivery and the head objective OFF, with one frozen trajectory replayed
-through three weight snapshots: replay_ext_pred / postLearn / postExt.
+Runs come from model/ratinabox_extinction.py: head-ON learning at reward A,
+then a cycle with reward delivery and the head objective OFF. One frozen
+trajectory is replayed through three weight snapshots replay_ext_pred /
+postLearn / postExt -- so occupancy is identical across the triple.
 
-Metrics (all on the frozen triple, occupancy identical by construction):
-  K1  over-representation collapse: near-A field-peak fraction and mean
-      peak-distance-to-A per snapshot; delta_learn (pred->postLearn, expected
-      < 0 = toward A) and delta_ext (postLearn->postExt, expected > 0 = decay
-      back toward baseline). Pooled recovery fraction -sum(delta_ext)/
-      sum(delta_learn) with a seed-level bootstrap CI (per-seed ratios are
-      unstable; never average ratios).
-  K2  reliability analogue (Krishnan: trial-to-trial reliability 0.47 -> 0.32
-      under extinction): split each 50k-step replay into interleaved 1k-step
-      blocks, odd/even half rate maps, per-cell split-half Pearson r;
-      per-seed mean, postLearn vs postExt, near-A vs far-A strata.
-  K3  dopamine proxy: offline reward-head output vs distance-to-A, using the
-      cycle-boundary checkpoint (postLearn head) vs the final checkpoint
-      (postExt head) on the SAME replay hidden states.
+Three per-seed metrics, one function each: K1 over-representation collapse near
+A, K2 a split-half reliability analogue (Krishnan: 0.47 -> 0.32 under
+extinction), K3 an offline dopamine proxy from the reward head. Pooling, gating
+and the across-seed statistics belong to aggregate/run_extinction_analysis.py.
 
-Conventions: Delta-d NEGATIVE = toward reward. Skaggs gate 0.15 required in
-all three periods (triple-gated contrast precedent). Entropy gate 5.5 on the
-triple. Paired Wilcoxon across seeds for every contrast (pairing: same seed).
+Convention: delta-d negative = toward reward; Skaggs gate 0.15 in all three
+periods.
 """
 from __future__ import annotations
 
@@ -52,6 +40,8 @@ BLOCK = 1000
 
 
 def triple_maps(data_dir: Path):
+    """Arrays, rate maps, occupancy and Skaggs scores for each snapshot, in
+    PERIODS order (pred / postLearn / postExt). Shared input to K1-K3."""
     out = []
     for p in PERIODS:
         pos, _, act = load_period_arrays(data_dir, p)
@@ -146,12 +136,8 @@ def k3_dopamine_proxy(run_dir: Path, triple) -> dict | None:
         head.eval()
         return head
 
-    # The head receives no gradient during extinction (lambda_rew -> 0), so its
-    # weights are identical in both checkpoints -- the model's analogue of an
-    # unchanged dopaminergic readout circuit. What changes is the REPRESENTATION
-    # it reads: evaluate the SAME (postLearn) head on the postLearn vs postExt
-    # replay activations (identical trajectory), so any profile change reflects
-    # the drift of the map under the frozen proximity readout.
+    # The head gets no gradient during extinction, so both checkpoints hold the
+    # same weights: one frozen readout on two maps isolates representational drift.
     head = head_from(ckpts["postLearn"])
     if head is None:
         return None
@@ -174,6 +160,10 @@ def k3_dopamine_proxy(run_dir: Path, triple) -> dict | None:
 
 
 def per_seed_row(run_dir: Path, seed: int) -> dict | None:
+    """All three metrics for one seed; None if the run won't load or K1 is empty.
+
+    Entry point for aggregate/run_extinction_analysis.py, which maps it over seeds.
+    """
     d = Path(run_dir) / "data"
     try:
         triple = triple_maps(d)

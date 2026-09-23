@@ -4,7 +4,7 @@ Supplementary Figure — the plasticity gate (rigid vs plastic recurrent weights
 
 Panels:
   a  Per-network frozen-replay shift: rigid (2e-6) / no-head (5e-5) / head-ON (5e-5)
-  b  Per-cell displacement MAGNITUDE for the same three conditions. This is the
+  b  Per-cell displacement magnitude for the same three conditions. This is the
      panel that makes the claim precise: a near-zero net shift is ambiguous
      between "the fields did not move" and "the fields moved in directions that
      cancel", and only the former supports a plasticity gate.
@@ -15,7 +15,7 @@ Panels:
      sharing a seed number.
 
 Usage:
-    python code_analysis/figure_sr/generate_figure_rigid_supp.py --no_show
+    python paper_code/figures/figS_sr/generate_figure_rigid_supp.py --no_show
 """
 from __future__ import annotations
 
@@ -48,16 +48,19 @@ FIGURES_DIR = HERE / "figures_supp"
 
 
 def _fmt_p(p):
+    """Format a p-value for a panel annotation; 'n/a' when it is not finite."""
     if not np.isfinite(p):
         return "n/a"
     return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
 
 
 def _arr(rows, key):
+    """Pull one key out of a list of per-seed rows as a float array."""
     return np.array([r[key] for r in rows], dtype=float)
 
 
 def _strip(ax, i, vals, colour, rng):
+    """Draw one condition as a jittered strip of per-seed points plus a mean +- SD marker."""
     ax.scatter(i + rng.uniform(-0.14, 0.14, len(vals)), vals, s=11, color=colour,
                alpha=0.7, linewidths=0, zorder=3)
     ax.errorbar([i], [vals.mean()], yerr=[vals.std(ddof=1) if len(vals) > 1 else 0],
@@ -65,6 +68,7 @@ def _strip(ax, i, vals, colour, rng):
 
 
 def fig_shift(conds, stem):
+    """Panel a -- frozen-replay Delta-d for rigid, no-head and head-ON networks."""
     fig, ax = plt.subplots(figsize=(3.1, 2.5))
     rng = np.random.default_rng(0)
     notes = []
@@ -85,6 +89,7 @@ def fig_shift(conds, stem):
 
 
 def fig_displacement(conds, stem):
+    """Panel b -- mean per-cell displacement magnitude, separating stationary fields from cancelling ones."""
     fig, ax = plt.subplots(figsize=(3.1, 2.5))
     rng = np.random.default_rng(1)
     for i, (lab, rows, c) in enumerate(conds):
@@ -134,6 +139,7 @@ def fig_match(stem, seeds):
 
 
 def _pdf_to_png(pdf, png, dpi=300):
+    """Render a one-page PDF to PNG at `dpi`, via Poppler's pdftoppm."""
     with tempfile.TemporaryDirectory() as tmp:
         pre = Path(tmp) / "p"
         subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile", str(pdf), str(pre)], check=True)
@@ -141,6 +147,7 @@ def _pdf_to_png(pdf, png, dpi=300):
 
 
 def assemble(pdfs, out_stem, dpi=300):
+    """Lay the panel PDFs out in one row and write the composite as PDF and PNG."""
     out_stem = Path(out_stem).with_suffix("")
     pdf_path, png_path = out_stem.with_suffix(".pdf"), out_stem.with_suffix(".png")
     M, G = 10 * MM_TO_PT, 5 * MM_TO_PT
@@ -164,6 +171,7 @@ def assemble(pdfs, out_stem, dpi=300):
 
 
 def main():
+    """Load the three conditions, build every panel, and assemble the figure."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--n_perm", type=int, default=50)
     ap.add_argument("--no_show", action="store_true")
