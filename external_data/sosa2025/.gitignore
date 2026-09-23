@@ -1,0 +1,4 @@
+# Raw data and cloned code are never committed
+nwb/
+code_sosa/
+cache/download.log

@@ -1,0 +1,148 @@
+{
+ "dandiset": "001361",
+ "dandiset_version": "0.251124.0550",
+ "dandiset_url": "https://dandiarchive.org/dandiset/001361/0.251124.0550",
+ "paper_doi": "10.1038/s41593-025-01985-4",
+ "code_repo": "https://github.com/GiocomoLab/Sosa_et_al_2024",
+ "code_repo_head_sha": "adf0f9ed3defa22275d92fa0ed996f47008e05b3",
+ "downloaded_utc": "2026-08-18T04:41:44+00:00",
+ "n_files": 15,
+ "total_bytes": 2340720440,
+ "files": [
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-03_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-03_behavior+ophys.nwb",
+   "asset_id": "3186ae11-220e-40e1-a127-c2df0920738b",
+   "size_bytes": 93289060,
+   "sha256": "cc1d2de86513c0e589c221f67fb61d1592cf1c249d7b972d37cbcddddf8aa389",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/23_02_2023/Env1_LocationB_to_A",
+   "scene": "Env1_LocationB_to_A"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-04_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-04_behavior+ophys.nwb",
+   "asset_id": "293c5d23-c408-4f1d-b555-e17bfa8b2e99",
+   "size_bytes": 89719124,
+   "sha256": "81d8543c5e04eb961aa46e9b40d4bfddad0328d60be1c22bd4de4920e992884c",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/24_02_2023/Env1_LocationA",
+   "scene": "Env1_LocationA"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-05_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-05_behavior+ophys.nwb",
+   "asset_id": "9b5e6640-2523-47a1-bf9a-6e849709373f",
+   "size_bytes": 99311004,
+   "sha256": "d3dc309161ab0f82bf31e99ccffe264a2df9efbd2bfb5c56de1877f5335b3110",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/25_02_2023/Env1_LocationA_to_C",
+   "scene": "Env1_LocationA_to_C"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-06_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-06_behavior+ophys.nwb",
+   "asset_id": "6ef66890-8e99-4f71-a7f6-3c152300b105",
+   "size_bytes": 94681788,
+   "sha256": "a5eb320078f4d49836debc3069c24d37b5c594e432b76726697bcbf88c1c0bb4",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/26_02_2023/Env1_LocationC",
+   "scene": "Env1_LocationC"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-07_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-07_behavior+ophys.nwb",
+   "asset_id": "4a3e88e9-ae1a-44e3-89e0-843dab475378",
+   "size_bytes": 119675852,
+   "sha256": "7dddfad4b734dea2d03faa86fb09d765f231483a611f6e28c92112905e0e8c55",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/27_02_2023/Env1_LocationC_to_B",
+   "scene": "Env1_LocationC_to_B"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-08_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-08_behavior+ophys.nwb",
+   "asset_id": "145fea1c-3e3f-4fbb-828c-836bb360dd9e",
+   "size_bytes": 128267784,
+   "sha256": "aff8067f6ceba7fa5407e4a7ff048d2a2debbda0c0a0214c984b8ba47650304e",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/28_02_2023/Env1_B_to_Env2_C",
+   "scene": "Env1_B_to_Env2_C"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-09_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-09_behavior+ophys.nwb",
+   "asset_id": "7fd7658a-f9b4-43e6-ad2b-0f5189b6b3e3",
+   "size_bytes": 109835588,
+   "sha256": "38745ed94e59e8f13a57d2fa01461f2804f46165ee2b8ab0771a29b734eed332",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/01_03_2023/Env2_LocationC",
+   "scene": "Env2_LocationC"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-10_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-10_behavior+ophys.nwb",
+   "asset_id": "608585db-40e1-442b-9a69-3284ef3a8b30",
+   "size_bytes": 110767256,
+   "sha256": "2045c4c0e65bc96485abd564ebfbd6c301feeac27a1539431a93dffd5cf29585",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/02_03_2023/Env2_LocationC_to_A",
+   "scene": "Env2_LocationC_to_A"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-11_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-11_behavior+ophys.nwb",
+   "asset_id": "0dd81d0f-a314-4fc7-8c6f-e6fac9421e08",
+   "size_bytes": 111439988,
+   "sha256": "59a3b5807a9932d5b36a70722b2e6f118e0f0f88cedd4669450f86ea38280147",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/03_03_2023/Env2_LocationA",
+   "scene": "Env2_LocationA"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-12_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-12_behavior+ophys.nwb",
+   "asset_id": "0f99dae9-d27f-4d5b-9484-290a2993ca55",
+   "size_bytes": 121099428,
+   "sha256": "0709cbae45091e07ed1946b6eb5c772f78f143e7358f2201355781368baba181",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/04_03_2023/Env2_LocationA_to_B",
+   "scene": "Env2_LocationA_to_B"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-13_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-13_behavior+ophys.nwb",
+   "asset_id": "aebf0a00-258f-42f8-8de7-ef54e6164570",
+   "size_bytes": 134979608,
+   "sha256": "f5ad103dd16b4c0bef1397bb84c19b084d9eafe81e71c029fd4d703ba71e6982",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/05_03_2023/Env2_LocationB",
+   "scene": "Env2_LocationB"
+  },
+  {
+   "local_path": "nwb/sub-m11/sub-m11_ses-14_behavior+ophys.nwb",
+   "asset_path": "sub-m11/sub-m11_ses-14_behavior+ophys.nwb",
+   "asset_id": "6b4e4e62-249a-4789-b32c-c7cb3e958c05",
+   "size_bytes": 168764596,
+   "sha256": "8096847c75aebf05fb253082796e222b8728ed83a1f29132e5a16f1933fe3cd9",
+   "nwb_identifier": "/data/InVivoDA/GCAMP11/06_03_2023/Env2_LocationB_to_C",
+   "scene": "Env2_LocationB_to_C"
+  },
+  {
+   "local_path": "nwb/sub-m19/sub-m19_ses-04_behavior+ophys.nwb",
+   "asset_path": "sub-m19/sub-m19_ses-04_behavior+ophys.nwb",
+   "asset_id": "5a0dd560-f8a7-4b9c-944e-e47e131ac419",
+   "size_bytes": 345361248,
+   "sha256": "b3e5f37c295c377bd882dc0743e115783635e2cd65cb4ee11898e5b90405f7ee",
+   "nwb_identifier": "/data/InVivoDA/GCAMP19/28_03_2024/Env1_LocationB",
+   "scene": "Env1_LocationB"
+  },
+  {
+   "local_path": "nwb/sub-m19/sub-m19_ses-05_behavior+ophys.nwb",
+   "asset_path": "sub-m19/sub-m19_ses-05_behavior+ophys.nwb",
+   "asset_id": "6b441d4d-6593-4676-91a0-90e5c44e8af2",
+   "size_bytes": 331513968,
+   "sha256": "5b5f71d238a529ba454811edd613f0a49e60da7f72c027864c6b90ff4bbb2024",
+   "nwb_identifier": "/data/InVivoDA/GCAMP19/29_03_2024/Env1_LocationB_to_A",
+   "scene": "Env1_LocationB_to_A"
+  },
+  {
+   "local_path": "nwb/sub-m19/sub-m19_ses-06_behavior+ophys.nwb",
+   "asset_path": "sub-m19/sub-m19_ses-06_behavior+ophys.nwb",
+   "asset_id": "96fa3509-6b4f-4cf3-a2e2-e5252e263095",
+   "size_bytes": 282014148,
+   "sha256": "3776714e9594546958828a5bc23b79297f933c8a47012f26e0a176da4b5b26ad",
+   "nwb_identifier": "/data/InVivoDA/GCAMP19/30_03_2024/Env1_LocationA",
+   "scene": "Env1_LocationA"
+  }
+ ]
+}
