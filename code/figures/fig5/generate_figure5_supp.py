@@ -291,14 +291,22 @@ def fig_supp_sr_direction(nohead_dir, head_dir, seeds, stem):
     )
     all_angles = all_angles[np.isfinite(all_angles)]
 
+    from scipy.stats import wilcoxon as _wilcoxon
     all_residual = np.concatenate([r["residual_mag"] for r in rows_nh + rows_hd])
     all_dist = np.concatenate([r["dist_to_reward"] for r in rows_nh + rows_hd])
-    r_pooled, p_pooled = spearmanr(all_residual, all_dist)
+    r_pooled, _ = spearmanr(all_residual, all_dist)          # pooled r for display only
+    # tests are across networks: cells within a network are not independent
+    per_seed_r = np.array([r["residual_vs_dist_r"] for r in rows_nh + rows_hd], dtype=float)
+    per_seed_r = per_seed_r[np.isfinite(per_seed_r)]
+    p_resid = float(_wilcoxon(per_seed_r)[1]) if len(per_seed_r) >= 5 else float("nan")
 
-    per_seed_R = np.array([r["R"] for r in rows_nh + rows_hd])
-    mean_R = np.nanmean(per_seed_R)
+    # "R" holds the V statistic of rayleigh_from_angles: mean cos(angle), 0 = no relationship
+    per_seed_V = np.array([r["R"] for r in rows_nh + rows_hd], dtype=float)
+    per_seed_V = per_seed_V[np.isfinite(per_seed_V)]
+    mean_V = np.mean(per_seed_V) if len(per_seed_V) else float("nan")
+    p_V = float(_wilcoxon(per_seed_V, alternative="greater")[1]) if len(per_seed_V) >= 5 else float("nan")
 
-    fig, axes = plt.subplots(1, 2, figsize=(4.6, 2.3), subplot_kw={"projection": None})
+    fig = plt.figure(figsize=(4.6, 2.3))
 
     # Left: polar histogram of pooled angles (0 = perfectly aligned with SR prediction)
     ax0 = fig.add_subplot(1, 2, 1, projection="polar")
@@ -309,12 +317,10 @@ def fig_supp_sr_direction(nohead_dir, head_dir, seeds, stem):
     ax0.bar(centers, counts, width=width, color="#4C72B0", alpha=0.75, edgecolor="0.3", linewidth=0.4)
     ax0.set_thetamin(0)
     ax0.set_thetamax(180)
-    ax0.set_title(f"Actual vs SR-predicted shift angle\n(mean R={mean_R:.2f}, n={len(all_angles)} cells)",
-                  fontsize=5.8, pad=8)
+    ax0.set_title(f"Actual vs SR-predicted shift angle\n(mean V={mean_V:+.2f}, one-sided p={_fmt_p(p_V)} over "
+                  f"{len(per_seed_V)} networks; n={len(all_angles)} cells)", fontsize=5.8, pad=8)
 
     # Right: residual magnitude vs distance to reward
-    ax1 = axes[1]
-    ax1.remove()
     ax1 = fig.add_subplot(1, 2, 2)
     ax1.scatter(all_dist, all_residual, s=3, alpha=0.25, color="#B23A48", linewidths=0)
     m, b = np.polyfit(all_dist, all_residual, 1)
@@ -322,7 +328,8 @@ def fig_supp_sr_direction(nohead_dir, head_dir, seeds, stem):
     ax1.plot(xf, m * xf + b, "--", color="0.2", lw=1.0)
     ax1.set_xlabel("Distance to reward (Phase A)")
     ax1.set_ylabel("Residual shift magnitude\n(orthogonal to SR prediction)")
-    ax1.set_title(f"Residual vs distance\nr={r_pooled:+.2f}, p={_fmt_p(p_pooled)}", fontsize=5.8, pad=2)
+    ax1.set_title(f"Residual vs distance\npooled r={r_pooled:+.2f}; per-network r vs 0: p={_fmt_p(p_resid)}",
+                  fontsize=5.8, pad=2)
 
     fig.suptitle(f"SR direction test (A→B contrast, {len(rows_nh)+len(rows_hd)} seed-conditions)",
                  fontsize=6.3, y=1.03)

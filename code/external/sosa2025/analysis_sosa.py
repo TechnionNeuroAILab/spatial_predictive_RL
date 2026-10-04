@@ -59,8 +59,22 @@ SEED = 0
 
 EXAMPLE_SESSION = ("m11", 5)   # figure panel (a)
 
-MODEL_RR_FRAC = 0.064      # model comparison band (32 seeds)
-MODEL_RR_SD = 0.031
+# Model reward-relative fraction (mean, SD over networks), read from the model cache so the
+# data-vs-model test always uses the current model run; the constants are only a fallback.
+_RR_CACHE = HERE.parents[2] / "results" / "multi_seed_reloc" / "aggregate" / "reward_relative_summary.json"
+
+
+def _model_rr_band(fallback=(0.064, 0.031)):
+    try:
+        rows = json.loads(_RR_CACHE.read_text())["per_seed"]
+        v = np.array([r["controlled"]["frac_reward_relative"] for r in rows], dtype=float)
+        return float(v.mean()), float(v.std(ddof=1))
+    except Exception as e:
+        print(f"[warn] model reward-relative cache unreadable ({e}); using the fallback {fallback}", file=sys.stderr)
+        return fallback
+
+
+MODEL_RR_FRAC, MODEL_RR_SD = _model_rr_band()
 
 NOTE_TEST_I = (
     "On a stereotyped 1D VR track, laps are nearly identical trajectories, so "

@@ -1,9 +1,4 @@
-"""
-Dataframe loading, reshaping and JSON output for the code pipeline.
-
-It reads the df_behavior/df_activations pickles, validates their
-columns, pivots the long activity table into a (timestep x neuron) matrix,
-parses field-centre columns, and writes results back out.
+"""Pickle loading, pivoting, centre parsing and JSON output.
 """
 
 from __future__ import annotations
@@ -16,12 +11,14 @@ import pandas as pd
 
 
 def ensure_dir(path: str | Path) -> Path:
+    """Create `path` (and parents) if needed and return it."""
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
     return p
 
 
 def save_json(path: str | Path, payload: dict) -> None:
+    """Write `payload` as indented JSON (plain Python types only)."""
     p = Path(path)
     ensure_dir(p.parent)
     with p.open("w", encoding="utf-8") as f:
@@ -31,6 +28,7 @@ def save_json(path: str | Path, payload: dict) -> None:
 def load_pickle(
     path: str | Path, required_columns: Sequence[str] | None = None
 ) -> pd.DataFrame:
+    """Load a pickled DataFrame and check it has `required_columns`."""
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"Missing file: {p}")
@@ -48,6 +46,7 @@ def load_pickle(
 def load_behavior_activity(
     data_dir: str | Path, period: str
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Behaviour, activity and their merge on timestep for one period."""
     data_dir = Path(data_dir)
     behavior = load_pickle(
         data_dir / f"df_behavior_{period}.pkl", required_columns=["timestep", "x", "y"]
@@ -68,7 +67,7 @@ def pivot_activity_matrix(
     behavior_df: pd.DataFrame | None = None,
     fill_value: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
-    """Pivot the long activity table into a (timestep x neuron) matrix, optionally aligned to behaviour."""
+    """(timestep x neuron) activity matrix, optionally aligned to behaviour; missing entries become fill_value."""
     X_df = activity_df.pivot(index="timestep", columns="neuron_id", values="activity")
     X_df = X_df.sort_index().fillna(fill_value)
 
@@ -111,29 +110,7 @@ def extract_single_centers(
     center_col: str = "center",
     k_col: str = "k",
 ) -> pd.DataFrame:
-    """One (x, y) field centre per neuron, from a stored multi-component centre table.
-
-    Parameters
-    ----------
-    centers_df : pandas.DataFrame
-        One row per fitted component, with at least `neuron_col` and
-        `center_col`. Optionally `k_col` and an `icl_score` column, both from
-        the GMM field-fitting pipeline.
-    k_value : int or None
-        Keep only rows whose `k_col` equals this; k=1 means single-field fits.
-        None disables the filter.
-    icl_threshold : float or None
-    neuron_col, center_col, k_col : str
-        Column names to read from `centers_df`.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Columns [neuron_col, "x", "y"], at most one row per neuron. Empty (and
-        without those columns) if nothing survives the filters or no centre
-        parses.
-
-    """
+    """One (x, y) centre per neuron from a GMM centre table, filtered by k and ICL score."""
     df = centers_df.copy()
     if k_value is not None and k_col in df.columns:
         df = df[df[k_col] == k_value]

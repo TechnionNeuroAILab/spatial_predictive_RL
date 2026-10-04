@@ -17,8 +17,8 @@ For each seed:
   3. For each shared place cell (Skaggs-gated in phases A and B), look up the
      SR-predicted direction at its Phase-A location and compare it to
      the cell's actual shift direction (com_B - com_A) via the angle between
-     them (Rayleigh test for non-uniformity = "does SR predict direction
-     better than chance").
+     them (V-test toward 0: V = mean cos(angle), 0 = no relationship; stored
+     under the old key names "R" / "p_rayleigh").
   4. The residual — the actual shift component orthogonal to the SR
      prediction — is correlated against distance-to-reward: if the residual
      grows specifically as cells approach the reward, that's evidence for an

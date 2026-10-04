@@ -88,7 +88,7 @@ def load_seed(seed: int, multi_seed_dir: Path, skaggs_threshold: float = 0.05):
 # ---------------------------------------------------------------------------
 
 def _wilcoxon_p(vals, alternative="less"):
-    """Paired two-sided Wilcoxon p-value; NaN when there are too few pairs or no differences."""
+    """One-sided Wilcoxon p (default alternative="less": shift toward reward); NaN if it cannot be computed."""
     try:
         _, p = _wilcoxon(vals, alternative=alternative)
         return float(p)

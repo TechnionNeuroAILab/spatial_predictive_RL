@@ -136,8 +136,8 @@ def main():
                  for i, lbl in enumerate(["pred", "postLearn", "postExt"])}
     k1_summary = {
         "n_seeds": len(k1_rows),
-        "delta_learn": _wstat(delta_learn, alternative="less"),      # expect < 0
-        "delta_ext": _wstat(delta_ext, alternative="greater"),        # expect > 0
+        "delta_learn": {**_wstat(delta_learn, alternative="less"), "test": "one-sided Wilcoxon, less"},
+        "delta_ext": {**_wstat(delta_ext, alternative="greater"), "test": "one-sided Wilcoxon, greater"},
         "delta_net": _wstat(delta_net),
         "recovery_pooled": bootstrap_recovery_ratio(delta_learn, delta_ext),
         "near_frac_by_period": {k: {"mean": float(np.mean(v)), "sd": float(np.std(v, ddof=1))}
@@ -158,6 +158,13 @@ def main():
             for p in ["pred", "postLearn", "postExt"]
         }
         k2_summary[stratum]["postLearn_vs_postExt"] = _paired_wstat(vals["postLearn"], vals["postExt"])
+
+    # Direct test of "the loss is concentrated far from A": paired over networks,
+    # far drop vs near drop (drop = postLearn - postExt), two-sided.
+    def _drop(stratum):
+        return np.array([np.nan if (k["postLearn"][stratum] is None or k["postExt"][stratum] is None)
+                         else k["postLearn"][stratum] - k["postExt"][stratum] for k in k2_rows], dtype=float)
+    k2_summary["far_drop_vs_near_drop"] = _paired_wstat(_drop("far"), _drop("near"))
 
     # ---------------- K3 ----------------
     k3_rows = [r["k3"] for r in rows if r["k3"] is not None]
@@ -269,6 +276,10 @@ def main():
         print(f"  {stratum:>4}: postLearn={pl['mean']:.3f}+-{(pl['sd'] or 0):.3f}  "
               f"postExt={pe['mean']:.3f}+-{(pe['sd'] or 0):.3f}  "
               f"paired p={pv['p']} (n={pv['n']})")
+
+    fd = k2_summary["far_drop_vs_near_drop"]
+    if fd["p"] is not None:
+        print(f"  far drop vs near drop (paired, two-sided): mean diff {fd['mean_diff']:+.3f}, p={fd['p']} (n={fd['n']})")
 
     print("\n===== K3: dopamine proxy (near/far contrast) =====")
     if k3_rows:

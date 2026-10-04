@@ -1,4 +1,7 @@
-"""Rate-map and field-center helpers for Figure 2 (frozen replay + A/B/C)."""
+"""Figure 2 data and panels: phases A (prediction), B (goal policy) and the frozen-replay pair C.
+
+Field centres come from lib/ratemaps.py via figures/fig1/rate_maps.py, as (x, y).
+"""
 from __future__ import annotations
 
 import sys
@@ -40,8 +43,7 @@ from analysis_helpers import frozen_replay_delta_from_centers  # noqa: E402
 
 apply_nature_style()
 
-# Figure 1 panel d uses these IDs (cycle_1 vs cycle_1_goal, seed=42, n=8).
-# Kept as fallback if recomputation is unavailable.
+# Fig. 1d example cells (seed 42, n = 8); used only if the random selection fails
 FIG1_PANEL_D_NEURONS = [510, 364, 442, 334, 227, 229, 47, 400]
 
 
@@ -81,15 +83,14 @@ def fig1_panel_d_neuron_ids(phases: dict, n: int = 8, seed: int = 42) -> list[in
     """Same selection rule as Figure 1 panel d (active on A and B)."""
     try:
         return select_random_neurons(phases["A"]["rm"], phases["B"]["rm"], n=n, seed=seed)
-    except Exception:
+    except Exception as e:
+        print(f"  [warn] example-cell selection failed ({type(e).__name__}: {e}); using the fixed Fig. 1d IDs",
+              file=sys.stderr)
         return list(FIG1_PANEL_D_NEURONS[:n])
 
 
 def shared_place_cell_ids(phases: dict, skaggs_threshold: float = 0.05) -> np.ndarray:
-    """Place cells gated in A, B, and C (postrl) for the A→B contrast (kept
-    name/gate for backward compatibility). The "AC" frozen-replay contrast
-    in paired_distance_stats() uses its own independent C_pre/C_post gate,
-    not this one."""
+    """Units passing the Skaggs gate in A, B and C_post: the cell set of the A -> B contrast."""
     mask = (
         (phases["A"]["sk"] >= skaggs_threshold)
         & (phases["B"]["sk"] >= skaggs_threshold)
@@ -100,22 +101,10 @@ def shared_place_cell_ids(phases: dict, skaggs_threshold: float = 0.05) -> np.nd
 
 def paired_distance_stats(phases: dict, reward_pos, ids: np.ndarray,
                           ac_skaggs_threshold: float = 0.05, ac_min_cells: int = 10):
-    """COM / peak distances and Δd for two different contrasts:
+    """COM / peak distances and shifts (negative = toward reward) for two contrasts.
 
-    - A→B: RL policy vs prediction-only exploration. Occupancy is not fixed
-      here (this is intentional -- it answers "does active RL exploration
-      reshape place fields?", confounded with occupancy by design).
-
-    - "AC" (historically buggy; fixed here): now means C_pre -> C_post, i.e.
-      replay_c1_pred (frozen trajectory, pre-RL weights) vs replay_c1_postrl
-      (the same frozen trajectory, post-RL weights). Occupancy is genuinely
-      fixed -- only the weights differ -- so this isolates weight-driven
-      (H2 / real-remapping) shifts. This replaces the old (bug) definition
-      that used A (a real exploratory trajectory) as the "occupancy fixed"
-      baseline, which it was not. Key names (delta_com_AC, com_mean_delta_AC,
-      ...) are kept for backward compatibility with downstream callers;
-      only their contents and the cell population they're computed over
-      have changed. See analysis_helpers.frozen_replay_delta_from_centers.
+    A -> B: prediction walk vs goal policy (occupancy differs by design), on `ids`.
+    "AC": frozen replay C_pre -> C_post (same trajectory, only weights differ), with its own gate.
     """
     R = np.asarray(reward_pos, dtype=float)
     com_a = phases["A"]["com"][ids]
@@ -126,9 +115,7 @@ def paired_distance_stats(phases: dict, reward_pos, ids: np.ndarray,
     d_com = {"A": dist_to_reward(com_a, R), "B": dist_to_reward(com_b, R)}
     d_peak = {"A": dist_to_reward(peak_a, R), "B": dist_to_reward(peak_b, R)}
 
-    # --- corrected frozen-replay contrast: C_pre -> C_post (weights only) ---
-    # Independently gated on C_pre/C_post Skaggs (not on the A/B/ids gate above) --
-    # matches figure 5's own frozen-replay diagnostic exactly.
+    # frozen-replay contrast, gated on C_pre and C_post only
     com_ac = frozen_replay_delta_from_centers(
         phases["C_pre"]["sk"], phases["C_pre"]["com"],
         phases["C_post"]["sk"], phases["C_post"]["com"],
@@ -184,11 +171,7 @@ def fig_replay_remap_grid(
     cmap=RATEMAP,
     title: str | None = None,
 ):
-    """Panel a — remapping grid (Fig. 1d / 2a / 3a style).
-
-    Panel titles name the panel; the sentence explaining what the grid shows
-    belongs in the caption, so `title` defaults to nothing.
-    """
+    """Panel a: pre / post rate maps of the example cells."""
     n = len(neuron_ids)
     rx, ry = reward_bin
     fig, axes = plt.subplots(2, n, figsize=(n * 1.05, 2.05), squeeze=False)
@@ -217,18 +200,10 @@ def fig_replay_remap_grid(
 
 
 def _draw_arena(ax, reward_pos, title_text: str, show_axes: bool = False):
-    """Arena panel for field-centre clouds.
-
-    `show_axes` puts arena coordinates on the first panel of a row: the
-    previous version drew bare L-shaped spines with no scale at all, so the
-    reader could not tell the extent of the box.
-    """
+    """Boxed unit arena with the reward marker; ticks only if `show_axes`."""
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_aspect("equal")
-    # A closed box on every arena panel: the arena has a real extent, and the
-    # default top/right-off rule would leave some panels boxed and others an
-    # L-shape depending on whether they carry ticks.
     for side, spine in ax.spines.items():
         spine.set_visible(True)
         spine.set_linewidth(0.5)
@@ -243,7 +218,7 @@ def _draw_arena(ax, reward_pos, title_text: str, show_axes: bool = False):
 
 
 def fig_centers_abc(phases: dict, reward_pos, ids: np.ndarray, stem):
-    """Panel b — COM clouds for Phases A, B, C (shared place cells)."""
+    """Panel b: COM clouds for A, B and C_post; centres are (x, y), so column 0 is plotted on the x axis."""
     R = np.asarray(reward_pos, dtype=float)
     com_a = phases["A"]["com"][ids]
     com_b = phases["B"]["com"][ids]
@@ -259,8 +234,6 @@ def fig_centers_abc(phases: dict, reward_pos, ids: np.ndarray, stem):
         _draw_arena(ax, R, ttl, show_axes=(i == 0))
         ax.scatter(com[:, 0], com[:, 1], s=3.2, alpha=0.42, c=colour,
                    linewidths=0, rasterized=True)
-    # n is a property of the cell set, not of each panel: state it once, and
-    # outside the arena box so it cannot sit on top of the frame or the points.
     axes[0].set_xlabel("Arena x", labelpad=1.5)
     axes[0].set_ylabel("Arena y", labelpad=1.5)
     axes[2].text(1.0, -0.06, f"n = {len(ids)} cells", transform=axes[2].transAxes,
@@ -270,8 +243,7 @@ def fig_centers_abc(phases: dict, reward_pos, ids: np.ndarray, stem):
 
 
 def fig_delta_violins(stats: dict, stem):
-    """Panel c — violin plots of COM Δd for A→B (policy) and C:pre→post
-    (frozen replay, weight-only) (< 0 = toward reward)."""
+    """Panel c: violins of COM shift for A -> B and frozen replay (negative = toward reward)."""
     delta_ab = np.asarray(stats["delta_com_AB"], dtype=float)
     delta_ac = np.asarray(stats["delta_com_AC"], dtype=float)
 
@@ -288,9 +260,6 @@ def fig_delta_violins(stats: dict, stem):
     ax.set_xlim(0.45, 2.55)
     ax.set_ylabel(r"$\Delta$ distance to reward")
 
-    # Each violin is annotated above its own body. A single stacked block in the
-    # corner both collided with the violins and left it ambiguous which number
-    # belonged to which distribution.
     lo, hi = ax.get_ylim()
     ax.set_ylim(lo, hi + 0.34 * (hi - lo))
     for pos, vals, role, mean_d, frac in spec:
@@ -305,14 +274,7 @@ def fig_delta_violins(stats: dict, stem):
 
 
 def fig_distance_histograms(stats: dict, stem):
-    """Panel d — COM distance histograms for both contrasts (C:pre→post frozen
-    replay, A→B policy).
-
-    The C:pre→post contrast (left) uses the same frozen trajectory before and
-    after RL, so it tests whether weight changes alone shift fields (occupancy
-    genuinely fixed). The A–B contrast (right) tests whether active RL
-    exploration shifts them (occupancy-confounded by design).
-    """
+    """Panel d: COM distance histograms, frozen replay (left) and A -> B (right), with paired two-sided Wilcoxon p."""
     from scipy.stats import wilcoxon as _wil
 
     def _wilcoxon_p(a, b):
@@ -349,9 +311,6 @@ def fig_distance_histograms(stats: dict, stem):
 
     fig, axes = plt.subplots(1, 2, figsize=(6.2, 1.5))
 
-    # Two overlapping distributions per panel: light fill + crisp step outline.
-    # Solid alpha-blended bars (the previous style) go muddy grey-brown where
-    # they overlap and neither distribution stays readable.
     panels = [
         (axes[0], "Frozen replay (weights only)",
          [(d_com_c_pre, "C_pre", "Pre-RL"), (d_com_c_post, "C_post", "Post-RL")],
@@ -370,8 +329,6 @@ def fig_distance_histograms(stats: dict, stem):
         ax.set_ylabel("Cells")
         title(ax, ttl)
         ax.legend(loc="upper right", bbox_to_anchor=(1.0, 1.0))
-        # Stats bottom-right so they cannot collide with the legend (the
-        # previous layout overlapped legend text with a `p = n/a` annotation).
         stat_annot(ax, f"$\\Delta$d = {mean_d:+.3f}   {100 * frac:.0f}% toward\n"
                        f"{fmt_p(pval if np.isfinite(pval) else None)}",
                    loc="lower right")

@@ -1,13 +1,4 @@
-"""
-Shared statistical helpers for the code pipeline.
-
-Generic tests and corrections that belong to no single analysis. Everything
-here is pure numpy/scipy and takes plain arrays, so it has no dependency on run
-directories, periods or the dataframe layer.
-
-not a home for the per-analysis null models -- the shuffle and bootstrap
-routines in reward_vector_analysis, successor_representation and
-reward_relative_analysis are specific to their own statistics and stay there.
+"""Shared statistics that belong to no single analysis: plain arrays in, plain arrays out.
 """
 from __future__ import annotations
 
@@ -26,8 +17,7 @@ def fdr_bh(p_values: Sequence[float]) -> np.ndarray:
     ranked = p[order]
     adj = np.empty_like(ranked)
     prev = 1.0
-    # Step up from the largest p: each q is capped by the next-larger one,
-    # which enforces monotonicity.
+    # step up from the largest p; capping by the next q keeps q monotone in p
     for i in range(n - 1, -1, -1):
         rank = i + 1
         val = ranked[i] * n / rank

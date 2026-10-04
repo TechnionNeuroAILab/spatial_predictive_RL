@@ -1,18 +1,7 @@
-"""
-Extinction analysis: Krishnan-analogue metrics on the frozen-replay triple.
+"""Per-seed extinction metrics on one frozen trajectory replayed through pred / postLearn / postExt weights.
 
-Runs come from model/ratinabox_extinction.py: head-ON learning at reward A,
-then a cycle with reward delivery and the head objective OFF. One frozen
-trajectory is replayed through three weight snapshots replay_ext_pred /
-postLearn / postExt -- so occupancy is identical across the triple.
-
-Three per-seed metrics, one function each: K1 over-representation collapse near
-A, K2 a split-half reliability analogue (Krishnan: 0.47 -> 0.32 under
-extinction), K3 an offline dopamine proxy from the reward head. Pooling, gating
-and the across-seed statistics belong to aggregate/run_extinction_analysis.py.
-
-Convention: delta-d negative = toward reward; Skaggs gate 0.15 in all three
-periods.
+K1 field concentration near reward A, K2 split-half map reliability, K3 the reward head's proximity profile.
+Delta-d negative = toward A; Skaggs gate 0.15 in all three periods. Aggregated by aggregate/run_extinction_analysis.py.
 """
 from __future__ import annotations
 
@@ -40,8 +29,7 @@ BLOCK = 1000
 
 
 def triple_maps(data_dir: Path):
-    """Arrays, rate maps, occupancy and Skaggs scores for each snapshot, in
-    PERIODS order (pred / postLearn / postExt). Shared input to K1-K3."""
+    """Arrays, rate maps, occupancy and Skaggs scores for each of the three snapshots."""
     out = []
     for p in PERIODS:
         pos, _, act = load_period_arrays(data_dir, p)
@@ -53,7 +41,7 @@ def triple_maps(data_dir: Path):
 
 
 def k1_overrepresentation(triple) -> dict:
-    """Near-A fraction + mean distance per snapshot; deltas; gated 3-way."""
+    """K1: near-A fraction, mean peak distance and the learn / ext / net shifts; {} if < 10 cells."""
     gate = np.ones(HIDDEN, bool)
     for t in triple:
         gate &= t["sk"] >= SKAGGS_THR
@@ -76,9 +64,9 @@ def k1_overrepresentation(triple) -> dict:
 
 
 def k2_reliability(data_dir: Path, triple) -> dict:
-    """Split-half rate-map reliability per snapshot, near-A vs far-A cells."""
+    """K2: split-half rate-map correlation per snapshot, all / near-A / far-A cells."""
     out = {}
-    # near/far strata defined by postLearn peak distance (the learned state)
+    # near / far split by the postLearn peak, at 2 * NEAR_RADIUS
     gate = np.ones(HIDDEN, bool)
     for t in triple:
         gate &= t["sk"] >= SKAGGS_THR
@@ -91,12 +79,14 @@ def k2_reliability(data_dir: Path, triple) -> dict:
         n = len(t["pos"])
         block_id = (np.arange(n) // BLOCK) % 2      # interleaved halves
         rel = np.full(HIDDEN, np.nan)
-        rms = []
+        rms, seen = [], []
         for h in (0, 1):
             m_ = block_id == h
-            rm, _ = rate_maps_from(t["act"][m_], t["gc"][m_])
+            rm, occ_h = rate_maps_from(t["act"][m_], t["gc"][m_])
             rms.append(rm.reshape(HIDDEN, -1))
-        a, b = rms
+            seen.append(occ_h.reshape(-1) > 0)
+        both = seen[0] & seen[1]                    # bins visited in both halves; shared zeros would inflate r
+        a, b = rms[0][:, both], rms[1][:, both]
         for i in np.where(gate)[0]:
             if a[i].std() > 1e-9 and b[i].std() > 1e-9:
                 rel[i] = float(np.corrcoef(a[i], b[i])[0, 1])
@@ -109,8 +99,7 @@ def k2_reliability(data_dir: Path, triple) -> dict:
 
 
 def k3_dopamine_proxy(run_dir: Path, triple) -> dict | None:
-    """Head output vs distance-to-A on the frozen trajectory, postLearn vs
-    postExt head weights (cycle-boundary vs final checkpoint)."""
+    """K3: the postLearn reward head's output vs distance to A, on the postLearn and postExt replays."""
     import torch
     run_dir = Path(run_dir)
     ckpts = {"postLearn": run_dir / "checkpoints" / "phase2_cycle1_end.pt",
@@ -120,24 +109,21 @@ def k3_dopamine_proxy(run_dir: Path, triple) -> dict | None:
         print(f"  k3: missing checkpoints ({[p.name for p in ckpts.values()]}); have {[a.name for a in alt]}")
         return None
 
-    # head architecture: Linear(512,64) ReLU Linear(64,1) Sigmoid
     def head_from(ckpt_path):
+        """Rebuild the head Linear(512,64)-ReLU-Linear(64,1)-Sigmoid from a checkpoint."""
         payload = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-        # save_checkpoint stores it under 'reward_pred_head_state_dict'
         sd = payload.get("reward_pred_head_state_dict") or payload.get("reward_pred_head")
         if sd is None:
             return None
         import torch.nn as nn
         head = nn.Sequential(nn.Linear(HIDDEN, 64), nn.ReLU(),
                              nn.Linear(64, 1), nn.Sigmoid())
-        # state dict keys are like net.0.weight -> strip "net."
-        sd = { (k[4:] if k.startswith("net.") else k): v for k, v in sd.items() }
+        sd = { (k[4:] if k.startswith("net.") else k): v for k, v in sd.items() }   # drop "net."
         head.load_state_dict(sd)
         head.eval()
         return head
 
-    # The head gets no gradient during extinction, so both checkpoints hold the
-    # same weights: one frozen readout on two maps isolates representational drift.
+    # The head gets no gradient during extinction, so one head serves both replays.
     head = head_from(ckpts["postLearn"])
     if head is None:
         return None
@@ -153,17 +139,13 @@ def k3_dopamine_proxy(run_dir: Path, triple) -> dict | None:
         prof = [float(np.mean(rho[which == b])) if (which == b).sum() > 10 else None
                 for b in range(len(edges) - 1)]
         out[label] = prof
-    # the analytic target for reference
-    sig = 0.15
+    sig = 0.15                     # the head's training target, for reference
     out["target"] = [float(np.exp(-c**2 / (2 * sig**2))) for c in out["dist_bin_centres"]]
     return out
 
 
 def per_seed_row(run_dir: Path, seed: int) -> dict | None:
-    """All three metrics for one seed; None if the run won't load or K1 is empty.
-
-    Entry point for aggregate/run_extinction_analysis.py, which maps it over seeds.
-    """
+    """K1-K3 for one seed; None if loading fails or K1 has < 10 cells."""
     d = Path(run_dir) / "data"
     try:
         triple = triple_maps(d)

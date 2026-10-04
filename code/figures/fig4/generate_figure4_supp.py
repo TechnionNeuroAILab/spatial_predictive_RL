@@ -99,7 +99,10 @@ def _fmt_p(p):
 
 
 def _wil_p(vals, alternative="greater"):
-    """Paired two-sided Wilcoxon p-value; NaN when there are too few pairs or no differences."""
+    """One-sided Wilcoxon p of (vals - 0.5) for fractions, or of vals when called with alternative="less" on shifts.
+
+    Only gate-clean networks enter the tests (callers pass them).
+    """
     try:
         _, p = _wilcoxon(np.array(vals) - 0.5, alternative=alternative)
         return float(p)
@@ -121,7 +124,7 @@ def fig_supp_frac_toward_a(rows, stem):
         ax.scatter(jitter[~clean], vals[~clean], s=18, facecolors="none", edgecolors=COLOR_A,
                    alpha=0.9, zorder=3, linewidths=1.0, label="collapsed")
     mean, sd = np.mean(vals), np.std(vals, ddof=1)
-    p = _wil_p([r["frac_toward_A"] for r in rows])
+    p = _wil_p([r["frac_toward_A"] for r in rows if r["is_clean"]])   # test gate-clean networks only
     ax.errorbar([0], [mean], yerr=[sd], fmt="D", color="black",
                 markersize=5, capsize=4, linewidth=1.2, zorder=5,
                 label=f"{mean:.1f}±{sd:.1f}%")
@@ -151,7 +154,7 @@ def fig_supp_frac_toward_b(rows, stem):
         ax.scatter(jitter[~clean], vals[~clean], s=18, facecolors="none", edgecolors=COLOR_B,
                    alpha=0.9, zorder=3, linewidths=1.0, label="collapsed")
     mean, sd = np.mean(vals), np.std(vals, ddof=1)
-    p = _wil_p([r["frac_toward_B"] for r in rows])
+    p = _wil_p([r["frac_toward_B"] for r in rows if r["is_clean"]])   # test gate-clean networks only
     ax.errorbar([0], [mean], yerr=[sd], fmt="D", color="black",
                 markersize=5, capsize=4, linewidth=1.2, zorder=5,
                 label=f"{mean:.1f}±{sd:.1f}%")
@@ -174,8 +177,9 @@ def fig_supp_pooled_violin(rows, stem):
     per_dA = np.array([r["mean_delta_A"] for r in rows])
     per_dB = np.array([r["mean_delta_B"] for r in rows])
 
-    p_A_per = _wil_p(per_dA, alternative="less")  # toward = negative delta
-    p_B_per = _wil_p(per_dB, alternative="less")
+    clean = np.array([bool(r["is_clean"]) for r in rows])
+    p_A_per = _wil_p(per_dA[clean], alternative="less")  # toward = negative delta; gate-clean only
+    p_B_per = _wil_p(per_dB[clean], alternative="less")
 
     fig, ax = plt.subplots(figsize=(3.0, 2.4))
     parts = ax.violinplot([all_dA, all_dB], positions=[1, 2],

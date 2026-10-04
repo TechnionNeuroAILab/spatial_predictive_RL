@@ -97,6 +97,8 @@ def score_seeds(seeds: list[int]) -> list[dict]:
             "n_cells": int(len(ids)),
             "com_mean_delta_AB": float(stats["com_mean_delta_AB"]),
             "com_frac_toward_AB": float(stats["com_frac_toward_AB"]),
+            "peak_mean_delta_AB": float(stats["peak_mean_delta_AB"]),   # the text reports the peak metric
+            "peak_frac_toward_AB": float(stats["peak_frac_toward_AB"]),
             "phases": phases,
             "stats": stats,
             "ids": ids,
@@ -221,6 +223,12 @@ def save_aggregate_json(rows: list[dict], best_seed: int, out_path: Path):
                       for r in rows]
     frac_toward = [float(r["com_frac_toward_AB"]) for r in rows]
 
+    peak_means = [r["peak_mean_delta_AB"] for r in rows]
+    try:
+        peak_wp = _wilcoxon(peak_means, alternative="less")[1] if len(peak_means) >= 5 else float("nan")
+    except Exception:
+        peak_wp = float("nan")
+
     # Wilcoxon signed-rank test on per-seed means vs 0
     if len(per_seed_means) >= 5:
         try:
@@ -237,6 +245,8 @@ def save_aggregate_json(rows: list[dict], best_seed: int, out_path: Path):
         "per_seed_n_cells": {str(r["seed"]): int(r["n_cells"]) for r in rows},
         "per_seed_com_mean_delta_AB": {str(r["seed"]): float(r["com_mean_delta_AB"]) for r in rows},
         "per_seed_frac_toward_AB": {str(r["seed"]): float(r["com_frac_toward_AB"]) for r in rows},
+        "per_seed_peak_mean_delta_AB": {str(r["seed"]): r["peak_mean_delta_AB"] for r in rows},
+        "per_seed_peak_frac_toward_AB": {str(r["seed"]): r["peak_frac_toward_AB"] for r in rows},
         "aggregate": {
             "pooled_n_cell_pairs": int(len(all_delta_ab)),
             "pooled_mean_delta_AB": float(all_delta_ab.mean()),
@@ -246,7 +256,11 @@ def save_aggregate_json(rows: list[dict], best_seed: int, out_path: Path):
             "per_seed_frac_toward_mean": float(np.mean(frac_toward)),
             "per_seed_frac_toward_std": float(np.std(frac_toward, ddof=1)),
             "wilcoxon_vs_zero_stat": float(wstat),
-            "wilcoxon_vs_zero_p": float(wp),
+            "wilcoxon_vs_zero_p": float(wp),            # one-sided (alternative="less"), COM
+            "peak_per_seed_mean_delta_AB_mean": float(np.mean(peak_means)),
+            "peak_per_seed_mean_delta_AB_std": float(np.std(peak_means, ddof=1)),
+            "peak_per_seed_frac_toward_mean": float(np.mean([r["peak_frac_toward_AB"] for r in rows])),
+            "peak_wilcoxon_vs_zero_p": float(peak_wp),  # one-sided (alternative="less")
         },
     }
     with open(out_path, "w") as f:

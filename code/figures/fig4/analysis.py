@@ -83,7 +83,8 @@ def paired_tracking_stats(states: dict, skaggs_threshold: float = SKAGGS_THRESHO
     def paired_shift(p_from, p_to, reward):
         sk_f = states[p_from]["sk"]
         sk_t = states[p_to]["sk"]
-        active = np.where(np.maximum(sk_f, sk_t) >= skaggs_threshold)[0]
+        # place cell in BOTH periods: the rule the text uses (analysis_helpers.relocation_asymmetry)
+        active = np.where(np.minimum(sk_f, sk_t) >= skaggs_threshold)[0]
         d_f = np.linalg.norm(states[p_from]["peak"][active] - reward[None, :], axis=1)
         d_t = np.linalg.norm(states[p_to]["peak"][active] - reward[None, :], axis=1)
         d = d_t - d_f

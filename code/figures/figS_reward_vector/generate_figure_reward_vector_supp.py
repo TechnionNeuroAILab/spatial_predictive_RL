@@ -170,27 +170,22 @@ def fig_rotation_test(rot_rows, title, stem):
     A->B rotation test. Works for either the behavioral or occupancy-
     controlled period pair (caller supplies pre-computed rot_rows).
 
-    The headline statistic is the pooled cell-level circular mean +- bootstrap
-    CI (large n across all stable goal-vector cells pooled over seeds) -- this
-    is far better powered than eyeballing the noisy per-seed circular-mean
-    scatter (each seed's own mean is based on only ~300 cells and single-
-    trajectory sampling, so per-seed magnitude vs Delta_geom is a noisier,
-    seed-level comparison). Both numbers are reported: the pooled mean is the
-    rigorous test of "is the population-level shift ~0", while the per-seed
-    paired magnitude comparison (Wilcoxon, |obs| vs |geom|) tests whether
-    individual seeds' rotations track the geometric artifact less than
-    expected under an hd-driven account."""
+    Headline: pooled circular mean of all stable goal-direction cells with a network-level
+    bootstrap CI. Also a per-network paired Wilcoxon of |observed| vs |Delta_geom|; in the
+    fixed-trajectory pair Delta_geom is near 0 by symmetry, so that comparison is not diagnostic there."""
     all_dphi_goal = np.concatenate([np.asarray(r["dphi_goal_arr"]) for r in rot_rows if len(r["dphi_goal_arr"])])
     delta_geoms = np.array([r["delta_geom"] for r in rot_rows])
     circ_means = np.array([r["circ_mean_dphi_goal"] for r in rot_rows])
     n_stable = np.array([r["n_stable_goal"] for r in rot_rows])
 
-    # Pooled cell-level circular mean +- bootstrap CI (headline statistic).
+    # Pooled circular mean; 95% CI from resampling NETWORKS (cells within a network are not independent).
     rng = np.random.default_rng(0)
+    per_net = [np.asarray(r["dphi_goal_arr"]) for r in rot_rows if len(r["dphi_goal_arr"])]
     n = len(all_dphi_goal)
     if n > 0:
-        boot = np.array([np.angle(np.mean(np.exp(1j * all_dphi_goal[rng.integers(0, n, n)])))
-                          for _ in range(2000)])
+        boot = np.array([np.angle(np.mean(np.exp(1j * np.concatenate(
+                             [per_net[k] for k in rng.integers(0, len(per_net), len(per_net))]))))
+                         for _ in range(2000)])
         pooled_mean = np.angle(np.mean(np.exp(1j * all_dphi_goal)))
         lo, hi = np.percentile(boot, [2.5, 97.5])
     else:
@@ -243,7 +238,7 @@ def fig_rotation_test(rot_rows, title, stem):
 
 def fig_example_curves(nohead_seed_dir, reloc_seed_dir, reloc_period_a, reloc_period_b, stem):
     """Panel e -- one example tuning curve each for a distance cell, a goal-direction cell and a head-direction-only cell."""
-    res_nh = analyze_period(nohead_seed_dir, "goal_conditioned", n_null=50, seed=0)
+    res_nh = analyze_period(nohead_seed_dir, "goal_conditioned", n_null=50, seed=0)   # example cells only
     labels_nh = classify_cells(res_nh["ramp"], res_nh["ramp_p"], res_nh["mrl_ego"], res_nh["mrl_ego_p"],
                                 res_nh["mrl_hd"], res_nh["mrl_hd_p"], ring_mrl=res_nh["ring_mrl"])
 
@@ -322,7 +317,7 @@ def fig_wallbuffer_sweep(cond_dirs_prefixes_seeds, stem, margins=(0, 1, 2, 3)):
             fracs, mrls = [], []
             for s in seeds:
                 run_dir = Path(cond_dir) / f"{prefix}seed{s}"
-                res = analyze_period(run_dir, "goal_conditioned", margin_cells=margin, n_null=50, seed=s)
+                res = analyze_period(run_dir, "goal_conditioned", margin_cells=margin, n_null=50, seed=s)   # sensitivity sweep: ramping fractions sit far above the BH floor
                 if res is None:
                     continue
                 labels = classify_cells(res["ramp"], res["ramp_p"], res["mrl_ego"], res["mrl_ego_p"],

@@ -1,16 +1,7 @@
-"""
-Successor-representation analyses: transition matrices, the SR, and SR-vs-RNN comparisons.
+"""Successor representation (SR): interior-grid states, transition matrices, M = (I - gamma*T)^-1 and SR-vs-RNN tests.
 
-States are the interior grid: `wall_buffer` cells are dropped from each side of
-the m x m arena, leaving (m - 2*wb)^2 reachable cells flattened row-major.
-
-Two layers live here. The library surface -- the index helpers, the
-transition-matrix builders, compute_sr_matrix and the shift-vector functions --
-is imported by lib/sr_common.py and figures/fig5/sr_direction_analysis.py.
-Everything else exists only for main(), a standalone CLI writing three
-sr_*_results.json files that nothing in the pipeline reads; it is not wired into
-regenerate_all.py or smoke_test.py, and its --reward-x/y default of 0.75
-matches no condition in the current runs.
+States are the reachable grid points k/m (k = 1..m-2). The pipeline uses build_T_random, compute_sr_matrix,
+state_centers and the shift-direction helpers; everything else serves the standalone main() CLI.
 """
 from __future__ import annotations
 import argparse
@@ -23,7 +14,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Circle
 from scipy.spatial.distance import pdist, squareform
-from scipy.stats import circmean, pearsonr, spearmanr
+from scipy.stats import circmean, norm, pearsonr, spearmanr
 from dataframe_io import (
     ensure_dir,
     extract_single_centers,
@@ -122,37 +113,15 @@ def state_centers(m: int, wall_buffer: int) -> np.ndarray:
 def pos_to_interior_idx(x: np.ndarray, y: np.ndarray, m: int, wall_buffer: int) -> np.ndarray:
     """Map continuous (x, y) positions to the interior state index containing them."""
     s = interior_size(m, wall_buffer)
-    rr = np.clip((x * s).astype(int), 0, s - 1) + wall_buffer
-    cc = np.clip((y * s).astype(int), 0, s - 1) + wall_buffer
+    # state k sits at k/m (state_centers), so the nearest one is rint(x * m)
+    rr = np.clip(np.rint(np.asarray(x) * m).astype(int), wall_buffer, m - wall_buffer - 1)
+    cc = np.clip(np.rint(np.asarray(y) * m).astype(int), wall_buffer, m - wall_buffer - 1)
     idx = (rr - wall_buffer) * s + (cc - wall_buffer)
     return idx.astype(int)
 
 
 def action_probs_like_get_next_move(row: int, col: int, hd_idx: int, m: int, wall_buffer: int) -> np.ndarray:
-    """Action distribution for one state and heading, mirroring the simulator.
-
-    Reproduces the movement policy of `model/ratinabox_v11.py` so that the SR
-    baseline describes the same random walk the network actually experienced.
-    `BASE_ACTION_PROBS` is rolled by the heading index (forward is most likely,
-    reversals least), then any action that would cross a wall is zeroed and the
-    remainder renormalized.
-
-    Parameters
-    ----------
-    row, col : int
-        State coordinates in arena grid units.
-    hd_idx : int
-        Heading index 0..7; rolls the base distribution so it is relative to
-        the current facing.
-    m, wall_buffer : int
-        Arena size and the interior margin.
-
-    Returns
-    -------
-    ndarray (8,), float
-        Probability per action, summing to 1. A state with every action blocked
-        falls back to uniform.
-    """
+    """Action distribution for one state and heading, mirroring the simulator."""
     p = np.roll(BASE_ACTION_PROBS, hd_idx).astype(float).copy()
     border_flags = [
         row >= (m - wall_buffer),
@@ -189,38 +158,17 @@ def clipped_next_coord(row: int, col: int, action_idx: int, m: int, wall_buffer:
 
 
 def build_T_random(m: int, wall_buffer: int) -> np.ndarray:
-    """Transition matrix for the unbiased random walk over interior states.
-
-    Marginalizes `action_probs_like_get_next_move` over all 8 headings -- the
-    walk has no preferred direction, so each heading is equally likely -- and
-    accumulates the resulting probability into the clipped destination state.
-
-    Parameters
-    ----------
-    m, wall_buffer : int
-        Arena size and the interior margin.
-
-    Returns
-    -------
-    ndarray (n_states, n_states), float
-        Row-stochastic. Rows are renormalized if floating-point drift leaves
-        them off 1.0.
-    """
+    """Transition matrix for the unbiased random walk over interior states."""
     n = n_interior_states(m, wall_buffer)
     T = np.zeros((n, n), dtype=float)
 
     for i in range(n):
         row, col = interior_coord(i, m, wall_buffer)
-        probs = np.zeros(8, dtype=float)
-
-        for hd in range(8):
-            probs += action_probs_like_get_next_move(row, col, hd, m, wall_buffer)
-        probs /= 8.0
-
+        # the probe walk draws each action with p = 1/8 and clips at both walls
         for a in range(8):
             r2, c2 = clipped_next_coord(row, col, a, m, wall_buffer)
             j = interior_index(r2, c2, m, wall_buffer)
-            T[i, j] += probs[a]
+            T[i, j] += 1.0 / 8.0
 
     row_sum = T.sum(axis=1)
     bad = np.where(~np.isclose(row_sum, 1.0, atol=1e-8))[0]
@@ -446,36 +394,7 @@ def compute_sr_matrix(
     neumann_k: int,
     cond_threshold: float,
 ) -> tuple[np.ndarray, float, str]:
-    """Successor representation M = (I - gamma*T)^-1, with the solver chosen by conditioning.
-
-    M[i, j] is the discounted expected number of visits to state j when
-    starting from state i, so column j is the "successor field" of j.
-
-    Parameters
-    ----------
-    T : ndarray (n, n)
-        Row-stochastic transition matrix.
-    gamma : float
-        Discount; 0.99 throughout this project.
-    method : {"auto", "inverse", "pinv", "neumann"}
-        "auto" picks `inverse` when cond(I - gamma*T) <= `cond_threshold` and
-        `pinv` otherwise. "neumann" sums the truncated series instead.
-    neumann_k : int
-        Terms in the Neumann series, used only by that method.
-    cond_threshold : float
-        Conditioning cutoff for "auto".
-
-    Returns
-    -------
-    M : ndarray (n, n)
-        The SR.
-    cond : float
-        Condition number of (I - gamma*T), worth recording -- it is what
-        decided the solver.
-    used : str
-        Which method actually ran, including "pinv_fallback" when the direct
-        solve raised.
-    """
+    """Successor representation M = (I - gamma*T)^-1, with the solver chosen by conditioning."""
     n = T.shape[0]
     I = np.eye(n, dtype=float)
     A = I - gamma * T
@@ -868,43 +787,12 @@ def bootstrap_interaction(
     return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
 
 def sr_predicted_shift_vectors(M_random: np.ndarray, M_policy: np.ndarray, state_xy: np.ndarray) -> np.ndarray:
-    """Field-centre displacement each state's successor field is predicted to undergo.
-
-    For state j, the change in its successor field is M_policy[:, j] -
-    M_random[:, j]. Treating the positive part of that change as a weight over
-    state centres gives a centroid, and the predicted shift is that centroid
-    minus the state's own position -- i.e. the direction the field is pulled by
-    moving from a random walk to the goal-directed policy.
-
-    Parameters
-    ----------
-    M_random, M_policy : ndarray (n, n)
-        SR matrices for the two policies.
-    state_xy : ndarray (n, 2)
-        State centres in arena coords, from `state_centers`.
-
-    Returns
-    -------
-    ndarray (n, 2), float
-        Predicted (dx, dy) per state. States whose field does not change get a
-        zero vector; if the positive part vanishes the absolute change is used
-        instead, so a purely negative change still yields a direction.
-    """
-    S = M_random.shape[0]
-    out = np.zeros((S, 2), dtype=float)
-    for j in range(S):
-        delta = M_policy[:, j] - M_random[:, j]
-        w = np.maximum(delta, 0.0)
-        if np.sum(w) <= 1e-12:
-            w = np.abs(delta)
-        if np.sum(w) <= 1e-12:
-            out[j] = 0.0
-            continue
-
-        centroid = np.sum(state_xy * w[:, None], axis=0) / np.sum(w)
-        out[j] = centroid - state_xy[j]
-
-    return out
+    """Predicted (dx, dy) per state: centre of mass of its successor field under the policy minus under the random walk."""
+    def com(M):
+        w = np.clip(M, 0.0, None) # SR entries are >= 0; clip pinv round-off
+        return (w.T @ state_xy) / w.sum(axis=0)[:, None]
+    # same quantity as the measured RNN shift (centre-of-mass change), with no built-in pull toward the centre
+    return com(M_policy) - com(M_random)
 
 
 def nearest_state_for_points(xy: np.ndarray, state_xy: np.ndarray) -> np.ndarray:
@@ -932,16 +820,18 @@ def angle_between_vectors(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def rayleigh_from_angles(angles: np.ndarray) -> tuple[float, float]:
-    """Rayleigh test on a set of angles: resultant length R and its p-value."""
+    """Alignment test for unsigned angles in [0, pi]: V = mean cos(angle) (0 = no relationship) and its one-sided p."""
     ang = np.asarray(angles, dtype=float)
     ang = ang[np.isfinite(ang)]
     n = ang.size
     if n == 0:
         return np.nan, np.nan
+    # V-test toward 0: under no relationship cos(angle) has mean 0 and variance 1/2.
+    # (A Rayleigh R on [0, pi] is ~0.64 with no relationship and is always "significant".)
+    V = float(np.mean(np.cos(ang)))
+    p = float(norm.sf(V * np.sqrt(2.0 * n)))
+    return V, p
 
-    R = float(np.abs(np.mean(np.exp(1j * ang))))
-    p = float(np.exp(-n * (R ** 2)))
-    return R, p
 
 def plot_corr_hist(
     out_path: Path,

@@ -1,18 +1,7 @@
-"""
-Reward-relative vs place-anchored subpopulations across reward relocation.
+"""Reward-relative vs place-anchored cells across relocation A -> B (2D version of Sosa et al. 2025).
 
-A 2D translation of Sosa, Plitt & Giocomo (2025, Nat Neurosci): after the reward
-moves A->B, does a cell hold its firing at the same position relative to the
-reward, or at the same allocentric position? Each cell gets one cross-phase
-correlation per frame r_reward in reward-centred coordinates, r_place in
-allocentric ones and is classified by which wins against a cell-identity
-shuffle null. The two are geometrically coupled (a perfectly stable allocentric
-field still scores a nonzero r_reward), so only their contrast is interpretable,
-never either one alone.
-
-Both read-outs are computed: behavioural (cycle_1_goal vs cycle_2_goal) and
-occupancy-controlled (the two frozen replays, identical trajectory). The latter
-is primary reward-frame sampling is then identical by construction.
+Per cell: r_reward (reward-centred maps) vs r_place (allocentric maps), classified by which wins
+against a cell-identity shuffle null. Read-outs: behavioural (goal periods) and frozen replay (primary).
 """
 from __future__ import annotations
 
@@ -35,11 +24,11 @@ from occupancy_matched_estimator import (  # noqa: E402
 REWARD_A = np.array([0.3, 0.3])
 REWARD_B = np.array([0.7, 0.7])
 SKAGGS_THR = 0.15
-FRAME_HALF = 0.3          # overlap window half-width in reward-centred coords
-MIN_VALID_BINS = 30       # per-cell minimum comparable bins per read-out
-N_SHUFFLE = 200
+FRAME_HALF = 0.3 # reward-centred window half-width
+MIN_VALID_BINS = 30 # min comparable bins per read-out
+N_SHUFFLE = 2000
 
-# period -> active reward, for the relocation runs handled here
+# period -> active reward
 ACTIVE_REWARD = {
     "cycle_1_goal": REWARD_A,
     "replay_reloc_postA": REWARD_A,
@@ -49,8 +38,7 @@ ACTIVE_REWARD = {
 
 
 def reward_frame_maps(pos: np.ndarray, act: np.ndarray, reward: np.ndarray):
-    """(512, F, F) mean-activity maps in reward-centred coordinates, F bins of
-    width 1/M spanning u in [-FRAME_HALF, FRAME_HALF]^2, plus visit counts."""
+    """Mean-activity maps in reward-centred coords (19 x 19 bins over +-FRAME_HALF) and visit counts."""
     u = pos - reward
     nb = int(round(2 * FRAME_HALF * M))          # 19 with defaults
     ub = np.floor((u + FRAME_HALF) * M).astype(int)
@@ -85,8 +73,7 @@ def _percell_corr(maps_a: np.ndarray, maps_b: np.ndarray,
 
 
 def _shuffle_null_95(maps_a, maps_b, valid, gate_idx, rng) -> float:
-    """95th percentile of cell-identity-shuffled correlations (cell i in A vs a
-    random different gated cell j in B). Population-level null threshold."""
+    """95th percentile of correlations between different gated cells (one threshold per network)."""
     vals = []
     gi = np.asarray(gate_idx)
     for _ in range(N_SHUFFLE):
@@ -102,7 +89,7 @@ def _shuffle_null_95(maps_a, maps_b, valid, gate_idx, rng) -> float:
 
 
 def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | None:
-    """One read-out (behavioural or occupancy-controlled) for one network."""
+    """Class fractions and per-cell r_reward / r_place for one read-out; None if < 30 gated cells."""
     d = Path(run_dir) / "data"
     try:
         pos_a, _, act_a = load_period_arrays(d, period_a)
@@ -110,7 +97,7 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
     except Exception as e:
         print(f"  {run_dir}: load failed ({e})")
         return None
-    # trim hidden-state transients in behavioural goal-directed periods
+    # drop post-teleport transients in goal-directed periods
     if period_a.endswith("_goal"):
         k = trim_teleports(pos_a); pos_a, act_a = pos_a[k], act_a[k]
     if period_b.endswith("_goal"):
@@ -118,7 +105,6 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
 
     rew_a, rew_b = ACTIVE_REWARD[period_a], ACTIVE_REWARD[period_b]
 
-    # allocentric maps + gate
     rm_a, occ_a = rate_maps_from(act_a, position_bins(pos_a))
     rm_b, occ_b = rate_maps_from(act_b, position_bins(pos_b))
     sk_a, sk_b = skaggs_weighted(rm_a, occ_a), skaggs_weighted(rm_b, occ_b)
@@ -138,6 +124,9 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
     rng = np.random.default_rng(seed)
     null95_place = _shuffle_null_95(rm_a, rm_b, valid_place, gate_idx, rng)
     null95_reward = _shuffle_null_95(fm_a, fm_b, valid_frame, gate_idx, rng)
+    if not (np.isfinite(null95_place) and np.isfinite(null95_reward)):
+        print(f"  [warn] {run_dir} {period_a}->{period_b}: shuffle null failed (NaN), "
+              f"every cell will be classed 'other'", file=sys.stderr)
 
     ok = gate & np.isfinite(r_reward) & np.isfinite(r_place)
     idx = np.where(ok)[0]
@@ -157,7 +146,7 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
         "null95_reward": null95_reward,
         "null95_place": null95_place,
         "valid_frame_bins": int(valid_frame.sum()),
-        "cells": {  # per-cell detail for example-cell selection
+        "cells": {  # for example-cell selection
             "idx": idx.tolist(),
             "r_reward": np.round(rr, 4).tolist(),
             "r_place": np.round(rp, 4).tolist(),
@@ -166,7 +155,7 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
 
 
 def per_seed_row(run_dir: Path, seed: int) -> dict | None:
-    """Both read-outs for one network; None if the controlled one is unavailable."""
+    """Both read-outs for one network; None if the frozen-replay one is unavailable."""
     row = {"seed": seed}
     beh = readout(run_dir, "cycle_1_goal", "cycle_2_goal", seed)
     ctl = readout(run_dir, "replay_reloc_postA", "replay_reloc_postB", seed + 5000)

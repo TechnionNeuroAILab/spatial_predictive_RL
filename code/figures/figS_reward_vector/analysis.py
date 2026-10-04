@@ -72,7 +72,7 @@ def clean_seeds_for_reward_vector(cond_dir: Path, prefix: str, seeds: list[int],
 # ---------------------------------------------------------------------------
 
 def per_seed_population_summary(run_dir: Path, period: str, baseline_period: str = "before",
-                                 n_null: int = 100, seed: int = 0) -> dict | None:
+                                 n_null: int = 500, seed: int = 0) -> dict | None:
     """Runs analyze_period on `period` (e.g. goal_conditioned) and
     `baseline_period` (e.g. before, unbiased random walk), classifies cells
     in both, and returns per-seed summary fractions + means, plus the
@@ -134,7 +134,7 @@ def load_condition_population_summary(cond_dir: Path, prefix: str, seeds: list[i
 # ---------------------------------------------------------------------------
 
 def per_seed_rotation_test(run_dir: Path, period_a: str, period_b: str,
-                            n_null: int = 100, seed: int = 0) -> dict | None:
+                            n_null: int = 500, seed: int = 0) -> dict | None:
     """One relocation seed's rotation test for a given period pair (either
     the behavioral cycle_1_goal/cycle_2_goal pair, or the occupancy-
     controlled replay_reloc_postA/postB pair)."""

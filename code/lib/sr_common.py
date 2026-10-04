@@ -1,12 +1,4 @@
-"""
-Shared successor-representation constants and the cached random-walk SR baseline.
-
-Grid geometry and analysis gates for the SR figures, plus get_shared_random(),
-which builds the unbiased-walk transition matrix and its SR once per process --
-inverting the matrix is the expensive step and every caller wants the same
-baseline.
-
-Imported by figures/figS_sr/analysis.py and figures/fig5/sr_direction_analysis.py.
+"""SR constants and the random-walk SR baseline, built once per process (a 900 x 900 inversion).
 """
 
 from __future__ import annotations
@@ -26,8 +18,7 @@ from successor_representation import (  # noqa: E402
     state_centers,
 )
 
-# Grid geometry -- must match the simulator (model/ratinabox_v11.py: m = 32,
-# movement restricted to [1, m-2]).
+# must match the simulator: m = 32, movement restricted to [1, m-2]
 M, WB = 32, 1
 GAMMA = 0.99
 
@@ -40,11 +31,7 @@ _STATE_XY = None
 
 
 def get_shared_random():
-    """Random-walk transition matrix, its SR, and state centres (cached).
-
-    Building the SR is the expensive step, and every caller wants the same
-    unbiased-walk baseline, so it is computed once per process.
-    """
+    """Cached random-walk transition matrix, its SR and the state centres."""
     global _T_RANDOM, _SR_RANDOM, _STATE_XY
     if _T_RANDOM is None:
         _T_RANDOM = build_T_random(M, WB)
