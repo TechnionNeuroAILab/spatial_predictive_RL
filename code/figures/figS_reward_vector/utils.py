@@ -31,6 +31,7 @@ from pubstyle import (  # noqa: E402,F401
     apply_nature_style, ensure_dir, save_figure,
     panel_label, title, fmt_p, stat_annot, despine, arena_axes,
     reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+    plain_log_ticks,
 )
 
 
@@ -45,7 +46,7 @@ NOHEAD_DIR = REPO_ROOT / "results" / "multi_seed"
 HEAD_DIR = REPO_ROOT / "results" / "multi_seed_head"
 RELOC_DIR = REPO_ROOT / "results" / "multi_seed_reloc"
 
-MIN_ENTROPY = 5.5           # collapse gate (grid-bin Shannon entropy of peak locations)
+from analysis_helpers import MIN_ENTROPY  # noqa: E402,F401  (single source)
 SKAGGS_THRESHOLD = 0.3
 
 

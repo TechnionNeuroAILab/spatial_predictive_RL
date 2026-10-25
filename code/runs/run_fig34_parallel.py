@@ -95,12 +95,12 @@ FIG4_BASE: list[str] = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _already_done_fig3(seed: int) -> bool:
-    probe = HEAD_OUT / f"head_seed{seed}" / "data" / "df_activations_cycle_1.pkl"
+    probe = HEAD_OUT / f"head_seed{seed}" / "data" / "df_activations_cycle_1.parquet"
     return probe.exists()
 
 
 def _already_done_fig4(seed: int) -> bool:
-    probe = RELOC_OUT / f"reloc_seed{seed}" / "data" / "df_activations_replay_reloc_postB.pkl"
+    probe = RELOC_OUT / f"reloc_seed{seed}" / "data" / "df_activations_replay_reloc_postB.parquet"
     return probe.exists()
 
 

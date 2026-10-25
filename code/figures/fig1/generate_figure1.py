@@ -13,6 +13,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from pypdf import PdfReader
 import pandas as pd
 from PIL import Image
 from scipy.ndimage import gaussian_filter
@@ -37,34 +38,35 @@ from utils import (
     DEFAULT_ARCHITECTURE_PNG,
     DEFAULT_REWARD,
     DEFAULT_RUN,
-    FIGURE_LAYOUT,
     FIGURES_DIR,
-    GRID_COLS,
-    GRID_GAP,
     HIDDEN_DIM,
-    LABEL_SIZE,
+    LAYOUT,
     M,
-    MM_TO_PT,
-    PAGE_MARGIN,
+    MODEL_STEM,
     PAGE_W,
     PANEL_TITLES,
     PANELS_DIR,
-    ROW_GAP,
-    ROW_MAX_H,
     slot_width_in,
-    TITLE_H,
-    TITLE_LINE_H,
-    TITLE_SIZE,
     apply_nature_style,
     ensure_dir,
     png_to_pdf,
     save_figure,
 )
+import figlayout
+from figure_cache import add_plot_only, load_figure_data, require_keys, update_figure_data
 
 apply_nature_style()
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[2]
+
+
+def _example_stats(stats: dict, key: str) -> str:
+    """Per-cell shift for the example network: mean delta, % toward, Wilcoxon P."""
+    from pubstyle import fmt_p
+    return (f"\u0394d = {stats[f'{key}_mean_delta']:+.3f}, "
+            f"{100 * stats[f'{key}_frac_toward']:.0f}% toward\n"
+            f"{fmt_p(stats.get(f'{key}_wilcoxon_p'))}, n = {stats['n']}")
 
 
 def placeholder_panel(stem, label: str):
@@ -132,179 +134,38 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
         copy2(generated, png_path)
 
 
-def _panel_slot_geometry(panel_sizes: dict[str, tuple[float, float]]):
-    """Per-row heights from actual panel aspect ratios; contain-fit, top-aligned.
-
-    Each row is only as tall as its tallest panel once fitted to its slot
-    width, plus a small ``TITLE_H`` strip above the row for the panel
-    letter/title.  The page height is the sum of the rows (no fixed page
-    height, no dead centering space).
-    """
-    col_w = (PAGE_W - 2 * PAGE_MARGIN - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS
-    n_rows = max(row for _, row, _, _ in FIGURE_LAYOUT) + 1
-    row_heights = [0.0] * n_rows
-    title_strips = [TITLE_H] * n_rows
-    for key, row, col, colspan in FIGURE_LAYOUT:
-        if key not in panel_sizes:
-            continue
-        iw, ih = panel_sizes[key]
-        slot_w = colspan * col_w + (colspan - 1) * GRID_GAP
-        fitted = ih * (slot_w / max(iw, 1e-6))
-        # Cap a row's height. Panel a is a wide schematic that, fitted to the
-        # full page width, claimed ~36% of the figure and squeezed every panel
-        # carrying data. Capped, it is contain-fitted (scaled down, centred)
-        # instead of setting the height of the whole figure.
-        cap = ROW_MAX_H.get(row)
-        if cap is not None:
-            fitted = min(fitted, cap)
-        row_heights[row] = max(row_heights[row], fitted)
-        n_lines = PANEL_TITLES.get(key, "").count("\n") + 1
-        title_strips[row] = max(title_strips[row], TITLE_H + (n_lines - 1) * TITLE_LINE_H)
-    row_heights = [h if h > 0 else 56.0 * MM_TO_PT for h in row_heights]
-    page_h = (
-        sum(row_heights)
-        + sum(title_strips)
-        + (n_rows - 1) * ROW_GAP
-        + 2 * PAGE_MARGIN
-    )
-
-    placements = []
-    for key, row, col, colspan in FIGURE_LAYOUT:
-        if key not in panel_sizes:
-            continue
-        iw, ih = panel_sizes[key]
-        slot_w = colspan * col_w + (colspan - 1) * GRID_GAP
-        slot_h = row_heights[row]
-        left = PAGE_MARGIN + col * (col_w + GRID_GAP)
-        below = sum(
-            row_heights[r] + title_strips[r] + ROW_GAP for r in range(row + 1, n_rows)
-        )
-        bottom = PAGE_MARGIN + below
-        # Contain-fit: preserve aspect ratio (never stretch).
-        scale = min(slot_w / iw, slot_h / ih)
-        sw, sh = iw * scale, ih * scale
-        img_left = left + (slot_w - sw) / 2.0
-        # Top-align within the row so panels sit just under their titles.
-        img_bottom = bottom + (slot_h - sh)
-        # Shared first-line baseline for the letter/title strip of this row
-        # (multi-line titles extend downward toward the panel top).
-        title_baseline = bottom + slot_h + 2.5 + (title_strips[row] - TITLE_H)
-        placements.append({
-            "title_baseline": title_baseline,
-            "key": key,
-            "left": left,
-            "bottom": bottom,
-            "slot_w": slot_w,
-            "slot_h": slot_h,
-            "img_left": img_left,
-            "img_bottom": img_bottom,
-            "scale": scale,
-            "sw": sw,
-            "sh": sh,
-        })
-    return page_h, placements
-
-
-def _write_letter_overlay_pdf(placements, page_h: float, out_path: Path) -> Path:
-    """Vector PDF with panel letters and short titles (no opaque page fill)."""
-    ensure_dir(out_path.parent)
-    fig = plt.figure(figsize=(PAGE_W / 72.0, page_h / 72.0))
-    fig.patch.set_facecolor("none")
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, PAGE_W)
-    ax.set_ylim(0, page_h)
-    ax.axis("off")
-    ax.set_facecolor("none")
-    for p in placements:
-        # Letter + title share the row's first-line baseline above the panels.
-        baseline_y = p["title_baseline"]
-        ax.text(
-            p["left"],
-            baseline_y,
-            p["key"],
-            fontsize=LABEL_SIZE,
-            fontweight="bold",
-            va="baseline",
-            ha="left",
-            color="black",
-        )
-        title = PANEL_TITLES.get(p["key"])
-        if title:
-            ax.text(
-                p["left"] + 9.0,
-                baseline_y,
-                title,
-                fontsize=TITLE_SIZE,
-                va="baseline",
-                ha="left",
-                color="black",
-            )
-    # Avoid bbox_inches='tight' so page size matches the composite.
-    fig.savefig(
-        out_path, format="pdf", transparent=True, facecolor="none", edgecolor="none",
-        bbox_inches=None, pad_inches=0,
-    )
-    plt.close(fig)
-    return out_path
-
-
 def assemble_figure(panel_paths: dict[str, Path], stem, save_dpi: int = 300):
-    """Assemble a vector PDF from panel PDFs (aspect preserved, equal row heights).
+    """Compose the panel PDFs onto the page defined by `utils.LAYOUT`.
 
-    Also writes a PNG preview rasterized from that PDF (not used as an input).
-    ``panel_paths`` may map to ``.pdf`` (preferred) or ``.png`` (legacy).
+    This used to be ~170 lines: a geometry solver that derived row heights from
+    the measured panel PDFs, a contain-fit that scaled each panel by anything
+    from 0.55 to 1.02, and a hand-rolled letter overlay. The scaling is what
+    made a 7 pt label print at 3.7 pt, so it is gone -- `figlayout.compose`
+    refuses to scale at all, and panels are rendered at `LAYOUT.slot_size_in`
+    instead.
     """
-    from pypdf import PdfReader, PdfWriter, Transformation
+    return figlayout.compose(LAYOUT, panel_paths, stem,
+                             titles=PANEL_TITLES, dpi=save_dpi)
 
-    stem = Path(stem).with_suffix("")
-    ensure_dir(stem.parent)
-    png_path = stem.with_suffix(".png")
-    pdf_path = stem.with_suffix(".pdf")
 
-    panel_pdfs: dict[str, Path] = {}
-    for key, path in panel_paths.items():
-        path = Path(path)
-        pdf_candidate = path if path.suffix.lower() == ".pdf" else path.with_suffix(".pdf")
-        if not pdf_candidate.exists():
-            raise FileNotFoundError(f"Missing vector panel PDF for '{key}': {pdf_candidate}")
-        panel_pdfs[key] = pdf_candidate
+def model_figure(arch_path: Path, stem, save_dpi: int = 300):
+    """Lay the architecture schematic out as a figure of its own.
 
-    panel_sizes = {}
-    for key, pdf in panel_pdfs.items():
-        box = PdfReader(str(pdf)).pages[0].mediabox
-        panel_sizes[key] = (float(box.width), float(box.height))
-
-    page_h, placements = _panel_slot_geometry(panel_sizes)
-
-    writer = PdfWriter()
-    page = writer.add_blank_page(width=PAGE_W, height=page_h)
-    for p in placements:
-        src = PdfReader(str(panel_pdfs[p["key"]])).pages[0]
-        # pypdf applies translate then scale if chained left-to-right carefully:
-        # Transformation().scale(s).translate(tx, ty) scales about origin then moves.
-        page.merge_transformed_page(
-            src,
-            Transformation().scale(p["scale"]).translate(p["img_left"], p["img_bottom"]),
-            over=True,
-        )
-
-    overlay_path = stem.parent / "_figure1_letters_overlay.pdf"
-    _write_letter_overlay_pdf(placements, page_h, overlay_path)
-    overlay_page = PdfReader(str(overlay_path)).pages[0]
-    page.merge_page(overlay_page, over=True)
-
-    with open(pdf_path, "wb") as f:
-        writer.write(f)
-    try:
-        overlay_path.unlink(missing_ok=True)
-    except OSError:
-        pass
-
-    # PNG preview only (raster of the vector composite).
-    _pdf_to_png(pdf_path, png_path, dpi=save_dpi)
-    print(f"  Saved: {pdf_path}")
-    print(f"  Saved: {png_path}")
-    return png_path, pdf_path
+    It is externally authored artwork (Inkscape, Arial/Tahoma) at a fixed
+    aspect ratio, so unlike every other panel in the paper it cannot be
+    re-rendered at a given size -- it is scaled to the text width instead, and
+    `fit=` marks that as deliberate. At 654 pt native it scales to 0.773, which
+    puts its type at 6.4-13.3 pt: legible, where the old 0.548 in-figure slot
+    put its smallest labels at 4.7 pt.
+    """
+    arch_path = Path(arch_path)
+    box = PdfReader(str(arch_path)).pages[0].mediabox
+    iw, ih = float(box.width), float(box.height)
+    layout = figlayout.Layout(
+        [("model",)], row_h_in=[ih * (PAGE_W / iw) / 72.0],
+        letter_strip_pt=0.0, caption_lines=8, name="fig_model")
+    return figlayout.compose(layout, {"model": arch_path}, stem,
+                             letters=False, fit={"model"}, dpi=save_dpi)
 
 
 def render_top_skaggs(df_beh, df_act, reward_bin, stem, m=32, hidden_dim=512, n_top=38, skaggs_threshold=0.05):
@@ -400,55 +261,92 @@ def generate_all(args):
 
     if args.assemble_only:
         print("Assembly-only mode: reusing existing panel PDFs...")
-        for key in sorted(args.panels):
-            pdf = panels_dir / f"panel_{key}.pdf"
-            if not pdf.exists():
-                raise FileNotFoundError(f"--assemble_only: missing panel PDF {pdf}")
-            panel_pdfs[key] = pdf
+        panel_pdfs = figlayout.existing_panels(
+            panels_dir, [k for k in LAYOUT.keys() if k in args.panels])
         assemble_figure(panel_pdfs, figures_dir / "figure1_raw")
         print("\nDone.")
         print(f"  Figures: {figures_dir}")
         return
 
+    # The architecture schematic is its own figure now, not a panel of this
+    # one, so it is written to its own stem and never enters panel_pdfs.
+    if args.model_figure:
+        print("Model schematic (standalone figure, drawn by model_schematic.py)...")
+        import model_schematic
+        model_schematic.main(figures_dir / MODEL_STEM)
+
     if "a" in args.panels:
-        print("Panel a (architecture cartoon)...")
-        arch = Path(args.architecture).resolve()
-        if not arch.exists():
-            arch = DEFAULT_ARCHITECTURE.resolve()
-        _, pdf = architecture_panel(arch, panels_dir / "panel_a")
+        print("Panel a (environment / egocentric observations)...")
+        _, pdf = render_panel_b(
+            panels_dir / "panel_a_examples",
+            panels_dir / "panel_a",
+            compact_pose_idx=args.panel_b_pose,
+            seed=args.seed,
+            size_in=LAYOUT.slot_size_in("a"),
+        )
         panel_pdfs["a"] = pdf
 
     if "b" in args.panels:
-        print("Panel b (FoV / observation)...")
-        _, pdf = render_panel_b(
-            panels_dir / "panel_b_examples",
-            panels_dir / "panel_b",
-            compact_pose_idx=args.panel_b_pose,
-            seed=args.seed,
-        )
+        print("Panel b (hidden-state manifold, 3D PCA)...")
+        _, pdf = render_panel_d(data_dir, panels_dir / "panel_b", tuple(reward_pos),
+                                size_in=LAYOUT.slot_size_in("b"))
         panel_pdfs["b"] = pdf
 
-    if "c" in args.panels:
-        print("Panel c (PCA cognitive map, 3D)...")
-        _, pdf = render_panel_d(data_dir, panels_dir / "panel_c", tuple(reward_pos),
-                                width_in=slot_width_in("c"))
-        panel_pdfs["c"] = pdf
+    if args.panels & {"c", "d", "e", "h", "legacy_f", "legacy_g"}:
+        cache_path = figures_dir / "figure_data.npz"
+        if args.plot_only:
+            saved = require_keys(
+                load_figure_data(cache_path),
+                "rw_cycles", "goal_cycles", "rm_gc", "skaggs_gc",
+                "top_idx_100", "stats",
+                path=cache_path,
+            )
+            rw_cycles = saved["rw_cycles"]
+            goal_cycles = saved["goal_cycles"]
+            rm_gc = saved["rm_gc"]
+            skaggs_gc = saved["skaggs_gc"]
+            top_idx_100 = saved["top_idx_100"]
+            stats = saved["stats"]
+        else:
+            df_beh_gc = pd.read_parquet(data_dir / "df_behavior_goal_conditioned.parquet")
+            df_act_gc = pd.read_parquet(data_dir / "df_activations_goal_conditioned.parquet")
+            rm_gc, occ_gc = build_rate_maps(df_beh_gc, df_act_gc, M, HIDDEN_DIM)
+            skaggs_gc = compute_skaggs(rm_gc, occ_gc)
+            top_idx_100 = np.argsort(skaggs_gc)[::-1][:100]
+            # Exploration = the random walk recorded before reward learning
+            # (replay_c1_pred: pre-learning weights). Goal-directed = the
+            # post-learning goal-directed probe, without the steps right after
+            # each reset (analysis_helpers.reset_keep_mask). Parameters and
+            # trajectory both differ, as in a recording before and after
+            # learning. The panel code addresses the two maps by cycle label.
+            from analysis_helpers import load_period_frames
+            maps = {}
+            for key, period, trim in (("cycle_1", "replay_c1_pred", False),
+                                      ("cycle_1_goal", "cycle_1_goal", True)):
+                fb, fa = load_period_frames(str(data_dir), period, HIDDEN_DIM, trim_resets=trim)
+                rm_, occ_ = build_rate_maps(fb, fa, M, HIDDEN_DIM)
+                maps[key] = (rm_, occ_, compute_skaggs(rm_, occ_))
+            rw_cycles = {"cycle_1": maps["cycle_1"]}
+            goal_cycles = {"cycle_1_goal": maps["cycle_1_goal"]}
+            rw_key = next(k for k in rw_cycles if "cycle_1" in k and "goal" not in k)
+            goal_key = next(k for k in goal_cycles if "cycle_1" in k)
+            rm_pre, _, sk_pre = rw_cycles[rw_key]
+            rm_post, _, sk_post = goal_cycles[goal_key]
+            stats = analyse_peak_com_distances(
+                rm_pre, sk_pre, rm_post, sk_post, reward_pos,
+                skaggs_threshold=args.skaggs_threshold,
+            )
+            update_figure_data(cache_path, {
+                "rw_cycles": rw_cycles,
+                "goal_cycles": goal_cycles,
+                "rm_gc": rm_gc,
+                "skaggs_gc": skaggs_gc,
+                "top_idx_100": top_idx_100,
+                "stats": stats,
+            })
 
-    if args.panels & {"d", "e", "f", "h", "legacy_f", "legacy_g"}:
-        df_beh_rw = pd.read_pickle(data_dir / "df_behavior_before.pkl")
-        df_act_rw = pd.read_pickle(data_dir / "df_activations_before.pkl")
-        df_beh_gc = pd.read_pickle(data_dir / "df_behavior_goal_conditioned.pkl")
-        df_act_gc = pd.read_pickle(data_dir / "df_activations_goal_conditioned.pkl")
-        rm_rw, occ_rw = build_rate_maps(df_beh_rw, df_act_rw, M, HIDDEN_DIM)
-        rm_gc, occ_gc = build_rate_maps(df_beh_gc, df_act_gc, M, HIDDEN_DIM)
-        skaggs_rw = compute_skaggs(rm_rw, occ_rw)
-        skaggs_gc = compute_skaggs(rm_gc, occ_gc)
-        top_idx_100 = np.argsort(skaggs_gc)[::-1][:100]
-        rw_cycles = load_cycle_rate_maps(str(data_dir), M, HIDDEN_DIM, probe_type="rw")
-        goal_cycles = load_cycle_rate_maps(str(data_dir), M, HIDDEN_DIM, probe_type="goal")
-
-        if "d" in args.panels:
-            print("Panel d (random active cells, cycle 1 before/after RL)...")
+        if "c" in args.panels:
+            print("Panel c (random active cells, cycle 1 before/after RL)...")
             rw_key = next(k for k in rw_cycles if "cycle_1" in k and "goal" not in k)
             goal_key = next(k for k in goal_cycles if "cycle_1" in k)
             rm_c1 = rw_cycles[rw_key][0]
@@ -462,27 +360,22 @@ def generate_all(args):
             print(f"  Random active neurons (seed={args.seed}): {neuron_ids}")
             _, pdf = fig_pred_vs_rl_cycle1_many(
                 rw_cycles, goal_cycles, neuron_ids, reward_bin,
-                stem=panels_dir / "panel_d",
-                ylabel_top="Before RL",
-                ylabel_bottom="After RL",
+                stem=panels_dir / "panel_c",
+                # Both rows are from cycle 1, but they bracket reward learning:
+                # replay_c1_pred uses pre-RL weights on an exploratory path,
+                # whereas cycle_1_goal uses post-RL weights and the learned
+                # goal-directed policy.
+                ylabel_top="Before",
+                ylabel_bottom="After",
                 cmap=RATEMAP,
-                width_in=slot_width_in("d"),
+                size_in=LAYOUT.slot_size_in("c"),
             )
-            panel_pdfs["d"] = pdf
+            panel_pdfs["c"] = pdf
 
-        if args.panels & {"e", "f"}:
+        if args.panels & {"d", "e"}:
             # Peak / COM: prediction RW (cycle_1) vs goal-driven policy (cycle_1_goal).
             # Same contrast as panel d — not frozen replay (that belongs in Figure 2).
-            rw_key = next(k for k in rw_cycles if "cycle_1" in k and "goal" not in k)
-            goal_key = next(k for k in goal_cycles if "cycle_1" in k)
-            rm_pre, _, sk_pre = rw_cycles[rw_key]
-            rm_post, _, sk_post = goal_cycles[goal_key]
             period_label = "cycle_1 (prediction) → cycle_1_goal (goal policy)"
-
-            stats = analyse_peak_com_distances(
-                rm_pre, sk_pre, rm_post, sk_post, reward_pos,
-                skaggs_threshold=args.skaggs_threshold,
-            )
             print(
                 f"  Peak/COM analysis ({period_label}): n={stats['n']} place cells "
                 f"(Skaggs ≥ {args.skaggs_threshold})"
@@ -508,29 +401,31 @@ def generate_all(args):
             )
             print(f"  Saved: {stats_path}")
 
-            if "e" in args.panels:
-                print("Panel e (peak distance to reward)...")
+            if "d" in args.panels:
+                print("Panel d (peak distance to reward)...")
                 _, pdf = fig_dist_histogram(
                     stats["peak_before"], stats["peak_after"],
-                    stem=panels_dir / "panel_e",
-                    width_in=slot_width_in("e"),
+                    stem=panels_dir / "panel_d",
+                    size_in=LAYOUT.slot_size_in("d"),
                     title="Field peak",
-                    label_before="Prediction",
-                    label_after="Goal policy",
+                    label_before="Exploration, before",
+                    label_after="Goal-directed, after",
+                    stats_text=_example_stats(stats, "peak"),
                 )
-                panel_pdfs["e"] = pdf
+                panel_pdfs["d"] = pdf
 
-            if "f" in args.panels:
-                print("Panel f (COM distance to reward)...")
+            if "e" in args.panels:
+                print("Panel e (COM distance to reward)...")
                 _, pdf = fig_dist_histogram(
                     stats["com_before"], stats["com_after"],
-                    stem=panels_dir / "panel_f",
-                    width_in=slot_width_in("f"),
+                    stem=panels_dir / "panel_e",
+                    size_in=LAYOUT.slot_size_in("e"),
                     title="Centre of mass",
-                    label_before="Prediction",
-                    label_after="Goal policy",
+                    label_before="Exploration, before",
+                    label_after="Goal-directed, after",
+                    stats_text=_example_stats(stats, "com"),
                 )
-                panel_pdfs["f"] = pdf
+                panel_pdfs["e"] = pdf
 
         if "h" in args.panels:
             print(f"Panel h (legacy): cycle-1 before/after for {args.n_cycle1_neurons} neurons...")
@@ -558,9 +453,12 @@ def generate_all(args):
             )
             panel_pdfs["legacy_g"] = pdf
 
-    if not args.no_assemble and panel_pdfs:
+    # `h` and the `legacy_*` panels are opt-in diagnostics with no slot in the
+    # layout; they are written to panels/ but never composited.
+    composite = {k: v for k, v in panel_pdfs.items() if k in set(LAYOUT.keys())}
+    if not args.no_assemble and composite:
         print("Assembling vector composite PDF...")
-        assemble_figure(panel_pdfs, figures_dir / "figure1_raw")
+        assemble_figure(composite, figures_dir / "figure1_raw")
 
     print("\nDone.")
     print(f"  Figures: {figures_dir}")
@@ -580,13 +478,18 @@ def parse_args():
                    help="Optional explicit neuron ids for panel d")
     p.add_argument("--architecture", default=str(DEFAULT_ARCHITECTURE),
                    help="Architecture cartoon for panel a (vector PDF preferred)")
-    p.add_argument("--panels", default="a,b,c,d,e,f")
+    p.add_argument("--panels", default="a,b,c,d,e",
+                   help="panels of the map figure; the architecture schematic "
+                        "is a separate figure (--no_model_figure to skip)")
+    p.add_argument("--no_model_figure", dest="model_figure", action="store_false",
+                   help="skip the standalone architecture figure")
     p.add_argument("--skaggs_threshold", type=float, default=0.05,
                    help="Place-cell gate for peak/COM panels (Skaggs in both before and after)")
     p.add_argument("--panel_b_pose", type=int, default=0)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--no_show", action="store_true")
     p.add_argument("--no_assemble", action="store_true")
+    add_plot_only(p)
     p.add_argument("--assemble_only", action="store_true",
                    help="Skip panel generation; assemble the composite from existing panel PDFs")
     args = p.parse_args()

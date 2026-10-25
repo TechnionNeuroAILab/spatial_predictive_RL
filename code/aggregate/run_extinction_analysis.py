@@ -4,7 +4,7 @@ Aggregate code/lib/extinction_analysis.per_seed_row over all entropy-gated
 extinction seeds and cache group-level statistics to
 results/aggregate/extinction_summary.json.
 
-Gate: seed_is_clean(GATE_PERIODS, 5.5) on the frozen-replay triple (same
+Cohort: campaign_passers("extinction"), the networks retained by the gate on the frozen-replay triple (same
 collapse gate used everywhere else in this project), applied before the
 per-cell Skaggs>=0.15 gate inside extinction_analysis itself.
 
@@ -36,7 +36,7 @@ from scipy.stats import wilcoxon
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "code" / "lib"))
 
-from analysis_helpers import seed_is_clean  # noqa: E402
+from analysis_helpers import MIN_ENTROPY, campaign_passers  # noqa: E402
 from extinction_analysis import PERIODS, per_seed_row  # noqa: E402
 
 EXT = REPO / "results" / "multi_seed_ext"
@@ -112,9 +112,9 @@ def bootstrap_recovery_ratio(delta_learn, delta_ext, n_boot=N_BOOT, seed=0):
 def main():
     all_seeds = sorted(int(p.name.replace("ext_seed", ""))
                        for p in EXT.glob("ext_seed*") if p.is_dir())
-    gated = [s for s in all_seeds
-             if seed_is_clean(str(EXT / f"ext_seed{s}" / "data"), GATE_PERIODS, 5.5)]
-    print(f"{len(gated)}/{len(all_seeds)} seeds pass entropy gate 5.5: {gated}")
+    # the pre-specified cohort: the networks retained when the family was collected
+    gated = sorted(set(all_seeds) & campaign_passers("extinction"))
+    print(f"{len(gated)}/{len(all_seeds)} retained omission networks: {gated}")
 
     rows = []
     for s in gated:
@@ -233,7 +233,7 @@ def main():
         })
 
     out = {
-        "params": {"skaggs_thr": 0.15, "near_radius": 0.15, "entropy_gate": 5.5,
+        "params": {"skaggs_thr": 0.15, "near_radius": 0.15, "entropy_gate": MIN_ENTROPY,
                    "block_size_k2": 1000, "n_boot_k1": N_BOOT,
                    "convention": "negative delta = toward reward A; "
                                  "delta_learn = postLearn-pred; delta_ext = postExt-postLearn"},

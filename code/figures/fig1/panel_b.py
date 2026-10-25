@@ -10,6 +10,9 @@ from matplotlib.lines import Line2D
 
 from utils import (
     DIST_RAY_COLOR,
+    FS_BASE,
+    FS_SMALL,
+    FS_TICK,
     GRID_CENTERS,
     HDS,
     M,
@@ -151,10 +154,10 @@ def plot_observation_rgb(ax, obs: np.ndarray) -> None:
     img = observation_rgb_image(obs)
     ax.imshow(img, aspect="auto", interpolation="nearest")
     ax.set_xticks(np.arange(6))
-    ax.set_xticklabels([f"φ{i}" for i in range(6)], fontsize=5)
+    ax.set_xticklabels([f"φ{i}" for i in range(6)], fontsize=FS_SMALL)
     ax.set_yticks(np.arange(4))
-    ax.set_yticklabels(["type 0", "type 1", "type 2", "walls"], fontsize=5)
-    ax.set_xlabel("FoV cell", fontsize=6)
+    ax.set_yticklabels(["type 0", "type 1", "type 2", "walls"], fontsize=FS_SMALL)
+    ax.set_xlabel("FoV cell", fontsize=FS_TICK)
     for y in (0.5, 1.5, 2.5):
         ax.axhline(y, color="0.75", lw=0.6)
     ax.axhline(2.5, color="0.35", lw=1.0)
@@ -181,7 +184,7 @@ def render_fov_pose(ax_arena, ax_obs, env, agent, fov_cells, coords, hd_idx, tit
         agent.pos[0], agent.pos[1], 0.04 * hd[0], 0.04 * hd[1],
         head_width=0.02, head_length=0.02, fc="k", ec="k", zorder=6,
     )
-    ax_arena.set_title(title, fontsize=6)
+    ax_arena.set_title(title, fontsize=FS_TICK)
     ax_arena.set_aspect("equal")
     ax_arena.set_xticks([])
     ax_arena.set_yticks([])
@@ -190,7 +193,8 @@ def render_fov_pose(ax_arena, ax_obs, env, agent, fov_cells, coords, hd_idx, tit
     plot_observation_rgb(ax_obs, obs)
 
 
-def render_panel_b(stem_examples, stem_compact, compact_pose_idx: int = 0, seed: int = 42):
+def render_panel_b(stem_examples, stem_compact, compact_pose_idx: int = 0, seed: int = 42,
+                   size_in: tuple[float, float] | None = None):
     """Render panel b: one arena/observation row per example pose, plus a single-pose compact version."""
     env, agent, fov_cells = build_v10_fov_env(seed=seed)
 
@@ -206,16 +210,20 @@ def render_panel_b(stem_examples, stem_compact, compact_pose_idx: int = 0, seed:
     fig, axes = plt.subplots(n, 2, figsize=(7.0, 1.9 * n), squeeze=False)
     for row, (coords, hd_idx, title) in enumerate(FOV_EXAMPLE_POSES):
         render_fov_pose(axes[row, 0], axes[row, 1], env, agent, fov_cells, coords, hd_idx, title)
-    fig.legend(handles=legend_handles, loc="lower center", ncol=2, fontsize=5, frameon=False,
+    fig.legend(handles=legend_handles, loc="lower center", ncol=2, fontsize=FS_SMALL, frameon=False,
                bbox_to_anchor=(0.5, -0.02))
     plt.tight_layout()
     save_figure(fig, stem_examples)
 
     coords, hd_idx, title = FOV_EXAMPLE_POSES[compact_pose_idx]
-    fig2, axes2 = plt.subplots(1, 2, figsize=(4.8, 2.0), squeeze=False,
+    fig2, axes2 = plt.subplots(1, 2, figsize=size_in or (4.8, 2.0), squeeze=False,
                                gridspec_kw={"width_ratios": [1.15, 1.0]})
     render_fov_pose(axes2[0, 0], axes2[0, 1], env, agent, fov_cells, coords, hd_idx, title)
-    fig2.legend(handles=legend_handles, loc="lower center", ncol=2, fontsize=5, frameon=False,
-                bbox_to_anchor=(0.5, -0.12))
-    plt.tight_layout()
-    return save_figure(fig2, stem_compact)
+    # Two columns, inside the axes area: at ncol=2 below the figure the legend
+    # was what set this panel's height, and at fontsize=5 it printed at 4.2 pt.
+    fig2.legend(handles=legend_handles, loc="lower center", ncol=2,
+                fontsize=FS_SMALL, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    # Top inset leaves room for the pose title above the arena; bottom for the
+    # two-column legend, which is inside the canvas now rather than below it.
+    fig2.tight_layout(rect=(0, 0.10, 1, 0.96), pad=0.3)
+    return save_figure(fig2, stem_compact, exact_size=size_in is not None)

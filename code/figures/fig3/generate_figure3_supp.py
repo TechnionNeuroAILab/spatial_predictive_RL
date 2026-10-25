@@ -64,6 +64,7 @@ PAGE_W = _fig3_utils.PAGE_W
 MM_TO_PT = _fig3_utils.MM_TO_PT
 
 apply_nature_style()
+from figure_cache import add_plot_only, load_figure_data, require_keys, update_figure_data  # noqa: E402
 
 SUPP_FIGURES_DIR = FIG3_DIR / "figures_supp"
 REWARD_POS = np.asarray(DEFAULT_REWARD, dtype=float)
@@ -112,7 +113,13 @@ def _fmt_p(p):
     """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return ""
-    return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
+    """Panel p-value, in the same format as every other figure in the paper.
+
+    Routed to the shared formatter so no panel invents its own notation, and
+    none of them use a mathtext superscript (which prints at 0.7x and falls
+    under the 5 pt floor).
+    """
+    return fmt_p(p, italic=False)
 
 
 def fig_supp_delta_strips(rows, stem):
@@ -134,8 +141,8 @@ def fig_supp_delta_strips(rows, stem):
     ax.set_title(f"{_fmt_p(p)}", fontsize=6, pad=2)
     ax.set_ylabel(r"Mean $\Delta$ COM dist to reward")
     ax.legend(fontsize=5, loc="lower right")
-    fig.suptitle(f"COM shift per seed (n={len(rows)} seeds)", fontsize=6.5, y=1.02)
-    fig.tight_layout(pad=0.4)
+    fig.suptitle(f"COM shift per seed (n={len(rows)} seeds)", fontsize=6.5, y=0.995, va="top")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), pad=0.4)
     return save_figure(fig, stem)
 
 
@@ -157,8 +164,8 @@ def fig_supp_frac_strips(rows, stem):
     ax.set_ylabel("% cells toward reward")
     ax.set_ylim(0, 100)
     ax.legend(fontsize=5, loc="lower right")
-    fig.suptitle(f"Fraction toward reward per seed (n={len(rows)} seeds)", fontsize=6.5, y=1.02)
-    fig.tight_layout(pad=0.4)
+    fig.suptitle(f"Fraction toward reward per seed (n={len(rows)} seeds)", fontsize=6.5, y=0.995, va="top")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), pad=0.4)
     return save_figure(fig, stem)
 
 
@@ -230,7 +237,7 @@ def fig_supp_head_vs_nohead(head_rows, nohead_rows, stem):
 
     ax.axhline(0, color="0.4", lw=0.8, ls="--")
     ax.set_xticks([1, 2])
-    ax.set_xticklabels(["No head\n(Fig 2)", "Head ON\n(Fig 3)"])
+    ax.set_xticklabels(["No head", "Head ON"])
     ax.set_ylabel(r"Mean $\Delta$ COM dist to reward (A→B)")
     ax.set_title(
         f"Quick-look double dissociation (n={len(common_seeds)} seeds, A→B, occupancy-confounded)\n"
@@ -325,6 +332,7 @@ def parse_args():
     p.add_argument("--panels", default="a,b,c,d")
     p.add_argument("--no_show", action="store_true")
     p.add_argument("--no_assemble", action="store_true")
+    add_plot_only(p)
     args = p.parse_args()
     args.panels = {x.strip() for x in args.panels.split(",") if x.strip()}
     return args
@@ -338,29 +346,37 @@ def main():
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")
     ensure_dir(Path(args.output_dir))
 
-    print(f"Loading {len(args.seeds)} head-condition seeds from {multi_seed_dir} ...")
-    head_rows = []
-    for seed in args.seeds:
-        r = load_seed(seed, multi_seed_dir, prefix="head_", skaggs_threshold=args.skaggs_threshold)
-        if r is None:
-            print(f"  seed {seed}: skip (missing/failed)")
-            continue
-        print(f"  seed {seed}: n={r['n_cells']}  Δd(A→B)={r['com_mean_delta_AB']:+.3f} ({100*r['com_frac_toward_AB']:.0f}% toward)")
-        head_rows.append(r)
+    cache_path = Path(args.output_dir) / "figure_data.npz"
+    if args.plot_only:
+        saved = require_keys(
+            load_figure_data(cache_path), "head_rows", "nohead_rows", path=cache_path)
+        head_rows = saved["head_rows"]
+        nohead_rows = saved["nohead_rows"]
+        print(f"Plot-only: {len(head_rows)} head, {len(nohead_rows)} no-head")
+    else:
+        print(f"Loading {len(args.seeds)} head-condition seeds from {multi_seed_dir} ...")
+        head_rows = []
+        for seed in args.seeds:
+            r = load_seed(seed, multi_seed_dir, prefix="head_", skaggs_threshold=args.skaggs_threshold)
+            if r is None:
+                print(f"  seed {seed}: skip (missing/failed)")
+                continue
+            print(f"  seed {seed}: n={r['n_cells']}  Δd(A→B)={r['com_mean_delta_AB']:+.3f} ({100*r['com_frac_toward_AB']:.0f}% toward)")
+            head_rows.append(r)
+
+        nohead_rows = []
+        print(f"\nLoading no-head seeds from {nohead_dir} (for panel d) ...")
+        for seed in args.seeds:
+            r = load_seed(seed, nohead_dir, prefix="nohead_", skaggs_threshold=args.skaggs_threshold)
+            if r is not None:
+                nohead_rows.append(r)
+        if not nohead_rows:
+            print("  No no-head seeds found — panel d will be skipped.")
+        update_figure_data(cache_path, {"head_rows": head_rows, "nohead_rows": nohead_rows})
 
     if not head_rows:
         print("ERROR: no head seeds loaded.")
         sys.exit(1)
-
-    # Load no-head seeds for panel d (graceful if not present)
-    nohead_rows = []
-    print(f"\nLoading no-head seeds from {nohead_dir} (for panel d) ...")
-    for seed in args.seeds:
-        r = load_seed(seed, nohead_dir, prefix="nohead_", skaggs_threshold=args.skaggs_threshold)
-        if r is not None:
-            nohead_rows.append(r)
-    if not nohead_rows:
-        print("  No no-head seeds found — panel d will be skipped.")
 
     panel_pdfs: dict[str, Path] = {}
 

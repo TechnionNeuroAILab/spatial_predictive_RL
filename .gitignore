@@ -3,6 +3,8 @@ data/
 !/data/
 
 *.pkl
+*.parquet
+!results/tables/*.parquet
 *.npy
 *.pt
 checkpoints/
@@ -15,8 +17,8 @@ New_Results_v2/**/data/
 New_Results_v2/**/checkpoints/
 
 # --- run-output trees (regenerable, see code/README.md) ---
-# *.pkl / *.pt / checkpoints/ above already exclude the bulk (hundreds of GB of
-# raw activity/weights). These add the per-run diagnostic PNGs each training
+# *.pkl / *.parquet / *.pt / checkpoints/ above already exclude the bulk
+# (raw activity/weights). These add the per-run diagnostic PNGs each training
 # script dumps automatically -- NOT the assembled paper figures, which live
 # under code/figures/*/figures{,_supp}/ and stay tracked.
 results/**/*.png

@@ -28,7 +28,7 @@ def parse_args():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run-dir", "--run_dir", dest="run_dir", required=True)
     ap.add_argument("--keep", nargs="+", default=["replay_c1_pred", "replay_c1_postrl"],
-                    help="periods whose df_activations_*.pkl to KEEP (default: the replay pair)")
+                    help="periods whose df_activations_*.parquet to KEEP (default: the replay pair)")
     ap.add_argument("--drop-checkpoints", action="store_true",
                     help="also delete checkpoints/*.pt (not needed for the shift aggregation)")
     ap.add_argument("--dry-run", action="store_true", help="only report; delete nothing")
@@ -41,9 +41,9 @@ def main():
     keep = set(args.keep)
     to_delete = []
 
-    # only ever touch the big df_activations_*.pkl files
-    for path in sorted(glob.glob(os.path.join(data_dir, "df_activations_*.pkl"))):
-        period = os.path.basename(path)[len("df_activations_"):-len(".pkl")]
+    # only ever touch the big df_activations_*.parquet files
+    for path in sorted(glob.glob(os.path.join(data_dir, "df_activations_*.parquet"))):
+        period = os.path.basename(path)[len("df_activations_"):-len(".parquet")]
         if period not in keep:
             to_delete.append(path)
 
@@ -60,9 +60,9 @@ def main():
             os.remove(path)
             print(f"  deleted       {sz/1e6:7.1f} MB  {path}")
 
-    kept = sorted(os.path.basename(p)[len('df_activations_'):-len('.pkl')]
-                  for p in glob.glob(os.path.join(data_dir, "df_activations_*.pkl"))
-                  if os.path.basename(p)[len('df_activations_'):-len('.pkl')] in keep)
+    kept = sorted(os.path.basename(p)[len('df_activations_'):-len('.parquet')]
+                  for p in glob.glob(os.path.join(data_dir, "df_activations_*.parquet"))
+                  if os.path.basename(p)[len('df_activations_'):-len('.parquet')] in keep)
     verb = "would free" if args.dry_run else "freed"
     print(f"[prune_run] {args.run_dir}: {verb} {freed/1e6:.0f} MB  "
           f"(kept activations: {kept or 'none'})")

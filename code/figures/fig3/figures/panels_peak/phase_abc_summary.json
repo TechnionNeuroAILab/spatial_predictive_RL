@@ -1,0 +1,17 @@
+{
+  "n": 397,
+  "n_ac": 421,
+  "com_mean_delta_AB": -0.06596514818755063,
+  "com_frac_toward_AB": 0.7279596977329975,
+  "com_mean_delta_AC": -0.03615354002101404,
+  "com_frac_toward_AC": 0.6460807600950119,
+  "peak_mean_delta_AB": -0.09453918777009283,
+  "peak_frac_toward_AB": 0.6624685138539043,
+  "peak_mean_delta_AC": -0.06520525021712524,
+  "peak_frac_toward_AC": 0.5843230403800475,
+  "com_mean_A": 0.32781405099046834,
+  "com_mean_B": 0.2618489028029177,
+  "com_mean_C_pre": 0.3593170321622613,
+  "com_mean_C": 0.3231634921412473,
+  "ac_contrast": "replay_c1_pred -> replay_c1_postrl (frozen trajectory, weight-only)"
+}

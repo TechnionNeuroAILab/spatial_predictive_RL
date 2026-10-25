@@ -12,7 +12,7 @@ caller" and exposes `per_seed_row`, with nothing calling it. This script is that
 missing caller, reconstructed to match the existing cache's schema. It closes
 the one place where a shipped figure could not be regenerated from scratch.
 
-Gate: seed_is_clean(["cycle_1_goal", "cycle_2_goal", "goal_conditioned"], 5.5)
+Cohort: the retained relocation networks, analysis_helpers.campaign_passers("reloc")
 -- the same entropy-collapse gate the other relocation analyses use (see
 figures/figS_reward_vector/analysis.py) -- applied before the per-cell
 Skaggs>=0.15 gate inside reward_relative_analysis itself.
@@ -50,13 +50,13 @@ from scipy.stats import wilcoxon
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "code" / "lib"))
 
-from analysis_helpers import seed_is_clean  # noqa: E402
+from analysis_helpers import campaign_passers  # noqa: E402
 from reward_relative_analysis import per_seed_row  # noqa: E402
 
 RELOC = REPO / "results" / "multi_seed_reloc"
 OUT = RELOC / "aggregate" / "reward_relative_summary.json"
 GATE_PERIODS = ["cycle_1_goal", "cycle_2_goal", "goal_conditioned"]
-MIN_ENTROPY = 5.5
+from analysis_helpers import MIN_ENTROPY  # noqa: E402,F401  (single source)
 
 
 def _mean_sd(vals) -> dict:
@@ -125,8 +125,8 @@ def main() -> int:
         if args.seeds is not None and seed not in args.seeds:
             continue
         data_dir = d / "data"
-        if not seed_is_clean(str(data_dir), GATE_PERIODS, args.min_entropy):
-            skipped.append({"seed": seed, "reason": "entropy gate"})
+        if seed not in campaign_passers("reloc"):    # the pre-specified cohort
+            skipped.append({"seed": seed, "reason": "not in retained cohort"})
             continue
         row = per_seed_row(d, seed)
         if row is None:

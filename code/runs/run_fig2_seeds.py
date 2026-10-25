@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
                    help="Seeds to run (default 0–9)")
     p.add_argument("--dry_run", action="store_true", help="Print commands without running")
     p.add_argument("--skip_existing", action="store_true",
-                   help="Skip seeds whose data/df_activations_cycle_1.pkl already exists")
+                   help="Skip seeds whose data/df_activations_cycle_1.parquet already exists")
     return p.parse_args()
 
 
@@ -65,7 +65,7 @@ def main() -> None:
         log_path = OUT_DIR / f"{run_name}_runner.log"
 
         if args.skip_existing:
-            probe_file = run_dir / "data" / "df_activations_cycle_1.pkl"
+            probe_file = run_dir / "data" / "df_activations_cycle_1.parquet"
             if probe_file.exists():
                 print(f"[skip] seed {seed} — already complete")
                 ok.append(seed)

@@ -181,7 +181,9 @@ def load_relocation_summary(reloc_dir: Path, seeds: list[int]) -> list[dict]:
         tsr = met.get("test_success_rates", [float("nan"), float("nan")])
 
         states = _fig4.load_reloc_states(str(run_dir / "data"))
-        ts = _fig4.paired_tracking_stats(states)
+        # Same peak statistic this summary used before the exemplar figure
+        # grew a centre-of-mass / peak switch.
+        ts = _fig4.paired_tracking_stats(states, center="peak")
 
         rows.append({
             "seed": seed,

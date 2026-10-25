@@ -63,7 +63,7 @@ PRUNE_KEEP = ["replay_c1_pred", "replay_c1_postrl", "cycle_1", "cycle_1_goal"]
 def _already_done(seed: int) -> bool:
     """Completion sentinel.
 
-    Deliberately metrics.json, not df_activations_cycle_1.pkl (which the other
+    Deliberately metrics.json, not df_activations_cycle_1.parquet (which the other
     runners use): cycle_1 is written ~5 minutes before the run actually
     finishes, so a crash in that window would be silently treated as complete.
     metrics.json is written last.

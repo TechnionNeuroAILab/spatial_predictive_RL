@@ -10,13 +10,10 @@ narrative analogies in the paper into real quantitative tests:
     rotation test establishing goal-specificity.
 
 Panels:
-  a  Gauthier distance-tuning summary (no-head vs head-ON)
-  b  Sarel goal-vector summary (no-head vs head-ON)
-  c  Relocation rotation test, behavioral version (cycle_1_goal vs cycle_2_goal)
-  d  Relocation rotation test, occupancy-controlled version (frozen-replay triple)
-  e  Example tuning curves (one distance cell, one goal-vector cell, one hd-only cell)
-  f  Wall-buffer / border-effect sensitivity sweep
-  g  Frozen-replay negative control (validity check, reproduces legacy null result)
+  a  reward-distance and goal-bearing measures on replayed versus goal-directed
+     trajectories
+  b  relocation rotation test on goal-directed trajectories
+  c  relocation rotation test on the replayed trajectory
 
 Usage (run from repo root):
     python code/figures/figS_reward_vector/generate_figure_reward_vector_supp.py --no_show
@@ -24,6 +21,7 @@ Usage (run from repo root):
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 import tempfile
@@ -46,16 +44,22 @@ from analysis import (  # noqa: E402
 )
 from utils import (  # noqa: E402
     NOHEAD_DIR, HEAD_DIR, RELOC_DIR, MM_TO_PT, PAGE_W,
-    COLOR_NOHEAD, COLOR_HEAD, COLOR_A, COLOR_B, COLOR_DISTANCE, COLOR_GOALDIR, COLOR_HD,
+    COLOR_NOHEAD, COLOR_HEAD, COLOR_DISTANCE, COLOR_GOALDIR, COLOR_HD,
     apply_nature_style, ensure_dir, save_figure,
+    FS_BASE, FS_SMALL, FS_TICK, title, stat_annot,
+    fmt_p,
+)
+import figlayout  # noqa: E402
+sys.path.insert(0, str(REPO / "code" / "lib"))
+from analysis_helpers import campaign_passers  # noqa: E402
+from figure_cache import (  # noqa: E402
+    add_plot_only, load_figure_data, require_keys, update_figure_data,
 )
 
 _NEW_CODE = REPO / "code" / "lib"
 sys.path.insert(0, str(_NEW_CODE))
-from reward_vector_analysis import (  # noqa: E402
-    analyze_period, classify_cells, wall_buffer_mask, EDGE_MARGIN_CELLS,
-)
 
+from pubstyle import sem  # noqa: E402
 apply_nature_style()
 
 SUPP_FIGURES_DIR = HERE / "figures_supp"
@@ -65,14 +69,33 @@ def _fmt_p(p):
     """Format a p-value for a panel annotation; scientific notation below 0.001."""
     if not np.isfinite(p):
         return "n/a"
-    return f"{p:.1e}" if p < 0.001 else f"{p:.3f}"
+    """Panel p-value, in the same format as every other figure in the paper.
+
+    Routed to the shared formatter so no panel invents its own notation, and
+    none of them use a mathtext superscript (which prints at 0.7x and falls
+    under the 5 pt floor).
+    """
+    return fmt_p(p, italic=False).replace("P ", "")
 
 
 # ---------------------------------------------------------------------------
 # Panel a — Gauthier distance-tuning summary
 # ---------------------------------------------------------------------------
 
-def fig_gauthier_summary(rows_nh, rows_hd, stem):
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+#   a  replay versus goal-directed trajectories
+#   b  relocation, goal-directed         c  relocation, replayed trajectory
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 6),
+     ("b", 1, 0, 3), ("c", 1, 3, 3)],
+    ncols=6, row_h_in=[1.35, 1.75], caption_lines=6,
+    name="figS_rewardvector",
+)
+
+
+def fig_gauthier_summary(rows_nh, rows_hd, stem, size_in=None):
     """Bar: baseline-subtracted fraction of genuine distance_cells
     (goal_conditioned minus before), no-head vs head-ON."""
     delta_nh = np.array([r["delta_frac_distance_cell"] for r in rows_nh]) * 100
@@ -80,47 +103,47 @@ def fig_gauthier_summary(rows_nh, rows_hd, stem):
     raw_nh = np.array([r["frac_distance_cell"] for r in rows_nh]) * 100
     raw_hd = np.array([r["frac_distance_cell"] for r in rows_hd]) * 100
 
-    fig, axes = plt.subplots(1, 2, figsize=(4.4, 2.3))
+    fig, axes = plt.subplots(1, 2, figsize=size_in or (4.4, 2.3))
 
     ax = axes[0]
     rng = np.random.default_rng(0)
     for i, (vals, color, label) in enumerate([(raw_nh, COLOR_NOHEAD, "no-head"), (raw_hd, COLOR_HEAD, "head-ON")]):
         jitter = rng.uniform(-0.15, 0.15, len(vals))
         ax.scatter(i + jitter, vals, s=10, color=color, alpha=0.6, zorder=3, linewidths=0)
-        ax.errorbar([i], [vals.mean()], yerr=[vals.std(ddof=1)], fmt="D", color="black",
+        ax.errorbar([i], [vals.mean()], yerr=[sem(vals)], fmt="D", color="black",
                     markersize=5, capsize=3, lw=1.0, zorder=5)
-    ax.set_xticks([0, 1]); ax.set_xticklabels(["no-head", "head-ON"])
-    ax.set_ylabel("% genuine distance cells\n(goal_conditioned, raw)")
-    ax.set_title(f"Raw fraction\n(n_nh={len(raw_nh)}, n_hd={len(raw_hd)})", fontsize=6)
+    ax.set_xticks([0, 1]); ax.set_xticklabels(["Without\nteaching", "With\nteaching"])
+    ax.set_ylabel("Distance cells (%)")
+    ax.set_title(f"Goal-directed (n = {len(raw_nh)})", fontsize=FS_TICK)
 
     ax = axes[1]
     for i, (vals, color, label) in enumerate([(delta_nh, COLOR_NOHEAD, "no-head"), (delta_hd, COLOR_HEAD, "head-ON")]):
         jitter = rng.uniform(-0.15, 0.15, len(vals))
         ax.scatter(i + jitter, vals, s=10, color=color, alpha=0.6, zorder=3, linewidths=0)
-        ax.errorbar([i], [vals.mean()], yerr=[vals.std(ddof=1)], fmt="D", color="black",
+        ax.errorbar([i], [vals.mean()], yerr=[sem(vals)], fmt="D", color="black",
                     markersize=5, capsize=3, lw=1.0, zorder=5)
     ax.axhline(0, color="0.4", lw=0.7, ls="--")
-    ax.set_xticks([0, 1]); ax.set_xticklabels(["no-head", "head-ON"])
-    ax.set_ylabel("Δ % distance cells\n(goal_conditioned − before)")
+    ax.set_xticks([0, 1]); ax.set_xticklabels(["Without\nteaching", "With\nteaching"])
+    ax.set_ylabel("Δ distance cells (%)\nvs before learning")
     try:
         _, p_nh = _wilcoxon(delta_nh)
         _, p_hd = _wilcoxon(delta_hd)
     except Exception:
         p_nh = p_hd = float("nan")
-    ax.set_title(f"Reward-specific component\nnh {_fmt_p(p_nh)}  hd {_fmt_p(p_hd)}", fontsize=6)
+    ax.set_title(f"After − before\nP {_fmt_p(p_nh)}; P {_fmt_p(p_hd)}", fontsize=FS_TICK)
 
-    fig.suptitle("Gauthier & Tank 2018: reward-distance-modulated activity", fontsize=6.5, y=1.03)
-    fig.tight_layout(pad=0.4, w_pad=0.8)
-    return save_figure(fig, stem)
+    fig.suptitle("Reward-distance cells", fontsize=FS_BASE, y=0.995, va="top")
+    fig.tight_layout(rect=(0.012, 0, 1, 0.93), pad=0.4, w_pad=0.8)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
 # Panel b — Sarel goal-vector summary
 # ---------------------------------------------------------------------------
 
-def fig_sarel_summary(rows_nh, rows_hd, stem):
+def fig_sarel_summary(rows_nh, rows_hd, stem, size_in=None):
     """Panel b -- ego-bearing against head-direction tuning strength (mean MRL), no-head vs head-ON."""
-    fig, axes = plt.subplots(1, 2, figsize=(4.4, 2.3))
+    fig, axes = plt.subplots(1, 2, figsize=size_in or (4.4, 2.3))
 
     ax = axes[0]
     mrl_ego_nh = np.array([r["mean_mrl_ego"] for r in rows_nh])
@@ -134,38 +157,38 @@ def fig_sarel_summary(rows_nh, rows_hd, stem):
     for i, (vals, color) in enumerate(zip(data, colors)):
         jitter = rng.uniform(-0.15, 0.15, len(vals))
         ax.scatter(i + jitter, vals, s=8, color=color, alpha=0.55, zorder=3, linewidths=0)
-        ax.errorbar([i], [vals.mean()], yerr=[vals.std(ddof=1)], fmt="D", color="black",
+        ax.errorbar([i], [vals.mean()], yerr=[sem(vals)], fmt="D", color="black",
                     markersize=4, capsize=3, lw=1.0, zorder=5)
     ax.set_xticks(positions)
-    ax.set_xticklabels(["ego\n(nh)", "HD\n(nh)", "ego\n(hd)", "HD\n(hd)"], fontsize=5.5)
-    ax.set_ylabel("Mean MRL")
-    ax.set_title("Ego-bearing vs head-direction\ntuning strength", fontsize=6)
+    ax.set_xticklabels(["Goal\nw/o", "HD\nw/o", "Goal\nwith", "HD\nwith"], fontsize=FS_SMALL)
+    ax.set_ylabel("Mean resultant length")
+    ax.set_title("Tuning strength", fontsize=FS_TICK)
 
     ax = axes[1]
     frac_goaldir_nh = np.array([r["frac_goal_direction_cell"] for r in rows_nh]) * 100
     frac_hd_nh = np.array([r["frac_head_direction_cell"] for r in rows_nh]) * 100
     frac_specific_nh = np.array([r["frac_goal_specific_cell"] for r in rows_nh]) * 100
     frac_vector_nh = np.array([r["frac_goal_vector_cell"] for r in rows_nh]) * 100
-    labels = ["goal-dir", "HD", "goal-\nspecific", "goal-\nvector"]
+    labels = ["Goal\ndir.", "Head\ndir.", "Goal\nonly", "Goal\nvector"]
     means = [frac_goaldir_nh.mean(), frac_hd_nh.mean(), frac_specific_nh.mean(), frac_vector_nh.mean()]
-    sds = [frac_goaldir_nh.std(ddof=1), frac_hd_nh.std(ddof=1), frac_specific_nh.std(ddof=1), frac_vector_nh.std(ddof=1)]
+    sds = [sem(frac_goaldir_nh), sem(frac_hd_nh), sem(frac_specific_nh), sem(frac_vector_nh)]
     xs = np.arange(4)
     ax.bar(xs, means, yerr=sds, color=[COLOR_GOALDIR, COLOR_HD, "#e69f00", COLOR_DISTANCE],
            alpha=0.8, capsize=3, width=0.6, error_kw={"lw": 1.0})
-    ax.set_xticks(xs); ax.set_xticklabels(labels, fontsize=5.5)
-    ax.set_ylabel("% cells (no-head)")
-    ax.set_title("Cell-type fractions\n(goal_conditioned)", fontsize=6)
+    ax.set_xticks(xs); ax.set_xticklabels(labels, fontsize=FS_SMALL)
+    ax.set_ylabel("Cells (%)")
+    ax.set_title("Cell types, without teaching", fontsize=FS_TICK)
 
-    fig.suptitle("Sarel et al. 2017: egocentric goal-direction tuning", fontsize=6.5, y=1.03)
-    fig.tight_layout(pad=0.4, w_pad=0.8)
-    return save_figure(fig, stem)
+    fig.suptitle("Goal-bearing tuning (goal-directed)", fontsize=FS_BASE, y=0.995, va="top")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), pad=0.4, w_pad=0.8)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
-# Panels c/d — relocation rotation test
+# Panels d/e — relocation rotation test
 # ---------------------------------------------------------------------------
 
-def fig_rotation_test(rot_rows, title, stem):
+def fig_rotation_test(rot_rows, suptitle_text, stem, size_in=None):
     """Rose histogram + circular-mean-vs-CI comparison for the relocation
     A->B rotation test. Works for either the behavioral or occupancy-
     controlled period pair (caller supplies pre-computed rot_rows).
@@ -199,7 +222,7 @@ def fig_rotation_test(rot_rows, title, stem):
         p_mag = float("nan")
     n_favorable = int((np.abs(circ_means) < np.abs(delta_geoms)).sum())
 
-    fig, axes = plt.subplots(1, 2, figsize=(4.6, 2.4))
+    fig, axes = plt.subplots(1, 2, figsize=size_in or (4.6, 2.4))
     axes[0].remove()
     axp = fig.add_subplot(1, 2, 1, projection="polar")
     bins = np.linspace(-np.pi, np.pi, 25)
@@ -208,7 +231,12 @@ def fig_rotation_test(rot_rows, title, stem):
     width = edges[1] - edges[0]
     axp.bar(centers, counts, width=width, color=COLOR_GOALDIR, alpha=0.75, edgecolor="0.3", linewidth=0.3)
     axp.set_theta_zero_location("N")
-    axp.set_title(f"Δφ_ego (goal-direction cells)\n(n={len(all_dphi_goal)} cells, {len(rot_rows)} seeds)", fontsize=6)
+    # Two radial ticks, off the 0-degree spoke: the default set stacked its
+    # counts down the vertical axis, across the rose itself.
+    _top = float(counts.max()) if len(counts) else 1.0
+    axp.set_rgrids([_top / 2, _top], labels=[f"{_top/2:.0f}", f"{_top:.0f}"],
+                   angle=145, fontsize=FS_SMALL)
+    axp.set_title(f"Bearing change, pooled\n({len(all_dphi_goal)} cells, {len(rot_rows)} networks)", fontsize=FS_TICK)
 
     ax = axes[1]
     rng2 = np.random.default_rng(2)
@@ -219,144 +247,44 @@ def fig_rotation_test(rot_rows, title, stem):
     ax.errorbar([0], [np.degrees(pooled_mean)], yerr=[[np.degrees(pooled_mean - lo)], [np.degrees(hi - pooled_mean)]],
                 fmt="D", color="black", markersize=5, capsize=3, lw=1.2, zorder=6,
                 label="pooled mean ± 95% CI")
-    ax.set_xticks([0, 1]); ax.set_xticklabels(["Δφ_ego\n(observed)", "Δ_geom\n(HD-artifact\nprediction)"], fontsize=5.5)
+    ax.set_xticks([0, 1]); ax.set_xticklabels(["Observed", "Allocentric\nprediction"], fontsize=FS_SMALL)
     ax.set_ylabel("Bearing shift A→B (deg)")
-    ax.set_title(
-        f"Pooled Δφ_ego: {np.degrees(pooled_mean):+.1f}° [{np.degrees(lo):+.1f},{np.degrees(hi):+.1f}]\n"
-        f"|obs|<|geom| in {n_favorable}/{len(circ_means)} seeds (Wilcoxon {_fmt_p(p_mag)})",
-        fontsize=5.5)
-    ax.legend(fontsize=5, frameon=False, loc="best")
+    title(ax, "Per network")
+    # Headroom first, then the statistics in the strip it opens up. Set as a
+    # title this block ran 30 pt off the right edge; dropped straight into the
+    # axes it landed on the Δ_geom column.
+    lo_y, hi_y = ax.get_ylim()
+    ax.set_ylim(lo_y, hi_y + 0.55 * (hi_y - lo_y))
+    # Three short lines: the subplot is ~1.6 in, so anything past ~26
+    # characters runs off it. The black pooled-mean marker is named in the
+    # caption rather than here.
+    stat_annot(ax,
+               f"pooled {np.degrees(pooled_mean):+.1f}° "
+               f"[{np.degrees(lo):+.1f}, {np.degrees(hi):+.1f}]\n"
+               f"|obs.| < |pred.| in {n_favorable}/{len(circ_means)}\n"
+               f"Wilcoxon P {_fmt_p(p_mag)}",
+               loc="upper left")
+    # No legend: the x tick labels already name the two columns, and at three
+    # entries it sat on the observed-shift cloud.
 
-    fig.suptitle(title, fontsize=6.5, y=1.03)
-    fig.tight_layout(pad=0.4, w_pad=1.0)
-    return save_figure(fig, stem)
-
-
-# ---------------------------------------------------------------------------
-# Panel e — example tuning curves
-# ---------------------------------------------------------------------------
-
-def fig_example_curves(nohead_seed_dir, reloc_seed_dir, reloc_period_a, reloc_period_b, stem):
-    """Panel e -- one example tuning curve each for a distance cell, a goal-direction cell and a head-direction-only cell."""
-    res_nh = analyze_period(nohead_seed_dir, "goal_conditioned", n_null=50, seed=0)   # example cells only
-    labels_nh = classify_cells(res_nh["ramp"], res_nh["ramp_p"], res_nh["mrl_ego"], res_nh["mrl_ego_p"],
-                                res_nh["mrl_hd"], res_nh["mrl_hd_p"], ring_mrl=res_nh["ring_mrl"])
-
-    res_a = analyze_period(reloc_seed_dir, reloc_period_a, n_null=50, seed=0)
-    res_b = analyze_period(reloc_seed_dir, reloc_period_b, n_null=50, seed=0)
-    labels_a = classify_cells(res_a["ramp"], res_a["ramp_p"], res_a["mrl_ego"], res_a["mrl_ego_p"],
-                               res_a["mrl_hd"], res_a["mrl_hd_p"], ring_mrl=res_a["ring_mrl"])
-    labels_b = classify_cells(res_b["ramp"], res_b["ramp_p"], res_b["mrl_ego"], res_b["mrl_ego_p"],
-                               res_b["mrl_hd"], res_b["mrl_hd_p"], ring_mrl=res_b["ring_mrl"])
-
-    fig, axes = plt.subplots(1, 3, figsize=(5.6, 2.0))
-
-    # (1) example distance cell
-    ax = axes[0]
-    dist_ids = np.where(labels_nh["distance_cell"])[0]
-    if len(dist_ids):
-        n = dist_ids[np.argmax(np.abs(res_nh["ramp"][dist_ids]))]
-        curve = res_nh["dist_curve"][n]
-        ax.plot(res_nh["dbins"], curve / (curve.max() + 1e-12), "-o", color=COLOR_DISTANCE, ms=3)
-        ax.set_title(f"Example distance cell\n(ramp={res_nh['ramp'][n]:+.2f})", fontsize=6)
-    else:
-        ax.text(0.5, 0.5, "no distance cell\nfound", ha="center", va="center", transform=ax.transAxes, fontsize=6)
-        ax.set_title("Example distance cell", fontsize=6)
-    ax.set_xlabel("distance to reward"); ax.set_ylabel("norm. activity")
-
-    # (2) rotation-confirmed goal-vector cell (ego-bearing curve A vs B overlaid)
-    ax = axes[1]
-    stable_goal = labels_a["goal_direction_cell"] & labels_b["goal_direction_cell"]
-    stable_goal_only = stable_goal & ~labels_a["head_direction_cell"] & ~labels_b["head_direction_cell"]
-    candidates = np.where(stable_goal_only)[0] if stable_goal_only.sum() else np.where(stable_goal)[0]
-    if len(candidates):
-        n = candidates[np.argmax(res_a["mrl_ego"][candidates] + res_b["mrl_ego"][candidates])]
-        ca, cb = res_a["curve_ego"][n], res_b["curve_ego"][n]
-        ax.plot(np.degrees(res_a["phi_ego"]), ca / (ca.max() + 1e-12), "-o", color=COLOR_A, ms=3, label="phase A")
-        ax.plot(np.degrees(res_b["phi_ego"]), cb / (cb.max() + 1e-12), "-o", color=COLOR_B, ms=3, label="phase B")
-        ax.set_title("Goal-direction cell\n(overlapping = re-anchors)", fontsize=6)
-        ax.legend(fontsize=5, frameon=False)
-    else:
-        ax.text(0.5, 0.5, "no stable goal-direction\ncell found", ha="center", va="center", transform=ax.transAxes, fontsize=6)
-        ax.set_title("Goal-direction cell", fontsize=6)
-    ax.set_xlabel("ego-bearing to goal (deg)"); ax.set_ylabel("norm. activity")
-
-    # (3) hd-only cell (should visibly rotate in ego-bearing terms)
-    ax = axes[2]
-    stable_hd_only = (labels_a["head_direction_cell"] & labels_b["head_direction_cell"]
-                       & ~labels_a["goal_direction_cell"] & ~labels_b["goal_direction_cell"])
-    candidates_hd = np.where(stable_hd_only)[0]
-    if len(candidates_hd):
-        n = candidates_hd[np.argmax(res_a["mrl_hd"][candidates_hd])]
-        ca, cb = res_a["curve_ego"][n], res_b["curve_ego"][n]
-        ax.plot(np.degrees(res_a["phi_ego"]), ca / (ca.max() + 1e-12), "-o", color=COLOR_A, ms=3, label="phase A")
-        ax.plot(np.degrees(res_b["phi_ego"]), cb / (cb.max() + 1e-12), "-o", color=COLOR_B, ms=3, label="phase B")
-        ax.set_title("HD-only cell\n(shifted = artifact)", fontsize=6)
-        ax.legend(fontsize=5, frameon=False)
-    else:
-        ax.text(0.5, 0.5, "no stable HD-only\ncell found", ha="center", va="center", transform=ax.transAxes, fontsize=6)
-        ax.set_title("HD-only cell", fontsize=6)
-    ax.set_xlabel("ego-bearing to goal (deg)"); ax.set_ylabel("norm. activity")
-
-    fig.suptitle("Example cells", fontsize=6.5, y=1.04)
-    fig.tight_layout(pad=0.4, w_pad=0.8)
-    return save_figure(fig, stem)
+    fig.suptitle(suptitle_text, fontsize=FS_BASE, y=0.995, va="top")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), pad=0.4, w_pad=1.0)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
-# Panel f — wall-buffer sensitivity sweep
+# Panel c — replay versus goal-directed negative control
 # ---------------------------------------------------------------------------
 
-def fig_wallbuffer_sweep(cond_dirs_prefixes_seeds, stem, margins=(0, 1, 2, 3)):
-    """cond_dirs_prefixes_seeds: list of (cond_dir, prefix, seeds, color, label)."""
-    fig, axes = plt.subplots(1, 2, figsize=(4.4, 2.2))
-
-    for cond_dir, prefix, seeds, color, label in cond_dirs_prefixes_seeds:
-        frac_means, mrl_means = [], []
-        for margin in margins:
-            fracs, mrls = [], []
-            for s in seeds:
-                run_dir = Path(cond_dir) / f"{prefix}seed{s}"
-                res = analyze_period(run_dir, "goal_conditioned", margin_cells=margin, n_null=50, seed=s)   # sensitivity sweep: ramping fractions sit far above the BH floor
-                if res is None:
-                    continue
-                labels = classify_cells(res["ramp"], res["ramp_p"], res["mrl_ego"], res["mrl_ego_p"],
-                                         res["mrl_hd"], res["mrl_hd_p"], ring_mrl=res["ring_mrl"])
-                fracs.append(labels["distance_cell"].mean())
-                mrls.append(res["mrl_ego"].mean())
-            frac_means.append(np.mean(fracs) * 100 if fracs else np.nan)
-            mrl_means.append(np.mean(mrls) if mrls else np.nan)
-        axes[0].plot(margins, frac_means, "-o", color=color, label=label, ms=4)
-        axes[1].plot(margins, mrl_means, "-o", color=color, label=label, ms=4)
-
-    axes[0].set_xlabel("wall-buffer margin (cells)")
-    axes[0].set_ylabel("% distance cells")
-    axes[0].set_title("Distance-cell fraction\nvs border margin", fontsize=6)
-    axes[0].legend(fontsize=5, frameon=False)
-
-    axes[1].set_xlabel("wall-buffer margin (cells)")
-    axes[1].set_ylabel("mean ego-bearing MRL")
-    axes[1].set_title("Goal-direction MRL\nvs border margin", fontsize=6)
-    axes[1].legend(fontsize=5, frameon=False)
-
-    fig.suptitle("Wall-buffer / border-effect sensitivity", fontsize=6.5, y=1.03)
-    fig.tight_layout(pad=0.4, w_pad=0.8)
-    return save_figure(fig, stem)
-
-
-# ---------------------------------------------------------------------------
-# Panel g — frozen-replay negative control
-# ---------------------------------------------------------------------------
-
-def fig_frozen_replay_control(rows_nh_replay, rows_hd_replay, rows_nh_goal, rows_hd_goal, stem):
+def fig_frozen_replay_control(rows_nh_replay, rows_hd_replay, rows_nh_goal, rows_hd_goal, stem, size_in=None):
     """Reproduces the legacy README's null result: ramping/MRL on the single
     frozen-replay trajectory (replay_c1_pred/postrl) are near-zero/non-
     significant, contrasting with real tuning on goal_conditioned --
     justifying why tuning curves are built from goal-directed periods."""
-    fig, axes = plt.subplots(1, 2, figsize=(4.4, 2.2))
+    fig, axes = plt.subplots(1, 2, figsize=size_in or (4.4, 2.2))
 
     ax = axes[0]
-    labels = ["replay\n(no-head)", "goal_cond.\n(no-head)", "replay\n(head)", "goal_cond.\n(head)"]
+    labels = ["Replay", "Goal-\ndirected", "Replay", "Goal-\ndirected"]
     data = [
         np.array([r["frac_distance_cell"] for r in rows_nh_replay]) * 100,
         np.array([r["frac_distance_cell"] for r in rows_nh_goal]) * 100,
@@ -366,13 +294,13 @@ def fig_frozen_replay_control(rows_nh_replay, rows_hd_replay, rows_nh_goal, rows
     colors = [COLOR_NOHEAD, COLOR_NOHEAD, COLOR_HEAD, COLOR_HEAD]
     xs = np.arange(4)
     means = [d.mean() if len(d) else 0 for d in data]
-    sds = [d.std(ddof=1) if len(d) > 1 else 0 for d in data]
+    sds = [sem(d) if len(d) > 1 else 0 for d in data]
     ax.bar(xs, means, yerr=sds, color=colors, capsize=3, width=0.6)
     for i, c in enumerate(colors):
         ax.patches[i].set_alpha(0.4 if i % 2 == 0 else 0.9)
-    ax.set_xticks(xs); ax.set_xticklabels(labels, fontsize=5)
-    ax.set_ylabel("% distance cells")
-    ax.set_title("Distance-cell fraction:\nfrozen replay vs goal-directed", fontsize=6)
+    ax.set_xticks(xs); ax.set_xticklabels(labels, fontsize=FS_SMALL)
+    ax.set_ylabel("Distance cells (%)")
+    ax.set_title("Distance cells", fontsize=FS_TICK)
 
     ax = axes[1]
     data2 = [
@@ -382,17 +310,17 @@ def fig_frozen_replay_control(rows_nh_replay, rows_hd_replay, rows_nh_goal, rows
         np.array([r["mean_mrl_ego"] for r in rows_hd_goal]),
     ]
     means2 = [d.mean() if len(d) else 0 for d in data2]
-    sds2 = [d.std(ddof=1) if len(d) > 1 else 0 for d in data2]
+    sds2 = [sem(d) if len(d) > 1 else 0 for d in data2]
     ax.bar(xs, means2, yerr=sds2, color=colors, capsize=3, width=0.6)
     for i in range(4):
         ax.patches[i].set_alpha(0.4 if i % 2 == 0 else 0.9)
-    ax.set_xticks(xs); ax.set_xticklabels(labels, fontsize=5)
-    ax.set_ylabel("mean ego-bearing MRL")
-    ax.set_title("Goal-direction MRL:\nfrozen replay vs goal-directed", fontsize=6)
+    ax.set_xticks(xs); ax.set_xticklabels(labels, fontsize=FS_SMALL)
+    ax.set_ylabel("Mean resultant length")
+    ax.set_title("Goal-bearing tuning", fontsize=FS_TICK)
 
-    fig.suptitle("Frozen-replay negative control (validity check)", fontsize=6.5, y=1.03)
-    fig.tight_layout(pad=0.4, w_pad=0.8)
-    return save_figure(fig, stem)
+    fig.suptitle("Replayed random walk versus goal-directed trajectories", fontsize=FS_BASE, y=0.995, va="top")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), pad=0.4, w_pad=0.8)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
@@ -411,54 +339,8 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300):
 
 
 def assemble_supp(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
-    """Layout: [a b] / [c d] / [e] / [f g]."""
-    out_stem = Path(out_stem).with_suffix("")
-    pdf_path = out_stem.with_suffix(".pdf")
-    png_path = out_stem.with_suffix(".png")
-
-    MARGIN = 10 * MM_TO_PT
-    GAP = 5 * MM_TO_PT
-
-    def get_size(pdf):
-        box = PdfReader(str(pdf)).pages[0].mediabox
-        return float(box.width), float(box.height)
-
-    sizes = {k: get_size(panel_pdfs[k]) for k in panel_pdfs}
-
-    def row_height(keys):
-        ncols = len(keys)
-        cw = (PAGE_W - 2 * MARGIN - (ncols - 1) * GAP) / ncols
-        return max((sizes[k][1] * (cw / max(sizes[k][0], 1e-6)) for k in keys), default=0.0)
-
-    rows_def = [("a", "b"), ("c", "d"), ("e",), ("f", "g")]
-    row_keys = [[k for k in row if k in panel_pdfs] for row in rows_def]
-    row_keys = [r for r in row_keys if r]
-    rhs = [row_height(r) for r in row_keys]
-    page_h = 2 * MARGIN + sum(rhs) + (len(rhs) - 1) * GAP
-
-    writer = PdfWriter()
-    page = writer.add_blank_page(width=PAGE_W, height=page_h)
-
-    y = MARGIN
-    for keys, rh in zip(reversed(row_keys), reversed(rhs)):
-        ncols = len(keys)
-        cw = (PAGE_W - 2 * MARGIN - (ncols - 1) * GAP) / ncols
-        for i, k in enumerate(keys):
-            iw, ih = sizes[k]
-            scale = min(cw / iw, rh / ih)
-            sw, sh = iw * scale, ih * scale
-            left = MARGIN + i * (cw + GAP) + (cw - sw) / 2
-            bottom = y + (rh - sh) / 2
-            src = PdfReader(str(panel_pdfs[k])).pages[0]
-            page.merge_transformed_page(src, Transformation().scale(scale).translate(left, bottom), over=True)
-        y += rh + GAP
-
-    with open(pdf_path, "wb") as f:
-        writer.write(f)
-    _pdf_to_png(pdf_path, png_path, dpi=dpi)
-    print(f"  Saved: {pdf_path}")
-    print(f"  Saved: {png_path}")
-    return png_path, pdf_path
+    """Compose onto `LAYOUT`, with the panel letters the caption promises."""
+    return figlayout.compose(LAYOUT, panel_pdfs, out_stem, dpi=dpi)
 
 
 # ---------------------------------------------------------------------------
@@ -472,9 +354,16 @@ def parse_args():
     p.add_argument("--head_seeds", type=int, nargs="+", default=None)
     p.add_argument("--reloc_seeds", type=int, nargs="+", default=None)
     p.add_argument("--output_dir", default=str(SUPP_FIGURES_DIR))
-    p.add_argument("--panels", default="a,b,c,d,e,f,g")
+    p.add_argument("--panels", default="a,b,c")
     p.add_argument("--no_show", action="store_true")
     p.add_argument("--no_assemble", action="store_true")
+    p.add_argument("--assemble_only", action="store_true",
+                   help="recompose from the existing panel PDFs; a full rebuild "
+                        "of this figure reads every cohort's pickles and takes ~2 h")
+    p.add_argument("--rotation-json", action="store_true",
+                   help="draw panels b and c from the saved rotation summaries, "
+                        "restricted to the relocation campaign passers")
+    add_plot_only(p)
     args = p.parse_args()
     args.panels = {x.strip() for x in args.panels.split(",") if x.strip()}
     return args
@@ -483,82 +372,123 @@ def parse_args():
 def main():
     """Load or rebuild the per-condition summaries, build the panels, and assemble the figure."""
     args = parse_args()
+
+    if args.assemble_only:
+        print("Assembly-only mode: reusing existing panel PDFs...")
+        panels_dir = Path(args.output_dir) / "panels"
+        assemble_supp(figlayout.existing_panels(panels_dir, LAYOUT.keys()),
+                      Path(args.output_dir) / "figure_reward_vector_supp_raw")
+        return
     panels_dir = ensure_dir(Path(args.output_dir) / "panels")
     ensure_dir(Path(args.output_dir))
     panel_pdfs: dict[str, Path] = {}
 
-    nohead_seeds = args.nohead_seeds if args.nohead_seeds is not None else discover_seeds(NOHEAD_DIR, "nohead_")
-    head_seeds = args.head_seeds if args.head_seeds is not None else discover_seeds(HEAD_DIR, "head_")
-    reloc_seeds = args.reloc_seeds if args.reloc_seeds is not None else discover_seeds(RELOC_DIR, "reloc_")
+    cache_path = Path(args.output_dir) / "figure_data.npz"
+    fresh = {}
+    saved = {}
+    if args.plot_only and ({"a", "b", "c"} & args.panels):
+        saved = load_figure_data(cache_path)
 
-    print(f"Gating {len(nohead_seeds)} no-head, {len(head_seeds)} head-ON, {len(reloc_seeds)} reloc seeds...")
-    nh_clean = clean_seeds_for_reward_vector(NOHEAD_DIR, "nohead_", nohead_seeds, GOAL_DIRECTED_PERIODS)
-    hd_clean = clean_seeds_for_reward_vector(HEAD_DIR, "head_", head_seeds, GOAL_DIRECTED_PERIODS)
-    reloc_clean = clean_seeds_for_reward_vector(RELOC_DIR, "reloc_", reloc_seeds, RELOC_GATE_PERIODS)
-    print(f"  clean: {len(nh_clean)} no-head, {len(hd_clean)} head-ON, {len(reloc_clean)} reloc")
+    def _take(*keys):
+        return require_keys(saved, *keys, path=cache_path)
+
+    if args.rotation_json and (args.panels - {"b", "c"}):
+        raise SystemExit("--rotation-json only draws panels b and c")
+
+    if not args.plot_only and not args.rotation_json:
+        nohead_seeds = args.nohead_seeds if args.nohead_seeds is not None else discover_seeds(NOHEAD_DIR, "nohead_")
+        head_seeds = args.head_seeds if args.head_seeds is not None else discover_seeds(HEAD_DIR, "head_")
+        reloc_seeds = args.reloc_seeds if args.reloc_seeds is not None else discover_seeds(RELOC_DIR, "reloc_")
+        print(f"Gating {len(nohead_seeds)} no-head, {len(head_seeds)} head-ON, {len(reloc_seeds)} reloc seeds...")
+        # the same retained cohorts as every other analysis in the paper
+        paired = campaign_passers("paired")
+        nh_clean = sorted(s for s in nohead_seeds if s in paired)
+        hd_clean = sorted(s for s in head_seeds if s in paired)
+        reloc_clean = sorted(s for s in reloc_seeds if s in campaign_passers("reloc"))
+        print(f"  clean: {len(nh_clean)} no-head, {len(hd_clean)} head-ON, {len(reloc_clean)} reloc")
 
     rows_nh = rows_hd = None
-    if {"a", "b", "g"} & args.panels:
-        print("Loading no-head population summaries (goal_conditioned vs before)...")
-        rows_nh = load_condition_population_summary(NOHEAD_DIR, "nohead_", nh_clean)
-        save_summary_cache(NOHEAD_DIR, rows_nh)
-        print("Loading head-ON population summaries...")
-        rows_hd = load_condition_population_summary(HEAD_DIR, "head_", hd_clean)
-        save_summary_cache(HEAD_DIR, rows_hd)
+    if "a" in args.panels:
+        if args.plot_only:
+            got = _take("rows_nh", "rows_hd")
+            rows_nh, rows_hd = got["rows_nh"], got["rows_hd"]
+            print(f"Plot-only: {len(rows_nh)} no-head, {len(rows_hd)} head-ON")
+        else:
+            print("Loading no-head population summaries (goal_conditioned vs before)...")
+            rows_nh = load_condition_population_summary(NOHEAD_DIR, "nohead_", nh_clean)
+            save_summary_cache(NOHEAD_DIR, rows_nh)
+            print("Loading head-ON population summaries...")
+            rows_hd = load_condition_population_summary(HEAD_DIR, "head_", hd_clean)
+            save_summary_cache(HEAD_DIR, rows_hd)
+            fresh["rows_nh"] = rows_nh
+            fresh["rows_hd"] = rows_hd
+
+    def _keep_reloc(rows):
+        keep = campaign_passers("reloc")
+        return [r for r in rows if int(r.get("seed", -1)) in keep]
+
+    if "b" in args.panels:
+        if args.rotation_json:
+            rot_c = json.loads((REPO / "results/multi_seed_reloc/aggregate/reward_vector_rotation_behavioral.json").read_text())
+        elif args.plot_only:
+            rot_c = _take("rot_c")["rot_c"]
+        else:
+            print("Panel b data (relocation rotation, behavioral)...")
+            rot_c = load_reloc_rotation_summary(RELOC_DIR, reloc_clean, "cycle_1_goal", "cycle_2_goal")
+            save_summary_cache(RELOC_DIR, rot_c, name="reward_vector_rotation_behavioral.json")
+            fresh["rot_c"] = rot_c
+        rot_c = _keep_reloc(rot_c)
+
+    if "c" in args.panels:
+        if args.rotation_json:
+            rot_d = json.loads((REPO / "results/multi_seed_reloc/aggregate/reward_vector_rotation_occupancy_controlled.json").read_text())
+        elif args.plot_only:
+            rot_d = _take("rot_d")["rot_d"]
+        else:
+            print("Panel c data (relocation rotation, occupancy-controlled)...")
+            rot_d = load_reloc_rotation_summary(RELOC_DIR, reloc_clean, "replay_reloc_postA", "replay_reloc_postB")
+            save_summary_cache(RELOC_DIR, rot_d, name="reward_vector_rotation_occupancy_controlled.json")
+            fresh["rot_d"] = rot_d
+        rot_d = _keep_reloc(rot_d)
 
     if "a" in args.panels:
-        print("Panel a (Gauthier distance-tuning summary)...")
-        _, pdf = fig_gauthier_summary(rows_nh, rows_hd, panels_dir / "panel_a")
+        if args.plot_only:
+            got = _take("rows_nh_replay", "rows_hd_replay")
+            rows_nh_replay, rows_hd_replay = got["rows_nh_replay"], got["rows_hd_replay"]
+        else:
+            print("Panel a data (frozen-replay negative control)...")
+            rows_nh_replay = load_condition_population_summary(
+                NOHEAD_DIR, "nohead_", nh_clean,
+                period="replay_c1_postrl", baseline_period="replay_c1_pred")
+            rows_hd_replay = load_condition_population_summary(
+                HEAD_DIR, "head_", hd_clean,
+                period="replay_c1_postrl", baseline_period="replay_c1_pred")
+            fresh["rows_nh_replay"] = rows_nh_replay
+            fresh["rows_hd_replay"] = rows_hd_replay
+
+    if fresh:
+        update_figure_data(cache_path, fresh)
+
+    if "a" in args.panels:
+        print("Panel a (replay versus goal-directed trajectories)...")
+        _, pdf = fig_frozen_replay_control(
+            rows_nh_replay, rows_hd_replay, rows_nh, rows_hd,
+            panels_dir / "panel_a", LAYOUT.slot_size_in("a"))
         panel_pdfs["a"] = pdf
 
     if "b" in args.panels:
-        print("Panel b (Sarel goal-vector summary)...")
-        _, pdf = fig_sarel_summary(rows_nh, rows_hd, panels_dir / "panel_b")
+        print("Panel b (relocation rotation test, behavioral version)...")
+        _, pdf = fig_rotation_test(rot_c, "Relocation, goal-directed trajectories",
+                                    panels_dir / "panel_b",
+                                    LAYOUT.slot_size_in("b"))
         panel_pdfs["b"] = pdf
 
     if "c" in args.panels:
-        print("Panel c (relocation rotation test, behavioral version)...")
-        rot_c = load_reloc_rotation_summary(RELOC_DIR, reloc_clean, "cycle_1_goal", "cycle_2_goal")
-        save_summary_cache(RELOC_DIR, rot_c, name="reward_vector_rotation_behavioral.json")
-        _, pdf = fig_rotation_test(rot_c, "Relocation rotation test (behavioral: cycle_1_goal vs cycle_2_goal)",
-                                    panels_dir / "panel_c")
+        print("Panel c (relocation rotation test, occupancy-controlled version)...")
+        _, pdf = fig_rotation_test(rot_d, "Relocation, replayed trajectory",
+                                    panels_dir / "panel_c",
+                                    LAYOUT.slot_size_in("c"))
         panel_pdfs["c"] = pdf
-
-    if "d" in args.panels:
-        print("Panel d (relocation rotation test, occupancy-controlled version)...")
-        rot_d = load_reloc_rotation_summary(RELOC_DIR, reloc_clean, "replay_reloc_postA", "replay_reloc_postB")
-        save_summary_cache(RELOC_DIR, rot_d, name="reward_vector_rotation_occupancy_controlled.json")
-        _, pdf = fig_rotation_test(rot_d, "Relocation rotation test (occupancy-controlled: frozen-replay triple)",
-                                    panels_dir / "panel_d")
-        panel_pdfs["d"] = pdf
-
-    if "e" in args.panels:
-        print("Panel e (example tuning curves)...")
-        nh_example = Path(NOHEAD_DIR) / f"nohead_seed{nh_clean[0]}"
-        reloc_example = Path(RELOC_DIR) / f"reloc_seed{reloc_clean[0]}"
-        _, pdf = fig_example_curves(nh_example, reloc_example, "replay_reloc_postA", "replay_reloc_postB",
-                                     panels_dir / "panel_e")
-        panel_pdfs["e"] = pdf
-
-    if "f" in args.panels:
-        print("Panel f (wall-buffer sensitivity sweep)...")
-        subset_nh = nh_clean[:10]
-        subset_hd = hd_clean[:10]
-        _, pdf = fig_wallbuffer_sweep(
-            [(NOHEAD_DIR, "nohead_", subset_nh, COLOR_NOHEAD, "no-head"),
-             (HEAD_DIR, "head_", subset_hd, COLOR_HEAD, "head-ON")],
-            panels_dir / "panel_f",
-        )
-        panel_pdfs["f"] = pdf
-
-    if "g" in args.panels:
-        print("Panel g (frozen-replay negative control)...")
-        rows_nh_replay = load_condition_population_summary(NOHEAD_DIR, "nohead_", nh_clean,
-                                                            period="replay_c1_postrl", baseline_period="replay_c1_pred")
-        rows_hd_replay = load_condition_population_summary(HEAD_DIR, "head_", hd_clean,
-                                                            period="replay_c1_postrl", baseline_period="replay_c1_pred")
-        _, pdf = fig_frozen_replay_control(rows_nh_replay, rows_hd_replay, rows_nh, rows_hd, panels_dir / "panel_g")
-        panel_pdfs["g"] = pdf
 
     if not args.no_assemble and panel_pdfs:
         print("\nAssembling supplementary figure PDF...")

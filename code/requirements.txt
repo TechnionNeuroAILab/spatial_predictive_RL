@@ -3,10 +3,11 @@
 #
 #   pip install -r code/requirements.txt
 #
-# System dependency, NOT installable via pip: poppler-utils, which provides
-# `pdftoppm`. Every figure assembler shells out to it to rasterise panels.
-#   Debian/Ubuntu:  sudo apt install poppler-utils
-# `python code/smoke_test.py --phase deps` checks for it.
+# System dependencies, NOT installable via pip: poppler-utils provides
+# `pdftoppm` for figure assembly; mupdf-tools provides `mutool` for the
+# publication typography gate.
+#   Debian/Ubuntu:  sudo apt install poppler-utils mupdf-tools
+# `python code/smoke_test.py --phase deps` checks both.
 #
 # torch is pinned to the CUDA 12.8 build actually in use. On a CPU-only or
 # different-CUDA machine install torch separately per pytorch.org, then

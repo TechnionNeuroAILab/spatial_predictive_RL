@@ -49,7 +49,11 @@ from utils import (
     load_field_counts_by_region,
     load_field_density_profiles,
     load_pf_fraction_by_region,
+    load_lap_course,
+    load_region_reliability,
     load_reliability,
+    load_supp11_end_fraction,
+    load_supp11_reliability,
 )
 
 # Code lives here; the dataset + its JSON cache live in data/ (see README).
@@ -332,6 +336,52 @@ def spatial_correlation_analysis() -> dict:
     }
 
 
+
+def extended_analysis() -> dict:
+    """Per-animal (n = 12) and per-axon (n = 7) data behind the model-vs-data
+    panels, so every data comparison carries its dispersion.
+
+      reliability_n12  -- Supp. Fig. 11B, rewarded vs RE low, per animal
+      end_fraction_n12 -- Supp. Fig. 11D, % of fields in the reward (end) region
+      region_reliability -- Fig. 3C, cell-level mean and 95% CI per region
+      axon_ramp        -- Fig. 5D, per-axon start/end for rewarded, RE high, RE low
+      lap_course       -- Fig. 1E, laps 1-20 of extinction: decoder R^2 and licking
+    """
+    rel = load_supp11_reliability()
+    frac_change = (rel["re_low"] - rel["rewarded"]) / rel["rewarded"]
+    ef = load_supp11_end_fraction()
+    rr = load_region_reliability()
+    axon = {}
+    for cond in ("rewarded", "re_high", "re_low"):
+        d = load_da_ramp(cond)
+        axon[cond] = {"axon": d["axon"].tolist(), "start": d["start"].tolist(),
+                      "end": d["end"].tolist(),
+                      "end_over_start": (d["end"] / d["start"]).tolist()}
+    lap = load_lap_course()
+    return {
+        "reliability_n12": {
+            "source": "sheet 'Supplementary Figure 11', panel B 'Reliability'",
+            "rewarded": rel["rewarded"].tolist(), "re_low": rel["re_low"].tolist(),
+            "frac_change": frac_change.tolist(),
+            "test": {"pairing": "animal",
+                     "wilcoxon_p": float(stats.wilcoxon(rel["re_low"], rel["rewarded"]).pvalue)},
+        },
+        "end_fraction_n12": {
+            "source": "sheet 'Supplementary Figure 11', panel D, % of place fields at end of track",
+            "chance_pct": 25.0,
+            "rewarded": ef["rewarded"].tolist(), "re_low": ef["re_low"].tolist(),
+            "test": {"pairing": "animal",
+                     "wilcoxon_p": float(stats.wilcoxon(ef["re_low"], ef["rewarded"]).pvalue)},
+        },
+        "region_reliability": {
+            "source": "sheet 'Figure3', Fig. 3C (cell-level mean and 95% CI)",
+            "rows": rr.to_dict(orient="records"),
+        },
+        "axon_ramp": {"source": "sheet 'Figure 5', Fig. 5D (per axon)", **axon},
+        "lap_course": {"source": "sheet 'Figure1', Fig. 1E (extinction laps)",
+                       **{k: lap[k].tolist() for k in lap.columns}},
+    }
+
 def main() -> dict:
     results = {
         "meta": {
@@ -349,6 +399,7 @@ def main() -> dict:
         "da_ramp": da_ramp_analysis(),
         "field_density": field_density_analysis(),
         "spatial_correlation_by_region": spatial_correlation_analysis(),
+        "extended": extended_analysis(),
     }
 
     os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)

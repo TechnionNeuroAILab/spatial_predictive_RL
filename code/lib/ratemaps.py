@@ -28,11 +28,19 @@ def build_rate_maps(df_beh, df_act, m=32, hidden_dim=512):
 
 
 def compute_skaggs(rate_maps, occupancy):
-    """Skaggs information per unit; r_bar is the unweighted mean over all m*m bins."""
+    """Skaggs information per unit, sum_i p_i (r_i / r_bar) log2(r_i / r_bar),
+    with the standard occupancy-weighted mean rate r_bar = sum_i p_i r_i.
+
+    (An earlier version took r_bar as the plain mean over all m*m bins, counting
+    unvisited bins as zero. On goal-directed trajectories, which leave much of
+    the arena unvisited, that inflated the information several-fold; every
+    analysis now uses this one definition.)
+    """
     hidden_dim = rate_maps.shape[0]
     occ_flat = occupancy.reshape(-1)# (m*m,)
-    rate_flat = rate_maps.reshape(hidden_dim, -1).T # (m*m, N)
-    mean_rate = rate_flat.mean(axis=0)# (N,)
+    occ_flat = occ_flat / occ_flat.sum() if occ_flat.sum() > 0 else occ_flat
+    rate_flat = rate_maps.reshape(hidden_dim, -1).T.astype(np.float64) # (m*m, N)
+    mean_rate = occ_flat @ rate_flat# (N,)
     ratio = np.divide(rate_flat, mean_rate[None, :], out=np.zeros_like(rate_flat), where=mean_rate[None, :] > 1e-10)
     log_ratio = np.where(ratio > 0, np.log2(np.maximum(ratio, 1e-300)), 0.0)
     return (occ_flat[:, None] * ratio * log_ratio).sum(axis=0)

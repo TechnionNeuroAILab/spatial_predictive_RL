@@ -151,7 +151,7 @@ def compute_skaggs_scores_optimized(df_combined: pd.DataFrame, output: Optional[
         scores_df = pd.DataFrame(
             {"neuron_id": skaggs_scores.index, "skaggs_score": skaggs_scores.values}
         )
-        scores_df.to_pickle(output)
+        scores_df.to_parquet(output, index=False)
     return skaggs_scores.values
 
 
@@ -160,19 +160,19 @@ def state_paths(run_dir: str, state: str) -> Dict[str, str]:
     'replay_c1_pred', 'replay_c1_postrl', 'cycle_1'."""
     data_dir = os.path.join(run_dir, "data")
     return {
-        "behavior": os.path.join(data_dir, f"df_behavior_{state}.pkl"),
-        "activations": os.path.join(data_dir, f"df_activations_{state}.pkl"),
-        "skaggs": os.path.join(data_dir, f"df_skaggs_{state}.pkl"),
-        "centers": os.path.join(data_dir, f"df_centers_{state}.pkl"),
+        "behavior": os.path.join(data_dir, f"df_behavior_{state}.parquet"),
+        "activations": os.path.join(data_dir, f"df_activations_{state}.parquet"),
+        "skaggs": os.path.join(data_dir, f"df_skaggs_{state}.parquet"),
+        "centers": os.path.join(data_dir, f"df_centers_{state}.parquet"),
     }
 
 
 def ensure_skaggs(run_dir: str, state: str) -> str:
-    """Returns the path to df_skaggs_{state}.pkl, computing it first if missing."""
+    """Returns the path to df_skaggs_{state}.parquet, computing it first if missing."""
     paths = state_paths(run_dir, state)
     if not os.path.exists(paths["skaggs"]):
-        df_beh = pd.read_pickle(paths["behavior"])
-        df_act = pd.read_pickle(paths["activations"])
+        df_beh = pd.read_parquet(paths["behavior"])
+        df_act = pd.read_parquet(paths["activations"])
         df_combined = df_beh.merge(df_act, on="timestep", how="inner")
         print(f"Computing skaggs scores for '{state}'...")
         compute_skaggs_scores_optimized(df_combined, paths["skaggs"])

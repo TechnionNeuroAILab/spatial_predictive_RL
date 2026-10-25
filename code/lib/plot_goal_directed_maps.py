@@ -180,20 +180,20 @@ def _load_cycle_rate_maps(data_dir, m=32, hidden_dim=512, probe_type="goal"):
     if probe_type == "goal":
         cycle_files = sorted([
             f for f in os.listdir(data_dir)
-            if f.startswith("df_activations_cycle_") and f.endswith("_goal.pkl")
+            if f.startswith("df_activations_cycle_") and f.endswith("_goal.parquet")
         ])
     else:
         cycle_files = sorted([
             f for f in os.listdir(data_dir)
-            if f.startswith("df_activations_cycle_") and f.endswith(".pkl")
+            if f.startswith("df_activations_cycle_") and f.endswith(".parquet")
             and "goal" not in f
         ])
     cycle_data = {}
     for fname in cycle_files:
-        label = fname.replace("df_activations_", "").replace(".pkl", "")
-        df_a = pd.read_pickle(os.path.join(data_dir, fname))
+        label = fname.replace("df_activations_", "").replace(".parquet", "")
+        df_a = pd.read_parquet(os.path.join(data_dir, fname))
         beh_fname = fname.replace("df_activations_", "df_behavior_")
-        df_b = pd.read_pickle(os.path.join(data_dir, beh_fname))
+        df_b = pd.read_parquet(os.path.join(data_dir, beh_fname))
         rm, occ = build_rate_maps(df_b, df_a, m, hidden_dim)
         sk = compute_skaggs(rm, occ)
         cycle_data[label] = (rm, occ, sk)
@@ -319,7 +319,7 @@ def fig_100cells_random(rate_maps, reward_bin, mean_rate_threshold=0.01,n_show=1
 def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_path=None, no_show=False):
     cycle_files = sorted([
         f for f in os.listdir(data_dir)
-        if f.startswith("df_activations_cycle_") and f.endswith(".pkl")
+        if f.startswith("df_activations_cycle_") and f.endswith(".parquet")
         and "goal" not in f
     ])
     if not cycle_files:
@@ -335,10 +335,10 @@ def fig_cycle_progression(data_dir, top_idx_gc, reward_bin, m, hidden_dim, save_
         axes = [axes]
 
     for row, fname in enumerate(cycle_files):
-        label = fname.replace("df_activations_", "").replace(".pkl", "")
-        df_a = pd.read_pickle(os.path.join(data_dir, fname))
+        label = fname.replace("df_activations_", "").replace(".parquet", "")
+        df_a = pd.read_parquet(os.path.join(data_dir, fname))
         beh_fname = fname.replace("df_activations_", "df_behavior_")
-        df_b = pd.read_pickle(os.path.join(data_dir, beh_fname))
+        df_b = pd.read_parquet(os.path.join(data_dir, beh_fname))
         rm_c, occ_c = build_rate_maps(df_b, df_a, m, hidden_dim)
         for col, nid in enumerate(sel):
             ax = axes[row][col]
@@ -536,10 +536,10 @@ def main():
     hidden_dim = args.hidden_dim
     reward_bin = (int(reward_pos[0] * m), int(reward_pos[1] * m))
     print("Loading probe data from:", data_dir)
-    df_beh_rw = pd.read_pickle(os.path.join(data_dir, "df_behavior_before.pkl"))
-    df_act_rw = pd.read_pickle(os.path.join(data_dir, "df_activations_before.pkl"))
-    df_beh_gc = pd.read_pickle(os.path.join(data_dir, "df_behavior_goal_conditioned.pkl"))
-    df_act_gc = pd.read_pickle(os.path.join(data_dir, "df_activations_goal_conditioned.pkl"))
+    df_beh_rw = pd.read_parquet(os.path.join(data_dir, "df_behavior_before.parquet"))
+    df_act_rw = pd.read_parquet(os.path.join(data_dir, "df_activations_before.parquet"))
+    df_beh_gc = pd.read_parquet(os.path.join(data_dir, "df_behavior_goal_conditioned.parquet"))
+    df_act_gc = pd.read_parquet(os.path.join(data_dir, "df_activations_goal_conditioned.parquet"))
     print(f"  Random-walk probe : {len(df_beh_rw):,} steps")
     print(f"  Goal-directed probe: {len(df_beh_gc):,} steps")
     print("Computing rate maps...")
@@ -679,11 +679,11 @@ def main():
         no_show=args.no_show,
     )
     # phase2 = after RL (final, fully-consolidated random-walk probe)
-    after_beh = os.path.join(data_dir, "df_behavior_after.pkl")
-    after_act = os.path.join(data_dir, "df_activations_after.pkl")
+    after_beh = os.path.join(data_dir, "df_behavior_after.parquet")
+    after_act = os.path.join(data_dir, "df_activations_after.parquet")
     if os.path.exists(after_beh) and os.path.exists(after_act):
         rm_after, occ_after = build_rate_maps(
-            pd.read_pickle(after_beh), pd.read_pickle(after_act), m, hidden_dim)
+            pd.read_parquet(after_beh), pd.read_parquet(after_act), m, hidden_dim)
         skaggs_after = compute_skaggs(rm_after, occ_after)
         fig_100cells(
             rm_after, skaggs_after, top_idx_100, reward_bin,
@@ -691,7 +691,7 @@ def main():
             no_show=args.no_show,
         )
     else:
-        print("  (no df_*_after.pkl found; skipping phase2 cognitive map)")
+        print("  (no df_*_after.parquet found; skipping phase2 cognitive map)")
     # intermediate snapshots per cycle
     for lab in sorted(rw_cycles.keys(), key=_cycle_num):
         rm_c, _, sk_c = rw_cycles[lab]

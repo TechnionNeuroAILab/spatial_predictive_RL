@@ -17,15 +17,16 @@ _NEW_CODE = _REPO / "code" / "lib"
 if str(_NEW_CODE) not in sys.path:
     sys.path.insert(0, str(_NEW_CODE))
 
-from ratemaps import field_center_of_mass, field_peak  # noqa: E402
+from ratemaps import compute_skaggs, field_center_of_mass, field_peak  # noqa: E402
 
 M = 32
 HIDDEN = 512
 SIGMA = 1.5
 SKAGGS_THR = 0.3
 REWARD = np.array([0.3, 0.3])
-TELEPORT_THR = 0.05
-N_TRIM_AFTER_RESET = 5   # steps dropped after each hidden-state reset
+# one definition of a reset and of how many steps it spoils, shared with every
+# other analysis (analysis_helpers.reset_keep_mask)
+from analysis_helpers import N_TRIM_AFTER_RESET, TELEPORT_THR  # noqa: E402
 N_HEADINGS = 8
 _MODE_CODE = {"naive": 0, "pos": 1, "joint": 2, "reweight": 3}   # fixed rng stream per mode
 
@@ -33,8 +34,8 @@ _MODE_CODE = {"naive": 0, "pos": 1, "joint": 2, "reweight": 3}   # fixed rng str
 def load_period_arrays(data_dir: Path, period: str):
     """One period as (pos (n,2), theta (n,), act (n,512) float32)."""
     data_dir = Path(data_dir)
-    beh = pd.read_pickle(data_dir / f"df_behavior_{period}.pkl")
-    act = pd.read_pickle(data_dir / f"df_activations_{period}.pkl")
+    beh = pd.read_parquet(data_dir / f"df_behavior_{period}.parquet")
+    act = pd.read_parquet(data_dir / f"df_activations_{period}.parquet")
     n = len(beh)
     a = act["activity"].to_numpy(dtype=np.float32)
     assert len(a) == n * HIDDEN, f"{period}: activation rows != n*512"
@@ -129,17 +130,8 @@ def rate_maps_from(act: np.ndarray, gc: np.ndarray,
 
 
 def skaggs_weighted(rm: np.ndarray, occ_p: np.ndarray) -> np.ndarray:
-    """Standard Skaggs information, r_bar = sum_i p_i * r_i."""
-    p = occ_p.reshape(-1)
-    r = rm.reshape(HIDDEN, -1)
-    mean_rate = r @ p
-    out = np.zeros(HIDDEN)
-    valid = mean_rate > 1e-12
-    ratio = np.where(mean_rate[:, None] > 1e-12, r / mean_rate[:, None], 0.0)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        term = np.where(ratio > 0, p[None, :] * ratio * np.log2(ratio), 0.0)
-    out[valid] = term[valid].sum(axis=1)
-    return out
+    """Standard Skaggs information, r_bar = sum_i p_i * r_i (the shared definition)."""
+    return compute_skaggs(rm, occ_p)
 
 
 def centres_from(rm: np.ndarray):

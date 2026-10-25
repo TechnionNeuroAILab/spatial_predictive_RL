@@ -43,51 +43,55 @@ DEST = REPO / "paper_repo" / "paper_figures" / "v2"
 # Dest stems are the names paper_repo/main.tex passes to \includegraphics.
 FIGURES: dict[str, Path] = {
     # main figures
+    # The architecture schematic was panel a of fig1, where a 150 pt row cap
+    # scaled it to 0.548 and its labels printed at 4.7 pt. It is its own
+    # figure now, at the full text width and its native aspect ratio.
+    "fig_model": FIG / "fig1" / "figures" / "figure_model_raw.pdf",
     "fig1": FIG / "fig1" / "figures" / "figure1_raw.pdf",
     "fig2": FIG / "fig2" / "figures" / "figure2_raw.pdf",
     "fig3": FIG / "fig3" / "figures" / "figure3_raw.pdf",
     "fig4": FIG / "fig4" / "figures" / "figure4_raw.pdf",
-    # fig5 is the data-confrontation figure (Krishnan + Sosa cartoons and
-    # model-vs-data panels, generate_figure5_data.py); the former fig5
-    # (H1/H2 schematic + dissociation) moved to the supplement as
-    # figS_hypotheses.
-    "fig5": FIG / "fig5" / "figures" / "figure5_data_raw.pdf",
-    "figS_hypotheses": FIG / "fig5" / "figures" / "figure5_raw.pdf",
+    # The data-confrontation figure (generate_figure5_data.py) was one
+    # 183 x 262 mm plate -- taller than the text block, so LaTeX capped its
+    # height and shrank it to 61%, printing 96% of its text below 5 pt. It
+    # splits along its own subject matter into omission (Krishnan) and
+    # relocation (Sosa). The former fig5 (H1/H2 schematic + dissociation)
+    # was retired from the manuscript.
+    "fig_omission": FIG / "fig5" / "figures" / "figure_omission_raw.pdf",
+    "fig_relocdata": FIG / "fig5" / "figures" / "figure_relocdata_raw.pdf",
     # supplements
     "figS_pipeline":     FIG / "fig1" / "figures_supp" / "figure1_supp_raw.pdf",
-    "figS_frozenreplay": FIG / "fig2" / "figures_supp" / "figure2_supp_raw.pdf",
-    "figS_head":         FIG / "fig3" / "figures_supp" / "figure3_supp_raw.pdf",
     "figS_relocation":   FIG / "fig4" / "figures_supp" / "figure4_supp_raw.pdf",
     "figS_dissociation": FIG / "fig5" / "figures_supp" / "figure5_supp_raw.pdf",
     "figS_rewardvector": FIG / "figS_reward_vector" / "figures_supp" / "figure_reward_vector_supp_raw.pdf",
     "figS_sr":           FIG / "figS_sr" / "figures_supp" / "figure_sr_supp_raw.pdf",
-    "figS_rigid":        FIG / "figS_sr" / "figures_supp" / "figure_rigid_supp_raw.pdf",
     # D1-D4 confrontation/discriminator supplements (2026 revision)
     "figS_extinction":   FIG / "figS_extinction" / "figures_supp" / "figure_extinction_supp_raw.pdf",
     "figS_discriminator": FIG / "figS_discriminator" / "figures_supp" / "figure_discriminator_supp_raw.pdf",
     "figS_sosa":         FIG / "figS_sosa" / "figures_supp" / "figure_sosa_supp_raw.pdf",
-    # Recovered legacy generators (see figures/figS_legacy/README.md). The
-    # manuscript currently resolves these two from the older paper_figures/
-    # directory; once regenerated here they take over automatically, because
-    # paper_figures/v2/ comes first in the tex \graphicspath.
-    "figS_fate":         FIG / "figS_legacy" / "figures_supp" / "figS_fate_raw.pdf",
-    "figS_decoder":      FIG / "figS_legacy" / "figures_supp" / "figS_decoder_raw.pdf",
 }
 
-# Entries whose source may legitimately not exist yet: the script skips these
-# instead of refusing to run. figS_fate/figS_decoder are only produced once
-# their wrappers in figures/figS_legacy/ have been run against a v11 run dir.
-OPTIONAL = {"figS_fate", "figS_decoder"}
+# No optional sync entries: unreproducible stems (figS_manifold, figS_fourcond,
+# figS_fate, figS_decoder, figS_head) were removed from the manuscript and are
+# not synced.
+OPTIONAL: set[str] = set()
 
-# Referenced by paper_repo/main.tex but with no generator anywhere in this
-# repo (searched exhaustively: no .py contains these stems, and their PDFs are
-# stale July matplotlib output whose source files were pruned):
-#     figS_manifold   (dimensionality PR 21.7->7.0 + Procrustes 0.5079 panels)
-#     figS_fourcond   (four-condition field-centre-distance violins)
-# Their shipped PDFs live in paper_repo/paper_figures/v2/, so the manuscript builds,
-# but they cannot be reproduced. Flagged for removal from the manuscript --
-# see CLEANUP_TODO.md.
-UNREPRODUCIBLE = ("figS_manifold", "figS_fourcond")
+def check_manuscript_coverage(main_tex: Path) -> tuple[list[str], list[str]]:
+    """Return manuscript stems missing from the allowlist and unused entries.
+
+    The allowlist is deliberately hand-maintained, which means it can fall
+    behind a figure that gets split or renamed -- exactly what happened when
+    fig5 became fig_omission and fig_relocdata.  Enforcing equality keeps the
+    publication pipeline one-to-one with the manuscript.
+    """
+    import re
+    if not main_tex.exists():
+        return [], []
+    used = {Path(m).stem for m in
+            re.findall(r"\\includegraphics\[[^]]*\]\{([^}]+)\}", main_tex.read_text())}
+    # the two hand-drawn architecture plates live in paper_repo, not here
+    generated = used - {"v10_architecture", "v11_architecture"}
+    return sorted(generated - set(FIGURES)), sorted(set(FIGURES) - generated)
 
 
 def sha256(p: Path) -> str:
@@ -110,6 +114,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+
+    missing_stems, unused_stems = check_manuscript_coverage(
+        REPO / "paper_repo" / "main.tex"
+    )
+    if missing_stems or unused_stems:
+        print("REFUSING TO RUN — figure allowlist does not match main.tex:")
+        if missing_stems:
+            print("  missing from allowlist: " + ", ".join(missing_stems))
+        if unused_stems:
+            print("  not used by manuscript: " + ", ".join(unused_stems))
+        raise SystemExit(1)
 
     missing = {k: v for k, v in FIGURES.items() if not v.exists() and k not in OPTIONAL}
     if missing:
@@ -147,8 +162,6 @@ def main():
         (DEST / "MANIFEST.txt").write_text("\n".join(lines))
         print(f"\nWrote {DEST / 'MANIFEST.txt'}")
     print(f"\n{len([k for k,v in FIGURES.items() if v.exists()])} figures synced to {DEST}")
-    print(f"NOT reproducible (no generator in this repo, served from "
-          f"paper_repo/paper_figures/): {', '.join(UNREPRODUCIBLE)}")
 
 
 if __name__ == "__main__":

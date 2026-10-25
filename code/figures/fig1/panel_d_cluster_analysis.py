@@ -33,7 +33,7 @@ SEED = 42
 
 def load_behavior_full(data_dir: Path) -> pd.DataFrame:
     """Load the 'before' behaviour frame for a run."""
-    return pd.read_pickle(data_dir / "df_behavior_before.pkl")
+    return pd.read_parquet(data_dir / "df_behavior_before.parquet")
 
 
 def wall_proximity_labels(x: np.ndarray, thresh: float = WALL_PROX_THRESH) -> np.ndarray:
@@ -503,7 +503,7 @@ def save_cache(out_dir: Path, variables: pd.DataFrame, z: np.ndarray, kmeans_lab
                positions: np.ndarray, obs: np.ndarray) -> None:
     """Write the variable table, embedding and label arrays to the cache directory."""
     cache = ensure_dir(out_dir / "cache")
-    variables.to_pickle(cache / "variables.pkl")
+    variables.to_parquet(cache / "variables.parquet", index=False)
     np.save(cache / "z.npy", z)
     np.save(cache / "kmeans_labels.npy", kmeans_labels)
     np.save(cache / "positions.npy", positions)
@@ -513,13 +513,13 @@ def save_cache(out_dir: Path, variables: pd.DataFrame, z: np.ndarray, kmeans_lab
 def load_cache(out_dir: Path) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
     """Read back what `save_cache` wrote, or None if the cache is absent or incomplete."""
     cache = out_dir / "cache"
-    pkl = cache / "variables.pkl"
+    pkl = cache / "variables.parquet"
     paths = [pkl, cache / "z.npy", cache / "kmeans_labels.npy",
              cache / "positions.npy", cache / "obs.npy"]
     if not all(p.exists() for p in paths):
         return None
     return (
-        pd.read_pickle(pkl),
+        pd.read_parquet(pkl),
         np.load(paths[1]),
         np.load(paths[2]),
         np.load(paths[3]),

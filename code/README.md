@@ -1,20 +1,23 @@
 # code — everything that reproduces `paper_repo/main.tex`
 
-All simulation, analysis and figure code for the manuscript lives in this one folder.
-Run data and datasets stay outside it (`results/`, `sandbox/New_Results_v3/`, `data/`),
-and the manuscript itself is a separate git repository (`paper_repo/`, see the bottom).
-Figure-by-figure provenance (stem → generator → exemplar run → synced PDF) is in
+All simulation, analysis and figure code for the manuscript lives in this folder.
+Run data and external datasets stay in `results/` and `data/`; the manuscript is
+the separate `paper_repo/` repository. Figure-by-figure provenance (stem →
+generator → exemplar run → synced PDF) is in
 [`../context/FIGURE_REPRODUCTION.md`](../context/FIGURE_REPRODUCTION.md).
 
 ```
 code/
-  smoke_test.py            verify the pipeline runs (start here)
+  verify_paper.py          check manuscript ↔ code ↔ cached results
+  smoke_test.py            imports, CLIs, data and publication checks
+  regenerate_all.py        canonical manuscript-figure jobs
   sync_paper_figures.py    copy assembled figure PDFs into the manuscript
   requirements.txt         pinned deps + the poppler system dependency
   model/       the three simulators
   lib/         shared analysis library (imported by the figure code)
   runs/        drivers that produce run directories under results/
   aggregate/   drivers that produce the JSON caches figures read
+  analysis/    standalone analyses not used as manuscript inputs
   figures/     one directory per manuscript figure
   external/    readers for the two third-party datasets
   tools/       bibliography helper
@@ -24,68 +27,80 @@ code/
 
 ```bash
 pip install -r code/requirements.txt
-sudo apt install poppler-utils          # provides pdftoppm, used by every assembler
-python code/smoke_test.py         # deps + imports + every CLI + data presence
+sudo apt install poppler-utils mupdf-tools  # pdftoppm assembly + mutool type gate
+python code/verify_paper.py       # numerical, Methods and figure consistency
+python code/smoke_test.py         # deps + imports + CLIs + data + paper gate
+python code/check_figure_type.py  # final-size typography and page-fit gate
 ```
 
-The smoke test is the acceptance gate for any change in here. It never regenerates a
-figure. Add `--micro-run` to also execute a tiny training run, proving the simulator
-works and not just that it imports.
+Neither command retrains a cohort or regenerates a figure. Add `--micro-run` to
+the smoke test to execute a tiny simulator run.
 
 ## 1. Generate the runs
 
-Single canonical runs (commands confirmed against each run dir's `config.json`):
+The paper uses seed-indexed cohorts, not a single illustrative run. The
+authoritative base argument lists are `FIG2_BASE` and `FIG3_BASE` in
+`runs/run_fig23_extra_seeds.py`, `FIG4_BASE` in
+`runs/run_fig34_parallel.py`, `RIGID_BASE` in `runs/run_rigid_seeds.py`, and
+`EXT_BASE` in `runs/run_extinction_seeds.py`.
+
+The preferred cohort driver trains until the required number of networks passes
+the predeclared entropy gate while preserving seed indices across matched arms:
 
 ```bash
-# Main head-ON run
-python code/model/ratinabox_v11.py --seed 42 \
-  --output_dir sandbox/New_Results_v3/reward_pred_head_offcenter \
-  --n_trials 1000 --timesteps 100 --phase1_epochs 100 --n_cycles 1 \
-  --max_episodes 1000 --max_steps 20 --fixed_goal --reward_x 0.3 --reward_y 0.3 \
-  --rnn_rl_lr 5e-5 --pred_loss_weight 0.3 --reward_pred_head --reward_pred_weight 1.5 \
-  --reward_pred_sigma 0.15 --interleave_epochs 20 --replay_cycle 1 \
-  --replay_steps 50000 --checkpoint_every 2000 --no_show
-
-# Null (no-head) run — also the input for figS_fate / figS_decoder
-python code/model/ratinabox_v11.py --seed 42 \
-  --output_dir sandbox/New_Results_v3/final_v11_fixed \
-  --n_trials 1000 --timesteps 100 --phase1_epochs 100 --n_cycles 5 \
-  --max_episodes 5000 --max_steps 100 --fixed_goal --rnn_rl_lr 2e-6 \
-  --pred_loss_weight 0.7 --interleave_epochs 60 --replay_cycle 1 \
-  --replay_steps 50000 --checkpoint_every 5000 --no_show
-
-# Reward relocation A->B
-python code/model/ratinabox_relocation.py --seed 42 \
-  --output_dir sandbox/New_Results_v3/reward_relocation \
-  --n_trials 1000 --timesteps 100 --phase1_epochs 100 --n_cycles 2 \
-  --max_episodes 2000 --max_steps 20 --fixed_goal --reward_x 0.3 --reward_y 0.3 \
-  --relocate_x 0.7 --relocate_y 0.7 --relocate_at_cycle 1 --rnn_rl_lr 5e-5 \
-  --pred_loss_weight 0.3 --reward_pred_head --reward_pred_weight 1.5 \
-  --reward_pred_sigma 0.15 --interleave_epochs 20 --replay_steps 50000 \
-  --checkpoint_every 5000 --no_show
+python code/runs/run_until_clean.py --family paired --target 50 --gpu 0,1 --jobs 12
+python code/runs/run_until_clean.py --family reloc --target 50 --gpu 0,1 --jobs 12
+python code/runs/run_until_clean.py --family extinction --target 50 --gpu 0,1 --jobs 12
 ```
 
-**The shipped figures use the multi-seed batches, not the single runs above.** Those are
-produced by the drivers in `runs/`, each writing to its own root under `results/`:
+Use `--dry_run` to print commands without training, `--smoke` for a tiny
+end-to-end run, and `--skip_existing` to resume. Full training is GPU-intensive.
+The released cohort definitions are in `results/aggregate/cohorts.json`: 55
+matched triples, 52 relocation networks and 51 omission networks pass the
+5.0-bit gate. Failed seeds remain identified and are never renumbered.
 
-| driver | writes | feeds |
-|---|---|---|
-| `runs/run_fig2_seeds.py` | `results/multi_seed/nohead_seed{N}` | fig2, figS_pipeline, fig5, figS_sr, figS_discriminator, figS_rewardvector |
-| `runs/run_fig23_extra_seeds.py` | same roots, seeds 10-19 (also exports the shared base configs) | fig2, fig3 |
-| `runs/run_fig34_parallel.py` | `results/multi_seed_head/`, `results/multi_seed_reloc/` | fig3, fig4, fig5, figS_head, figS_relocation |
-| `runs/run_rigid_seeds.py` | `results/multi_seed_rigid/` | figS_rigid |
-| `runs/run_extinction_seeds.py` | `results/multi_seed_ext/` | figS_extinction, fig5 |
+The simulators write a `config.json`, `metrics.json`, checkpoints, learning
+curves, and period-labelled activity/behaviour files into each run directory.
+New configs include replay length and the relocation/omission switch so the
+key run-specific protocol choices are recoverable without consulting prose. They also record
+the 10-step episode warm-up, decoder learning rate, requested and snapped
+reward coordinates, and the action-indexing conventions.
 
-Each takes `--dry_run` (print commands only), `--seeds`, and `--prune` (drop large
-intermediates via `runs/prune_run.py`). `runs/select_best_seed_fig{2,3,4}.py` re-derive
-the exemplar seeds; `runs/verify_{extinction,rigid}_match.py` check config consistency
-across a batch.
+Implementation details needed for exact reproduction:
 
-## 2. Build the JSON caches
+- Phase A and interleaved offline prediction use the outgoing action from
+  observation \(t\) to target \(t+1\). Online control and all probes feed the
+  preceding transition's action (the current movement-heading code) into the
+  recurrent state; the within-episode RL prediction term retains that lagged
+  convention.
+- The within-episode RL prediction regularizer is next-observation MSE only;
+  Phase A and each interleaved predictive block include the additional L1
+  activity penalty. Interleaved trajectories use greedy actions without early
+  termination; analysis probes sample with policy logits divided by 0.3.
+- Every PPO training episode begins from zero recurrent state and takes 10
+  unoptimized random warm-up moves before its at-most-20-step rollout.
+- The requested reward coordinate is used by the proximity target, probes and
+  analyses; training goal cues and termination use its nearest grid point.
+- The omission simulator preserves its historical one-step PPO state
+  recomputation offset. This exception is documented in the manuscript and is
+  not present in the main or relocation simulator.
+- Cross-cycle relocation and omission contrasts retain the standard cycle
+  order: the first post-RL snapshot precedes that cycle's interleaved
+  predictive block, while the second snapshot follows that intervening block
+  and the next RL block. The manuscript states this explicitly.
+- Per-run `df_skaggs_*.parquet` files are immediate simulator diagnostics.
+  Publication analyses recompute Skaggs information from the activity and
+  behaviour tables, including the documented post-reset trimming, and those
+  recomputed values are authoritative.
 
-The data-confrontation figures read cached statistics rather than re-scanning every run:
+## 2. Build the compact analysis caches
+
+Figures and `verify_paper.py` read compact summaries rather than repeatedly
+scanning hundreds of gigabytes of per-timestep activity:
 
 ```bash
+python code/aggregate/cohorts.py                        # -> results/aggregate/cohorts.json
+python code/aggregate/headline_stats.py                 # -> results/aggregate/headline_stats.json
 python code/aggregate/run_extinction_analysis.py        # -> results/aggregate/extinction_summary.json
 python code/aggregate/run_estimator_validation.py       # -> results/aggregate/occupancy_matched_estimator.json
 python code/aggregate/run_reward_relative_analysis.py --out /tmp/rr.json
@@ -93,68 +108,50 @@ python code/external/krishnan2022/analysis.py           # -> data/krishnan2022/c
 python code/external/sosa2025/analysis_sosa.py          # -> data/sosa2025/cache/sosa_tests.json
 ```
 
-`run_reward_relative_analysis.py` was reconstructed during the consolidation (the
-committed `reward_relative_summary.json` that fig5 reads had no surviving driver). It
-refuses to overwrite the committed cache without `--force` — write to a scratch path and
-diff first.
+`run_reward_relative_analysis.py` refuses to overwrite the released cache
+without `--force`; rebuild to a scratch path and compare first. The headline
+builder records paired and relocation per-network values and the exact retained
+seed lists used by the paper. Reward-omission results use three-period survivor
+gates and come exclusively from `extinction_summary.json`; they are deliberately
+not duplicated in `headline_stats.json`.
 
-The Sosa reader needs the NWB files from DANDI accession `001361` in
-`data/sosa2025/nwb/` (git-ignored, not redistributed). Krishnan uses the
-published Source Data xlsx, which is tracked in `data/`.
+The Sosa analysis needs the NWB files from DANDI accession `001361` under
+`data/sosa2025/nwb/` (not redistributed). Run
+`external/sosa2025/build_manifest.py` after downloading them to verify sizes
+and record checksums. The Krishnan analysis reads the published Source Data
+workbook distributed under `data/krishnan2022/`.
+
+The field-size follow-up requested during manuscript review remains deliberately
+standalone and does not alter the paper or its figures:
+
+```bash
+python code/analysis/field_size_vs_reward.py
+```
+
+It writes `results/aggregate/field_size_vs_reward.json` and a companion PDF.
+The script states the cell gate, field-size definitions, controls and sign
+convention in its module documentation.
 
 ## 3. Generate the figures
 
-Everything at once, with the canonical arguments already encoded (this is the
-recommended path -- it is where the exemplar run dirs are recorded):
+Use the orchestrator so every generator receives the canonical exemplar run:
 
 ```bash
-python code/regenerate_all.py --list          # what it will build
-python code/regenerate_all.py --jobs 8        # all 17 figures
+python code/regenerate_all.py --list          # 13 jobs / 15 manuscript stems
+python code/regenerate_all.py --jobs 8
 python code/regenerate_all.py --only fig2 fig3
+python code/regenerate_all.py --plot-only     # redraw from existing figure_data.npz
 ```
 
 Run only ONE batch at a time: two concurrent batches write the same PDFs.
 `compare_figures.py --baseline <dir>` diffs a rebuild against a saved set of PDFs by
 rendered pixels, which is the only comparison that survives PDF timestamps.
 
-Or one directory at a time, each with a `generate_*.py`. All accept `--no_show`.
-
-```bash
-python code/figures/fig1/generate_figure1.py  --run_dir results/multi_seed/nohead_seed0 --no_show
-python code/figures/fig2/generate_figure2.py  --run_dir results/multi_seed/nohead_seed16 --no_show
-python code/figures/fig3/generate_figure3.py  --run_dir results/multi_seed_head/head_seed28 --no_show
-python code/figures/fig4/generate_figure4.py  --run_dir results/multi_seed_reloc/reloc_seed9 --no_show
-python code/figures/fig5/generate_figure5_data.py --no_show      # the data-confrontation figure
-python code/figures/fig5/generate_figure5.py      --no_show      # -> figS_hypotheses
-
-# supplements
-python code/figures/fig1/generate_figure1_supp.py --no_show      # figS_pipeline
-python code/figures/fig2/generate_figure2_supp.py --no_show      # figS_frozenreplay
-python code/figures/fig3/generate_figure3_supp.py --no_show      # figS_head
-python code/figures/fig4/generate_figure4_supp.py --no_show      # figS_relocation
-python code/figures/fig5/generate_figure5_supp.py --no_show      # figS_dissociation
-python code/figures/figS_sr/generate_figure_sr_supp.py --no_show
-python code/figures/figS_sr/generate_figure_rigid_supp.py --no_show
-python code/figures/figS_extinction/generate_figure_extinction.py --no_show
-python code/figures/figS_discriminator/generate_figure_discriminator.py --no_show
-python code/figures/figS_reward_vector/generate_figure_reward_vector_supp.py --no_show
-python code/figures/figS_sosa/generate_figure_sosa.py --no_show
-```
-
-**Pass `--run_dir` explicitly for fig1, fig2 and fig3** -- or just use
-`regenerate_all.py`, which does it for you. Each `utils.py` `DEFAULT_RUN` points at a
-*different* run from the one the shipped exemplar was made with:
-
-| figure | DEFAULT_RUN | run that reproduces the shipped exemplar |
-|---|---|---|
-| fig1 | `results/nohead_seed42` | `results/multi_seed/nohead_seed0` |
-| fig2 | `results/nohead_seed42` | `results/multi_seed/nohead_seed16` |
-| fig3 | `results/multi_seed_head/head_seed0` | `results/multi_seed_head/head_seed28` |
-| fig4 | `results/multi_seed_reloc/reloc_seed9` | (correct already) |
-
-fig1's true source was previously undocumented; it was identified by re-deriving the
-panel-d neuron selection (seed 42, 8 cells) across all 24 candidate run dirs -- only
-`nohead_seed0` reproduces the shipped IDs `[509, 352, 439, 324, 222, 227, 45, 391]`.
+The canonical examples are `nohead_seed16` for Figures 1–2, `head_seed28`
+for Figure 3 and `reloc_seed40` for Figure 4. Their `utils.py` defaults and
+`regenerate_all.py` agree. The first and fifth jobs each emit two plates
+(`fig_model` + `fig1`, and `fig_omission` + `fig_relocdata`), which is why 13
+jobs cover 15 manuscript stems.
 
 Outputs land in each figure dir's `figures/` (main) and `figures_supp/` (supplementary).
 
@@ -168,7 +165,9 @@ python code/sync_paper_figures.py             # -> paper_repo/paper_figures/v2/ 
 Explicit dest→src allowlist (never a glob — several figures have shared the filename
 `figure3_raw.pdf`). The MANIFEST records source path, mtime, sha256 and the git HEAD, so
 any figure in the PDF traces back to the run that made it. The script refuses to run if a
-non-optional source is missing.
+source is missing or if either the allowlist or `main.tex` contains an unmatched
+stem. Run `python code/verify_paper.py` after updating the manuscript, caches or
+figure map.
 
 ## Figure design system
 
@@ -193,11 +192,40 @@ drawn in `jet` across 37 call sites.
   warns above 48 characters. Statistics go inside the axes via `stat_annot()`, or
   above their own violin — never stacked into a multi-line title and never into a
   tick label.
-- **Render at display size.** The assemblers contain-fit each panel PDF into its
-  slot, so a panel rendered 570 pt wide and shown in a 253 pt slot has all of its
-  type scaled to 44%. This was the single biggest source of illegible labels.
-  `fig1/utils.py:slot_width_in()` returns a panel's true on-page width; pass it as
-  `width_in=` when rendering.
+- **Render at display size — now enforced, not advised.** The old assemblers
+  contain-fit each panel PDF into its slot, so a panel rendered 570 pt wide and
+  shown in a 253 pt slot had all of its type scaled to 44%. Combined with the
+  `\includegraphics` scale that was applied on top, printed type across the
+  figure set ranged from 2.07 pt to 10.13 pt against Nature's 5 pt floor.
+
+  `lib/figlayout.py` inverts this. A `Layout` owns **both** dimensions of every
+  slot; a panel is authored at exactly `LAYOUT.slot_size_in(key)` and saved with
+  `save_figure(..., exact_size=True)`; `compose()` only translates. A panel that
+  does not fill its slot raises `LayoutScaleError` naming the figsize it should
+  have used. Nothing is scaled at assembly, so declared size equals printed size.
+
+  Three consequences worth knowing:
+  - `Layout(..., caption_lines=N)` raises `LayoutHeightError` at construction —
+    before any data is loaded, which matters for the 19-minute figures.
+  - `exact_size=True` clips instead of shrinking, and warns when it has to. A
+    colourbar or legend outside the axes needs `tight_layout(rect=...)`.
+  - Panel letters come from the layout, in a reserved strip above each row, so
+    they cannot land on panel content. There is one convention (8 pt bold,
+    lowercase, no parentheses) instead of the four that existed before.
+
+- **Page width is the document's, not Nature's.** `lib/pagegeom.py` holds the
+  geometry read off `main.log`: `TEXT_W_PT = 505.69` (177.7 mm), not the 183 mm
+  the figures used to be drawn at. Every `\includegraphics` is `width=\linewidth`,
+  so the include scale is exactly 1. To target a 183 mm journal, set
+  `PAGE_W = NATURE_DOUBLE_PT` — the whole set then rescales uniformly, which is
+  the operation the old per-figure scales made impossible.
+
+- **`code/check_figure_type.py` is the gate.** It measures each figure PDF with
+  `mutool draw -F stext` (which reports span sizes in final page coordinates),
+  multiplies by the include scale parsed from `main.tex`, and fails on: a scale
+  other than 1, any glyph below 5 pt, artwork taller than the caption leaves
+  room for, or a typeface other than TeX Gyre Heros. Run it after every
+  regeneration; `--generated` measures the generators' own output before sync.
 
 Helpers worth using rather than re-inventing: `arena_axes`, `reward_marker`,
 `thin_colorbar`, `hist_outline` (overlapping distributions as fill + step outline,
@@ -205,45 +233,47 @@ instead of two alpha-blended solids that go muddy), `style_violin`, `zero_line`,
 `fmt_p` (an unavailable p-value prints nothing, not "p = n/a").
 
 Figures are deterministic: regenerating twice produces pixel-identical output.
+Note that the move to `TEXT_W_PT` invalidated every stored baseline at once, so
+`compare_figures.py` will report CHANGED for the whole set against anything
+older than that change — re-record the baseline before relying on it.
 
 ## Figure coverage of `main.tex`
 
-19 of the 21 figures are reproducible from this folder. See
-[`../context/FIGURE_REPRODUCTION.md`](../context/FIGURE_REPRODUCTION.md) for the full table. Gaps:
-
-- **`figS_fate`, `figS_decoder`** — generators were recovered into `figures/figS_legacy/`,
-  but their exact original invocation was never recorded, so the wrappers' `--run_dir` is
-  an inference. They are `OPTIONAL` in the sync map; the shipped PDFs live in
-  `paper_repo/paper_figures/v2/`. See `figures/figS_legacy/README.md`.
-- **`figS_manifold`, `figS_fourcond`** — **no generator exists anywhere in the repo**. Their
-  PDFs are stale July 2026 output whose sources were pruned, kept in `paper_repo/paper_figures/v2/`
-  so the manuscript builds. Flagged for removal in `../context/CLEANUP_TODO.md`.
-
-The two architecture schematics (`v10_architecture.png`, `v11_architecture.png`) are
-hand-drawn assets in `paper_repo/Architecture figures/`, not generated.
+All 15 PDF stems currently referenced by `main.tex` have a canonical source in
+`sync_paper_figures.py` and are covered by the 13 jobs in `regenerate_all.py`.
+The equality is enforced by both `verify_paper.py` and the sync script. Retired
+exploratory generators may remain under `figures/`, but they are not part of
+the publication pipeline.
 
 ## Data provenance
 
-`results/` is current. `sandbox/New_Results_v3/` is the archived single-seed tree (optional `figS_fate` / `figS_decoder` only). The legacy `New_Results/`, `New_Results_v2/`,
-`Results/` and `old_code/` trees are archived under `sandbox/project_legacy/`: they predate
-an arena object-placement fix (`b78eb35`), the peak/COM-split analysis pipeline (`2278dca`),
-and an RNG re-seed fix that desyncs head/no-head runs from the same seed (`377728a`). Do
-not use them to regenerate anything.
+Only `results/multi_seed*` and the compact released caches are inputs to the
+paper pipeline. Trees under `sandbox/` are archival and must not be used for
+manuscript regeneration. They predate fixes to arena object placement,
+peak/centre-of-mass analysis and matched-arm random-number seeding.
 
-Raw run data (`*.pkl`, `*.pt`, checkpoints) and per-run diagnostic PNGs are git-ignored —
-regenerate them with the commands above.
+Raw activity, checkpoints and diagnostic images are too large for git and are
+regenerated with the seed-indexed drivers above. The publication package must
+include the compact JSON files used by `verify_paper.py`; the gate fails
+explicitly if any is missing. Dependency pins describe the tested
+analysis/figure environment. Historical training library versions were not
+fully recorded, so the released configs and random seeds are the strongest
+available training provenance and this limitation should not be overstated.
 
-## Known rough edges
-
-Ten figure dirs each ship a module named `utils.py` (and seven an `analysis.py`), so the
-generators rely on `sys.path` ordering and `sys.modules` juggling to load the right one.
-This works — each generator runs in its own process — but `figure1_supp` and `figure3_supp`
-silently pick up fig2's `utils`. Preserved as-is during the consolidation; converting the
-tree to a real package would remove the hazard. Tracked in `../context/CLEANUP_TODO.md`.
+Each figure directory retains a local `utils.py` for compatibility with the
+original scripts. The orchestrator runs generators in separate processes so
+these same-named modules cannot leak between figures.
 
 ## The manuscript repository
 
 `paper_repo/` is a separate, Overleaf-synced git repo
 (`TechnionNeuroAILab/Predictive_Manifold_Rewards_Reshaping`) and is git-ignored here.
 This repo is the code source of truth; that one is the manuscript source of truth.
-`sync_paper_figures.py` is the only bridge between them.
+`sync_paper_figures.py` is the only bridge between them. Compile the paper after
+syncing:
+
+```bash
+cd paper_repo
+pdflatex -interaction=nonstopmode main.tex
+pdflatex -interaction=nonstopmode main.tex
+```

@@ -11,6 +11,8 @@ results/multi_seed/aggregate/fig2_multi_seed_summary.json).
 """
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
+
 import json
 import sys
 from pathlib import Path
@@ -55,7 +57,7 @@ def discover_seeds(cond_dir: Path, prefix: str) -> list[int]:
 
 
 def clean_seeds_for_reward_vector(cond_dir: Path, prefix: str, seeds: list[int],
-                                   periods: list[str], min_entropy: float = 5.5) -> list[int]:
+                                   periods: list[str], min_entropy: float | None = None) -> list[int]:
     """Re-gate on the periods this analysis actually uses (goal-directed
     periods), rather than assuming the existing replay-triple-based gate
     (used elsewhere, e.g. Figure 5) applies unchanged here."""
@@ -115,18 +117,31 @@ def per_seed_population_summary(run_dir: Path, period: str, baseline_period: str
 def load_condition_population_summary(cond_dir: Path, prefix: str, seeds: list[int],
                                        period: str = "goal_conditioned",
                                        baseline_period: str = "before") -> list[dict]:
-    """Per-seed population summaries for a condition (no-head or head-ON)."""
-    rows = []
-    for s in seeds:
-        run_dir = Path(cond_dir) / f"{prefix}seed{s}"
-        if not run_dir.exists():
-            continue
-        r = per_seed_population_summary(run_dir, period, baseline_period, seed=s)
-        if r is None:
-            continue
+    """Per-seed population summaries for a condition (no-head or head-ON), one process per network."""
+    jobs = [(Path(cond_dir) / f"{prefix}seed{s}", s) for s in seeds
+            if (Path(cond_dir) / f"{prefix}seed{s}").exists()]
+    with ProcessPoolExecutor(_N_WORKERS) as ex:
+        out = list(ex.map(_population_job, [(rd, period, baseline_period, s) for rd, s in jobs]))
+    return [r for r in out if r is not None]
+
+
+_N_WORKERS = 48
+
+
+def _population_job(job):
+    run_dir, period, baseline_period, s = job
+    r = per_seed_population_summary(run_dir, period, baseline_period, seed=s)
+    if r is not None:
         r["seed"] = s
-        rows.append(r)
-    return rows
+    return r
+
+
+def _rotation_job(job):
+    run_dir, period_a, period_b, s = job
+    r = per_seed_rotation_test(run_dir, period_a, period_b, seed=s)
+    if r is not None:
+        r["seed"] = s
+    return r
 
 
 # ---------------------------------------------------------------------------
@@ -178,17 +193,11 @@ def per_seed_rotation_test(run_dir: Path, period_a: str, period_b: str,
 def load_reloc_rotation_summary(reloc_dir: Path, seeds: list[int],
                                  period_a: str, period_b: str) -> list[dict]:
     """Per-seed rotation test across relocation seeds, skipping runs that are missing or fail."""
-    rows = []
-    for s in seeds:
-        run_dir = Path(reloc_dir) / f"reloc_seed{s}"
-        if not run_dir.exists():
-            continue
-        r = per_seed_rotation_test(run_dir, period_a, period_b, seed=s)
-        if r is None:
-            continue
-        r["seed"] = s
-        rows.append(r)
-    return rows
+    jobs = [(Path(reloc_dir) / f"reloc_seed{s}", period_a, period_b, s) for s in seeds
+            if (Path(reloc_dir) / f"reloc_seed{s}").exists()]
+    with ProcessPoolExecutor(_N_WORKERS) as ex:
+        out = list(ex.map(_rotation_job, jobs))
+    return [r for r in out if r is not None]
 
 
 # ---------------------------------------------------------------------------

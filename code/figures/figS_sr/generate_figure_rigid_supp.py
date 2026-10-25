@@ -40,7 +40,11 @@ from analysis import load_condition  # noqa: E402
 from utils import (  # noqa: E402
     HEAD_DIR, MM_TO_PT, NOHEAD_DIR, PAGE_W, RIGID_DIR,
     COLOR_HEAD, COLOR_NOHEAD, apply_nature_style, ensure_dir, save_figure,
+    FS_BASE, FS_SMALL, FS_TICK, title, stat_annot,
+    fmt_p,
 )
+import figlayout  # noqa: E402
+from figure_cache import add_plot_only, load_figure_data, require_keys, update_figure_data  # noqa: E402
 
 apply_nature_style()
 COLOR_RIGID = "#7a7a7a"
@@ -51,7 +55,13 @@ def _fmt_p(p):
     """Format a p-value for a panel annotation; 'n/a' when it is not finite."""
     if not np.isfinite(p):
         return "n/a"
-    return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
+    """Panel p-value, in the same format as every other figure in the paper.
+
+    Routed to the shared formatter so no panel invents its own notation, and
+    none of them use a mathtext superscript (which prints at 0.7x and falls
+    under the 5 pt floor).
+    """
+    return fmt_p(p, italic=False)
 
 
 def _arr(rows, key):
@@ -67,9 +77,25 @@ def _strip(ax, i, vals, colour, rng):
                 fmt="D", color="black", markersize=4.5, capsize=3, lw=1.1, zorder=5)
 
 
-def fig_shift(conds, stem):
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+# One row of three. Every glyph in this figure used to print below 5 pt: the
+# panels were drawn at ~3.1 in, fitted into a third of a 183 mm page, and then
+# the whole plate was included at 0.95\linewidth.
+#
+#   a  fixed-trajectory shift by condition   b  per-cell displacement
+#   c  bit-identical Phase-1 losses verify matched initial states
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 2), ("b", 0, 2, 2), ("c", 0, 4, 2)],
+    ncols=6, row_h_in=[2.40], caption_lines=3,
+    name="figS_rigid",
+)
+
+
+def fig_shift(conds, stem, size_in=None):
     """Panel a -- frozen-replay Delta-d for rigid, no-head and head-ON networks."""
-    fig, ax = plt.subplots(figsize=(3.1, 2.5))
+    fig, ax = plt.subplots(figsize=size_in or (3.1, 2.5))
     rng = np.random.default_rng(0)
     notes = []
     for i, (lab, rows, c) in enumerate(conds):
@@ -81,29 +107,34 @@ def fig_shift(conds, stem):
             pass
     ax.axhline(0, color="0.4", lw=0.8, ls="--")
     ax.set_xticks(range(len(conds)))
-    ax.set_xticklabels([c[0] for c in conds], fontsize=5.5)
+    ax.set_xticklabels([c[0] for c in conds], fontsize=FS_SMALL)
     ax.set_ylabel("Δ distance to reward, frozen replay\n(negative = toward reward)")
-    ax.set_title("Frozen-replay shift by plasticity\n" + "  ·  ".join(notes), fontsize=5.5)
+    title(ax, "Frozen-replay shift by plasticity")
+    # One p-value per line inside the axes. Joined onto the title with " · "
+    # they ran 25 pt past the right edge of this panel's slot.
+    stat_annot(ax, "\n".join(notes), loc="lower left")
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
-def fig_displacement(conds, stem):
+def fig_displacement(conds, stem, size_in=None):
     """Panel b -- mean per-cell displacement magnitude, separating stationary fields from cancelling ones."""
-    fig, ax = plt.subplots(figsize=(3.1, 2.5))
+    fig, ax = plt.subplots(figsize=size_in or (3.1, 2.5))
     rng = np.random.default_rng(1)
     for i, (lab, rows, c) in enumerate(conds):
         _strip(ax, i, _arr(rows, "disp_mean"), c, rng)
     ax.set_ylim(bottom=0)
     ax.set_xticks(range(len(conds)))
-    ax.set_xticklabels([c[0] for c in conds], fontsize=5.5)
-    ax.set_ylabel("Mean per-cell displacement\n$\\|c^{post}-c^{pre}\\|$ (arena units)")
-    ax.set_title("The fields are stationary, not\nmoving-and-cancelling", fontsize=6)
+    ax.set_xticklabels([c[0] for c in conds], fontsize=FS_SMALL)
+    # Was $\|c^{post}-c^{pre}\|$: mathtext sets those superscripts at 0.7x,
+    # i.e. 4.9 pt, under the 5 pt floor. Said in words instead.
+    ax.set_ylabel("Mean per-cell displacement\nbetween pre and post (arena units)")
+    ax.set_title("The fields are stationary, not\nmoving-and-cancelling", fontsize=FS_TICK)
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
-def fig_match(stem, seeds):
+def fig_match(stem, seeds, size_in=None):
     """phase-1 final loss across conditions — bit-identical when matched."""
     def p1(d, pre, s):
         try:
@@ -117,7 +148,7 @@ def fig_match(stem, seeds):
         if a is not None and b is not None and c is not None:
             rows.append((s, a, b, c))
 
-    fig, ax = plt.subplots(figsize=(3.4, 2.5))
+    fig, ax = plt.subplots(figsize=size_in or (3.4, 2.5))
     if rows:
         ss = [r[0] for r in rows]
         rg = np.array([r[1] for r in rows])
@@ -128,14 +159,14 @@ def fig_match(stem, seeds):
         ax.plot(ss, hd, "+", ms=6, color=COLOR_HEAD, label="head-ON")
         n_ident = int(np.sum((rg == nh) & (rg == hd)))
         ax.set_title(f"Phase-1 final loss is bit-identical\nacross conditions in {n_ident}/{len(rows)} seeds",
-                     fontsize=6)
-        ax.legend(fontsize=5, frameon=False)
+                     fontsize=FS_TICK)
+        ax.legend(fontsize=FS_SMALL, frameon=False)
     else:
         ax.text(0.5, 0.5, "no matched metrics.json yet", ha="center", va="center",
-                transform=ax.transAxes, fontsize=7)
+                transform=ax.transAxes, fontsize=FS_BASE)
     ax.set_xlabel("seed"); ax.set_ylabel("phase-1 final loss")
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 def _pdf_to_png(pdf, png, dpi=300):
@@ -146,28 +177,9 @@ def _pdf_to_png(pdf, png, dpi=300):
         copy2(pre.with_suffix(".png"), png)
 
 
-def assemble(pdfs, out_stem, dpi=300):
-    """Lay the panel PDFs out in one row and write the composite as PDF and PNG."""
-    out_stem = Path(out_stem).with_suffix("")
-    pdf_path, png_path = out_stem.with_suffix(".pdf"), out_stem.with_suffix(".png")
-    M, G = 10 * MM_TO_PT, 5 * MM_TO_PT
-    keys = [k for k in ("a", "b", "c") if k in pdfs]
-    sizes = {k: (lambda b: (float(b.width), float(b.height)))(PdfReader(str(pdfs[k])).pages[0].mediabox)
-             for k in keys}
-    cw = (PAGE_W - 2 * M - (len(keys) - 1) * G) / len(keys)
-    rh = max(sizes[k][1] * (cw / sizes[k][0]) for k in keys)
-    writer = PdfWriter()
-    page = writer.add_blank_page(width=PAGE_W, height=2 * M + rh)
-    for i, k in enumerate(keys):
-        iw, ih = sizes[k]
-        sc = min(cw / iw, rh / ih)
-        left = M + i * (cw + G) + (cw - iw * sc) / 2
-        page.merge_transformed_page(PdfReader(str(pdfs[k])).pages[0],
-                                    Transformation().scale(sc).translate(left, M + (rh - ih * sc) / 2), over=True)
-    with open(pdf_path, "wb") as f:
-        writer.write(f)
-    _pdf_to_png(pdf_path, png_path, dpi)
-    print(f"  Saved: {pdf_path}\n  Saved: {png_path}")
+def assemble(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
+    """Compose onto `LAYOUT`, with the panel letters the caption promises."""
+    return figlayout.compose(LAYOUT, panel_pdfs, out_stem, dpi=dpi)
 
 
 def main():
@@ -175,30 +187,37 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n_perm", type=int, default=50)
     ap.add_argument("--no_show", action="store_true")
+    add_plot_only(ap)
     args = ap.parse_args()
     panels = ensure_dir(FIGURES_DIR / "panels")
-
-    print("Loading rigid…");   rg = load_condition(RIGID_DIR, "rigid_", None, n_perm=args.n_perm)
-    print(f"  {len(rg)} clean")
+    cache_path = FIGURES_DIR / "figure_data.npz"
+    if args.plot_only:
+        saved = require_keys(load_figure_data(cache_path), "rg", "nh", "hd", path=cache_path)
+        rg, nh, hd = saved["rg"], saved["nh"], saved["hd"]
+    else:
+        print("Loading rigid…");   rg = load_condition(RIGID_DIR, "rigid_", None, n_perm=args.n_perm)
+        print("Loading no-head…"); nh = load_condition(NOHEAD_DIR, "nohead_", None, n_perm=args.n_perm)
+        print("Loading head-ON…"); hd = load_condition(HEAD_DIR, "head_", None, n_perm=args.n_perm)
+        update_figure_data(cache_path, {"rg": rg, "nh": nh, "hd": hd})
+    print(f"  {len(rg)} rigid, {len(nh)} no-head, {len(hd)} head-ON")
     if not rg:
         print("No gate-passing rigid seeds yet — run code/runs/run_rigid_seeds.py first.")
         return
-    print("Loading no-head…"); nh = load_condition(NOHEAD_DIR, "nohead_", None, n_perm=args.n_perm)
-    print(f"  {len(nh)} clean")
-    print("Loading head-ON…"); hd = load_condition(HEAD_DIR, "head_", None, n_perm=args.n_perm)
-    print(f"  {len(hd)} clean")
 
-    conds = [("rigid\n$2\\times10^{-6}$", rg, COLOR_RIGID),
-             ("no-head\n$5\\times10^{-5}$", nh, COLOR_NOHEAD),
-             ("head-ON\n$5\\times10^{-5}$", hd, COLOR_HEAD)]
+    # The learning rates used to be set here as mathtext superscripts, which
+    # print at 0.7x the tick size (3.85 pt). They are in the caption instead.
+    conds = [("rigid", rg, COLOR_RIGID),
+             ("no-head", nh, COLOR_NOHEAD),
+             ("head-ON", hd, COLOR_HEAD)]
 
     with open(panels / "rigid_summary.json", "w") as f:
         json.dump({"rigid": rg, "nohead": nh, "head": hd}, f, indent=2)
 
     pdfs = {}
-    print("Panel a…"); _, pdfs["a"] = fig_shift(conds, panels / "rigid_panel_a")
-    print("Panel b…"); _, pdfs["b"] = fig_displacement(conds, panels / "rigid_panel_b")
-    print("Panel c…"); _, pdfs["c"] = fig_match(panels / "rigid_panel_c", sorted(r["seed"] for r in rg))
+    print("Panel a…"); _, pdfs["a"] = fig_shift(conds, panels / "rigid_panel_a", LAYOUT.slot_size_in("a"))
+    print("Panel b…"); _, pdfs["b"] = fig_displacement(conds, panels / "rigid_panel_b", LAYOUT.slot_size_in("b"))
+    print("Panel c…"); _, pdfs["c"] = fig_match(panels / "rigid_panel_c", sorted(r["seed"] for r in rg),
+                                       size_in=LAYOUT.slot_size_in("c"))
     print("Assembling…"); assemble(pdfs, FIGURES_DIR / "figure_rigid_supp_raw")
 
     d = {k: _arr(v, "dd_mean") for k, v, _ in conds}

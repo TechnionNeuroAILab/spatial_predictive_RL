@@ -1,42 +1,42 @@
 # spatial_predictive_RL
 
-Predictive-RNN place-cell model and the full reproduction pipeline for the manuscript
-*Predictive manifolds and reward reshaping* ([`paper_repo/main.tex`](paper_repo/main.tex)).
+Predictive-RNN place-cell model and reproduction pipeline for
+*Reward changes the use and structure of predictive spatial maps through
+distinct mechanisms* ([`paper_repo/main.tex`](paper_repo/main.tex)).
 
-## All code lives in [`code/`](code/)
+## Reproduce and verify
 
-Start with **[`code/README.md`](code/README.md)** — it documents the whole
-chain: environment setup, the exact simulation commands, the JSON-cache builders, one
-`generate_*.py` per manuscript figure, and the sync step into the manuscript.
-
-For a figure-by-figure map (stem → generator → exemplar run → synced PDF), see
-**[`context/FIGURE_REPRODUCTION.md`](context/FIGURE_REPRODUCTION.md)**.
+The detailed protocol is in [`code/README.md`](code/README.md). The shortest
+publication check is:
 
 ```bash
 pip install -r code/requirements.txt
-sudo apt install poppler-utils        # pdftoppm, used by every figure assembler
-python code/smoke_test.py       # verify the pipeline runs
+sudo apt install poppler-utils mupdf-tools
+python code/verify_paper.py            # manuscript ↔ code ↔ cached statistics
+python code/smoke_test.py              # imports, CLIs, data and publication gate
+python code/regenerate_all.py --list   # the 13 jobs producing all 15 PDF stems
+python code/sync_paper_figures.py --dry-run
+python code/check_figure_type.py        # final-size fonts, scale and page fit
 ```
 
-## Everything else at this level is data or output
+The authoritative figure map is
+[`context/FIGURE_REPRODUCTION.md`](context/FIGURE_REPRODUCTION.md).
+`code/regenerate_all.py` defines the generators and exemplar runs;
+`code/sync_paper_figures.py` defines exactly the PDF stems referenced by the
+manuscript. Both are checked against `main.tex`.
+
+## Repository layout
 
 | path | what it is | tracked? |
 |---|---|---|
-| `results/` | current multi-seed run batches — the source of every shipped figure | metadata only |
-| `sandbox/New_Results_v3/` | single-seed runs; only the optional `figS_fate` / `figS_decoder` generators read it | no |
-| `context/` | cleanup notes and the figure-reproduction map | yes |
-| `data/` | Krishnan 2022 Source Data; Sosa 2025 caches and code. NWB files stay local | yes, except `sosa2025/nwb/` |
-| `paper_repo/` | the manuscript — a **separate** Overleaf-synced git repo (`main.tex`) | no (git-ignored) |
-| `sandbox/` | archived leftovers from the paper-slim cleanup (not part of the pipeline) | no (git-ignored) |
+| `code/` | simulators, run drivers, analyses, figure generators and checks | yes |
+| `results/aggregate/` | compact cohort definitions and manuscript statistics | yes |
+| `results/multi_seed*/` | full simulation outputs; large files are regenerated locally | metadata only |
+| `data/` | published-source inputs/caches and provenance for Krishnan 2022 and Sosa 2025 | yes, except raw NWB |
+| `context/` | figure provenance and maintenance notes | yes |
+| `paper_repo/` | separate Overleaf-synced manuscript repository | no in this repository |
 
-Raw run data (`*.pkl`, `*.pt`, checkpoints) and per-run diagnostic PNGs are git-ignored:
-they are regenerable from the commands in `code/README.md`, and total several
-hundred GB.
-
-Superseded trees (`New_Results/`, `New_Results_v2/`, `Results/`, `old_code/`,
-`Analysis_Plots/`) live under `sandbox/project_legacy/`. They predate three fixes that
-materially change results (arena object placement `b78eb35`, the peak/COM-split pipeline
-`2278dca`, and an RNG re-seed fix `377728a`) — see the provenance section of
-`code/README.md`.
-
-Open cleanup items are tracked in [`context/CLEANUP_TODO.md`](context/CLEANUP_TODO.md).
+Raw checkpoints, per-timestep activity and downloaded NWB files are intentionally
+not distributed in git because they total hundreds of gigabytes. The run drivers
+recreate them with deterministic seed-indexed commands. Compact JSON summaries
+needed to audit the reported results are part of the publication package.

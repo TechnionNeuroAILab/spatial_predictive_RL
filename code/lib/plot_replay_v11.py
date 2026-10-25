@@ -37,14 +37,14 @@ except ImportError:  # pragma: no cover - stand-alone use
 
 def load_maps(data_dir, period, m, hidden_dim):
     """Rate maps, occupancy and Skaggs scores for one replay period."""
-    beh_path = os.path.join(data_dir, f"df_behavior_{period}.pkl")
-    act_path = os.path.join(data_dir, f"df_activations_{period}.pkl")
+    beh_path = os.path.join(data_dir, f"df_behavior_{period}.parquet")
+    act_path = os.path.join(data_dir, f"df_activations_{period}.parquet")
     if not (os.path.exists(beh_path) and os.path.exists(act_path)):
         raise FileNotFoundError(
             f"Missing replay probe '{period}'.\n  expected: {beh_path}\n {act_path}\n"
             f"Did the v11 run finish the replay cycle? (--replay_cycle)")
-    beh = pd.read_pickle(beh_path)
-    act = pd.read_pickle(act_path)
+    beh = pd.read_parquet(beh_path)
+    act = pd.read_parquet(act_path)
     rm, occ = build_rate_maps(beh, act, m, hidden_dim)
     sk = compute_skaggs(rm, occ)
     return rm, occ, sk

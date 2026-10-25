@@ -114,10 +114,12 @@ def fig_dist_histogram(
     bins: int = 20,
     color_before: str = C["pre"],
     color_after: str = C["policy"],
-    label_before: str = "Prediction",
-    label_after: str = "Goal policy",
+    label_before: str = "Exploration",
+    label_after: str = "Goal-directed",
     wilcoxon_p: float = float("nan"),
+    stats_text: str | None = None,
     width_in: float | None = None,
+    size_in: tuple[float, float] | None = None,
 ):
     """Overlay before/after histograms of distance-to-reward for one metric.
 
@@ -140,26 +142,37 @@ def fig_dist_histogram(
     hi = max(hi * 1.05, 0.15)
     edges = np.linspace(lo, hi, bins + 1)
 
+    # `size_in` is the panel's slot on the page. Passing it means the saved
+    # PDF measures exactly that, so the assembler has nothing left to scale --
+    # which is the only way the declared 7 pt stays 7 pt in print.
     w = width_in if width_in else 2.6
-    fig, ax = plt.subplots(figsize=(w, w * 0.73))
+    fig, ax = plt.subplots(figsize=size_in or (w, w * 0.73))
     hist_outline(ax, d_before, edges, color_before, label=label_before)
     hist_outline(ax, d_after, edges, color_after, label=label_after)
+    headroom = 1.8
+    # Mean lines stop at the tallest bar, below the legend and statistics.
+    line_top = 1.0 / headroom
     if len(d_before):
-        ax.axvline(float(np.mean(d_before)), color=color_before,
+        ax.axvline(float(np.mean(d_before)), ymax=line_top, color=color_before,
                    ls=(0, (2.5, 2)), lw=0.7, zorder=1)
     if len(d_after):
-        ax.axvline(float(np.mean(d_after)), color=color_after,
+        ax.axvline(float(np.mean(d_after)), ymax=line_top, color=color_after,
                    ls=(0, (2.5, 2)), lw=0.7, zorder=1)
     ax.set_xlabel(xlabel)
     ax.set_ylabel("Cells")
     # NB: the `title` parameter shadows pubstyle's title() helper here, so set
     # it directly with the same left-aligned convention.
     ax.set_title(title, loc="left", pad=3)
-    ax.legend(loc="upper right")
-    # p-value bottom-right, so it cannot collide with the upper-right legend.
-    stat_annot(ax, _fmt_p(wilcoxon_p), loc="lower right")
+    # Headroom above the tallest bar holds the legend (left) and the
+    # statistics (right), so neither crosses a histogram outline.
+    ax.set_ylim(0, ax.get_ylim()[1] * headroom)
+    ax.legend(loc="upper left", handlelength=1.0, borderaxespad=0.1)
+    text = stats_text if stats_text is not None else _fmt_p(wilcoxon_p)
+    if text:
+        ax.text(0.02, 0.76, text, transform=ax.transAxes, fontsize=FS_SMALL,
+                color=C["muted"], ha="left", va="top", linespacing=1.35)
     fig.tight_layout(pad=0.35)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 def cycle_num(label: str) -> int:
@@ -173,19 +186,19 @@ def load_cycle_rate_maps(data_dir, m: int = 32, hidden_dim: int = 512, probe_typ
     if probe_type == "goal":
         cycle_files = sorted(
             f for f in os.listdir(data_dir)
-            if f.startswith("df_activations_cycle_") and f.endswith("_goal.pkl")
+            if f.startswith("df_activations_cycle_") and f.endswith("_goal.parquet")
         )
     else:
         cycle_files = sorted(
             f for f in os.listdir(data_dir)
-            if f.startswith("df_activations_cycle_") and f.endswith(".pkl") and "goal" not in f
+            if f.startswith("df_activations_cycle_") and f.endswith(".parquet") and "goal" not in f
         )
     cycle_data = {}
     for fname in cycle_files:
-        label = fname.replace("df_activations_", "").replace(".pkl", "")
-        df_a = pd.read_pickle(os.path.join(data_dir, fname))
+        label = fname.replace("df_activations_", "").replace(".parquet", "")
+        df_a = pd.read_parquet(os.path.join(data_dir, fname))
         beh_fname = fname.replace("df_activations_", "df_behavior_")
-        df_b = pd.read_pickle(os.path.join(data_dir, beh_fname))
+        df_b = pd.read_parquet(os.path.join(data_dir, beh_fname))
         rm, occ = build_rate_maps(df_b, df_a, m, hidden_dim)
         sk = compute_skaggs(rm, occ)
         cycle_data[label] = (rm, occ, sk)
@@ -209,7 +222,7 @@ def fig_100cells(rate_maps, skaggs, top_idx, reward_bin, title: str = "Cognitive
     fig.suptitle(title, fontsize=12, y=0.98)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     if stem is not None:
-        return save_figure(fig, stem)
+        return save_figure(fig, stem, exact_size=size_in is not None)
     plt.close(fig)
     return None, None
 
@@ -243,7 +256,7 @@ def fig_pred_vs_rl_across_cycles(rw_cycles, goal_cycles, neuron_id, reward_bin, 
         axes[1][col].set_xlabel(f"C{cycle_num(lab)}", fontsize=9, color="white")
     plt.tight_layout()
     if stem is not None:
-        return save_figure(fig, stem)
+        return save_figure(fig, stem, exact_size=size_in is not None)
     plt.close(fig)
     return None, None
 
@@ -258,6 +271,7 @@ def fig_pred_vs_rl_cycle1_many(
     ylabel_bottom: str = "After RL",
     cmap=_RATEMAP,
     width_in: float | None = None,
+    size_in: tuple[float, float] | None = None,
 ):
     """Many neurons: row 0 = cycle_1 RW probe, row 1 = cycle_1 goal probe."""
     rw_key = next((k for k in rw_cycles if cycle_num(k) == 1 and "goal" not in k), None)
@@ -272,7 +286,9 @@ def fig_pred_vs_rl_cycle1_many(
     w = width_in if width_in else n * 1.05
     # Maps are square: n across means each is w/n wide, so two rows need
     # 2*w/n of height, plus a strip for the cell IDs and row labels.
-    fig, axes = plt.subplots(2, n, figsize=(w, 2.0 * w / n + 0.30), squeeze=False)
+    im_colorbar = stem is not None
+    fig, axes = plt.subplots(2, n, figsize=size_in or (w, 2.0 * w / n + 0.30),
+                             squeeze=False)
     im = None
     for col, nid in enumerate(neuron_ids):
         for row, cycles, key in ((0, rw_cycles, rw_key), (1, goal_cycles, goal_key)):
@@ -287,12 +303,16 @@ def fig_pred_vs_rl_cycle1_many(
                              color=C["muted"], loc="center")
     axes[0][0].set_ylabel(ylabel_top, fontsize=FS_TICK, labelpad=3)
     axes[1][0].set_ylabel(ylabel_bottom, fontsize=FS_TICK, labelpad=3)
-    plt.tight_layout(pad=0.25, w_pad=0.12, h_pad=0.18)
-    if im is not None:
+    # `rect` reserves the right-hand strip that thin_colorbar draws into. Under
+    # a tight crop the bar simply enlarged the saved panel; under an exact-size
+    # save it would be clipped off the edge instead.
+    cbar_frac = 0.085 if im_colorbar else 0.0
+    fig.tight_layout(rect=(0, 0, 1 - cbar_frac, 1), pad=0.25, w_pad=0.12, h_pad=0.18)
+    if im is not None and im_colorbar:
         thin_colorbar(fig, im, axes[0][n - 1], label="Rate",
-                      ticklabels=("0", "max"), shrink=0.85, pad=0.016, width=0.008)
+                      ticklabels=("0", "max"), shrink=0.85, pad=0.012, width=0.009)
     if stem is not None:
-        return save_figure(fig, stem)
+        return save_figure(fig, stem, exact_size=size_in is not None)
     plt.close(fig)
     return None, None
 

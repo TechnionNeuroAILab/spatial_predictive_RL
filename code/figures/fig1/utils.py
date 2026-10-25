@@ -31,82 +31,75 @@ from pubstyle import (  # noqa: E402,F401
     apply_nature_style, ensure_dir, save_figure,
     panel_label, title, fmt_p, stat_annot, despine, arena_axes,
     reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+    plain_log_ticks,
 )
+import figlayout  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIGURES_DIR = Path(__file__).resolve().parent / "figures"
 PANELS_DIR = FIGURES_DIR / "panels"
 
-# Nature double-column width (183 mm) in matplotlib points.
-GRID_COLS = 4
-GRID_GAP = 2.0 * MM_TO_PT
-ROW_GAP = 2.0 * MM_TO_PT  # small consistent white gap between rows
-PAGE_MARGIN = 1.0 * MM_TO_PT
-TITLE_SIZE = 6.0  # panel title font (sans-serif, matches apply_nature_style)
-TITLE_H = 9.0  # points reserved above each row for panel letters/titles
-TITLE_LINE_H = 7.0  # extra points per additional title line (multi-line titles)
-# Legacy equal-row constants (kept for compatibility; assembly now uses
-# per-row heights computed from the actual panel aspect ratios).
-ROW0_FRAC = ROW1_FRAC = ROW2_FRAC = 1.0 / 3.0
-PAGE_H = 3 * 56.0 * MM_TO_PT + 2 * ROW_GAP + 2 * PAGE_MARGIN
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+# The architecture schematic used to be panel a of this figure, squeezed into a
+# 150 pt row cap that scaled it to 0.548 -- its 9.75 pt labels printed at
+# 4.7 pt, and 77 pt of blank page sat either side of it. It is now a figure in
+# its own right (`MODEL_STEM` below, assembled by generate_figure1.py), which
+# lets it run the full text width at its native aspect ratio.
+#
+# The remaining panels therefore each move up one letter: what this figure
+# used to call b-f is now a-e.
+#
+#   a  environment & egocentric observations      b  hidden-state manifold
+#   c  example units: prediction vs goal read-out d  field peak   e  centre of mass
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 2), ("b", 0, 2, 2),
+     ("c", 1, 0, 2), ("d", 1, 2, 1), ("e", 1, 3, 1)],
+    ncols=4,
+    # Panel a shares this row with the manifold. 1.85 in is a modest shrink
+    # from 2.10 so the environment panel is a little smaller on the page.
+    row_h_in=[1.85, 1.45],
+    caption_lines=8,
+    name="fig_map",
+)
 
-# Composite layout: (panel_key, row, col, colspan)
-# a = architecture; b = FoV; c = PCA 3D; d = remapping; e = peak; f = COM
-# Row 1 gives panel b two columns instead of one: its content is ~300 pt wide,
-# so a single 125 pt column scaled it to ~42% and its labels fell below the
-# 5 pt legibility floor. Panel c keeps enough width for three 3D views now that
-# two of its three redundant colourbars are gone.
-FIGURE_LAYOUT = [
-    ("a", 0, 0, 4),
-    ("b", 1, 0, 2),
-    ("c", 1, 2, 2),
-    ("d", 2, 0, 2),
-    ("e", 2, 2, 1),
-    ("f", 2, 3, 1),
-]
+PANEL_ORDER = LAYOUT.keys()
 
-# Per-row height caps (points). Row 0 is the architecture schematic.
-ROW_MAX_H = {0: 150.0}
+# Short titles set beside the panel letter. Panels d/e carry their own titles
+# inside the rendered panel PDF, so they are omitted here to avoid doubling up.
+PANEL_TITLES = {
+    "a": "Environment and egocentric observation",
+    "b": "Hidden-state manifold (Phase A)",
+    "c": "Example units: exploration before learning vs goal-directed after",
+}
 
-
-def slot_width_pt(key: str) -> float:
-    """Final on-page width of a panel's slot, in points.
-
-    Panels must be rendered at the width they are displayed at. The assembler
-    contain-fits each panel PDF into its slot, so a panel rendered 570 pt wide
-    and shown in a 253 pt slot has all of its type scaled to 44% -- which is how
-    7 pt labels ended up at ~3 pt on the page. Renderers take their figsize from
-    this function so the type scale survives assembly.
-    """
-    col_w = (PAGE_W - 2 * PAGE_MARGIN - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS
-    for k, _row, _col, colspan in FIGURE_LAYOUT:
-        if k == key:
-            return colspan * col_w + (colspan - 1) * GRID_GAP
-    return col_w
+MODEL_STEM = "figure_model_raw"      # the standalone architecture figure
 
 
 def slot_width_in(key: str) -> float:
-    """`slot_width_pt` in inches, for passing straight to matplotlib figsize."""
-    return slot_width_pt(key) / 72.0
-PANEL_ORDER = ["a", "b", "c", "d", "e", "f"]
+    """On-page width of a panel's slot, in inches.
 
-# Short titles drawn next to the panel letters in the assembled composite.
-# Panels e/f already carry titles inside the rendered panel PDFs, so they are
-# intentionally omitted here to avoid duplication.
-PANEL_TITLES = {
-    "a": "Model architecture",
-    "b": "Environment &\negocentric observations",
-    "c": "Hidden-state manifold mirrors the arena",
-    "d": "Example units: prediction probe vs goal-directed read-out",
-}
+    Kept as a module-level function because the panel factories in
+    `panel_d.py` and `rate_maps.py` take it as `width_in=`. It now just
+    forwards to the layout, which owns the height as well.
+    """
+    return LAYOUT.slot_width_in(key)
+
+
+def slot_size_in(key: str) -> tuple[float, float]:
+    """Both dimensions of a panel's slot -- what its figsize must be."""
+    return LAYOUT.slot_size_in(key)
 
 # Perceptually uniform colormap for rate maps (Nature-friendly).
 
 M = 32
 HIDDEN_DIM = 512
 # No-head, lr=5e-5, reward at (0.3, 0.3).
-DEFAULT_RUN = REPO_ROOT / "results" / "nohead_seed42"
+# Canonical exemplar shared by manuscript Figures 1 and 2.  Keep this default
+# aligned with code/regenerate_all.py and code/verify_paper.py.
+DEFAULT_RUN = REPO_ROOT / "results" / "multi_seed" / "nohead_seed16"
 DEFAULT_REWARD = (0.3, 0.3)
 DEFAULT_ARCHITECTURE = (
     REPO_ROOT / "code" / "figures" / "fig1" / "figures" / "panels" / "v11_architecture_vectorized.pdf"

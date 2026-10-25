@@ -28,6 +28,7 @@ from pubstyle import (  # noqa: E402,F401
     apply_nature_style, ensure_dir, save_figure,
     panel_label, title, fmt_p, stat_annot, despine, arena_axes,
     reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+    plain_log_ticks,
 )
 
 

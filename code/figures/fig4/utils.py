@@ -25,13 +25,34 @@ from pubstyle import (  # noqa: E402,F401
     apply_nature_style, ensure_dir, save_figure,
     panel_label, title, fmt_p, stat_annot, despine, arena_axes,
     reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+    plain_log_ticks,
 )
+import figlayout  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIGURES_DIR = Path(__file__).resolve().parent / "figures"
 PANELS_DIR = FIGURES_DIR / "panels"
 NEW_CODE = REPO_ROOT / "code" / "lib"
+
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+# Two rows of equal height on the six-column grid:
+#   row 1   a  example tracking cells     c  distance to each reward
+#   row 2   b  field-centre clouds         d  shift violins
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 4), ("c", 0, 4, 2),
+     ("b", 1, 0, 3), ("d", 1, 3, 3)],
+    ncols=6,
+    # The second row (clouds, per-cell shifts) is shorter than the first:
+    # its panels need less height than the example-field grid.
+    row_h_in=[2.30, 1.85],
+    caption_lines=7,
+    name="fig_reloc",
+)
+
+N_EXAMPLE_CELLS = 8      # 6 left row 0 over-tall once the page went full width
 
 PAGE_MARGIN = 5.0 * MM_TO_PT
 
@@ -48,9 +69,9 @@ PERIOD_POST_A = "replay_reloc_postA"
 PERIOD_POST_B = "replay_reloc_postB"
 
 PERIODS = [
-    (PERIOD_PRE, "baseline\n(pre-RL)"),
-    (PERIOD_POST_A, "after A"),
-    (PERIOD_POST_B, "after B\n(relocated)"),
+    (PERIOD_PRE, "Baseline"),
+    (PERIOD_POST_A, "After A"),
+    (PERIOD_POST_B, "After B"),
 ]
 
 # Phase colours for tracking curves
@@ -65,9 +86,9 @@ PERIOD_COLORS = {
 # results/multi_seed_reloc/aggregate/fig4_multi_seed_summary.json and
 # code/runs/select_best_seed_fig4.py for the ranking). Entropy gate for this
 # seed: baseline 7.55 / after A 7.60 / after B 7.47 bits (all >= 5.5).
-DEFAULT_RUN = REPO_ROOT / "results" / "multi_seed_reloc" / "reloc_seed9"
+DEFAULT_RUN = REPO_ROOT / "results" / "multi_seed_reloc" / "reloc_seed40"
 SKAGGS_THRESHOLD = 0.15
 
 # Entropy collapse gate (matches Figure 5's diagnostic; see code/lib/analysis_helpers.py)
-MIN_ENTROPY = 5.5
+from analysis_helpers import MIN_ENTROPY  # noqa: E402,F401  (single source)
 

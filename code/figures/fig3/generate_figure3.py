@@ -8,14 +8,14 @@ representational remapping toward the reward.
 
     python code/figures/fig3/generate_figure3.py --no_show
     python code/figures/fig3/generate_figure3.py \
-        --run_dir results/multi_seed_head/head_seed0 \
+        --run_dir results/multi_seed_head/head_seed28 \
         --reward_pos 0.3 0.3 --no_show
 
 Panels
-  a  Frozen-replay remapping grid (same cells as Fig. 1d)
+  a  Frozen-replay remapping grid of illustrative, well-tuned fields
   b  Field COM centres for Phases A, B, C
   c  Violin plots of COM Δd for A→B (policy) and C:pre→post (frozen replay)
-  d  Distance-to-reward histograms for A–B (policy) and C:pre→post (frozen replay)
+  d  Matched plasticity control: near-rigid, plastic and plastic+teaching
 """
 from __future__ import annotations
 
@@ -32,31 +32,32 @@ from pypdf import PdfReader, PdfWriter, Transformation
 
 from analysis import (
     fig_centers_abc,
-    fig_delta_violins,
-    fig_distance_histograms,
+    fig_network_shifts,
     fig_replay_remap_grid,
-    fig1_panel_d_neuron_ids,
     load_phases,
     paired_distance_stats,
     shared_place_cell_ids,
 )
 from utils import (
+    C,
+    FS_SMALL,
+    FS_TICK,
     RATEMAP,
     DEFAULT_REWARD,
     DEFAULT_RUN,
-    FIGURE_LAYOUT,
     FIGURES_DIR,
-    GRID_COLS,
-    GRID_GAP,
-    LABEL_SIZE,
+    LAYOUT,
     M,
-    MM_TO_PT,
-    PAGE_MARGIN,
-    PAGE_W,
-    ROW_GAP,
+    PANEL_A_NEURON_IDS,
     apply_nature_style,
     ensure_dir,
+    save_figure,
+    title,
+    zero_line,
 )
+import figlayout
+from figure_cache import add_plot_only, load_figure_data, require_keys, update_figure_data
+from pubstyle import METRIC_ALPHA, METRIC_LABEL, load_headline_stats, network_strip
 
 apply_nature_style()
 
@@ -72,107 +73,15 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
         copy2(out_prefix.with_suffix(".png"), png_path)
 
 
-def _panel_slot_geometry(panel_sizes: dict[str, tuple[float, float]]):
-    """Work out each panel's slot on the page: column widths, per-row heights, and the rectangle every panel is contain-fitted into."""
-    col_w = (PAGE_W - 2 * PAGE_MARGIN - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS
-    n_rows = 1 + max(r for _, r, _, _ in FIGURE_LAYOUT)
-    # Per-row heights: each row is only as tall as its own tallest fitted panel
-    # (previously every row inherited the global max, wasting vertical space).
-    row_fitted: dict[int, list[float]] = {r: [] for r in range(n_rows)}
-    for key, row, col, colspan in FIGURE_LAYOUT:
-        if key not in panel_sizes:
-            continue
-        iw, ih = panel_sizes[key]
-        slot_w = colspan * col_w + (colspan - 1) * GRID_GAP
-        row_fitted[row].append(ih * (slot_w / max(iw, 1e-6)))
-    default_h = 56.0 * MM_TO_PT
-    row_heights = [float(np.max(row_fitted[r])) if row_fitted[r] else default_h
-                   for r in range(n_rows)]
-    page_h = sum(row_heights) + (n_rows - 1) * ROW_GAP + 2 * PAGE_MARGIN
-
-    placements = []
-    for key, row, col, colspan in FIGURE_LAYOUT:
-        if key not in panel_sizes:
-            continue
-        iw, ih = panel_sizes[key]
-        slot_w = colspan * col_w + (colspan - 1) * GRID_GAP
-        slot_h = row_heights[row]
-        left = PAGE_MARGIN + col * (col_w + GRID_GAP)
-        below = sum(row_heights[r] + ROW_GAP for r in range(row + 1, n_rows))
-        bottom = PAGE_MARGIN + below
-        scale = min(slot_w / iw, slot_h / ih)
-        sw, sh = iw * scale, ih * scale
-        placements.append({
-            "key": key,
-            "left": left,
-            "bottom": bottom,
-            "slot_w": slot_w,
-            "slot_h": slot_h,
-            "img_left": left + (slot_w - sw) / 2.0,
-            "img_bottom": bottom + (slot_h - sh) / 2.0,
-            "scale": scale,
-        })
-    return page_h, placements
-
-
-def _write_letter_overlay_pdf(placements, page_h: float, out_path: Path) -> Path:
-    """Write a transparent overlay PDF carrying the panel letters, to be merged onto the assembled page."""
-    ensure_dir(out_path.parent)
-    fig = plt.figure(figsize=(PAGE_W / 72.0, page_h / 72.0))
-    fig.patch.set_facecolor("none")
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, PAGE_W)
-    ax.set_ylim(0, page_h)
-    ax.axis("off")
-    ax.set_facecolor("none")
-    for p in placements:
-        ax.text(
-            p["left"] + 2.0, p["bottom"] + p["slot_h"] - 2.0, p["key"],
-            fontsize=LABEL_SIZE, fontweight="bold", va="top", ha="left", color="black",
-        )
-    fig.savefig(out_path, format="pdf", transparent=True, facecolor="none", edgecolor="none",
-                bbox_inches=None, pad_inches=0)
-    plt.close(fig)
-    return out_path
-
-
 def assemble_figure(panel_pdfs: dict[str, Path], stem, save_dpi: int = 300):
-    """Place each panel PDF in its slot and write the composite page as PDF and PNG."""
-    stem = Path(stem).with_suffix("")
-    ensure_dir(stem.parent)
-    png_path = stem.with_suffix(".png")
-    pdf_path = stem.with_suffix(".pdf")
+    """Compose the panel PDFs onto the page defined by `utils.LAYOUT`.
 
-    panel_sizes = {}
-    for key, pdf in panel_pdfs.items():
-        box = PdfReader(str(pdf)).pages[0].mediabox
-        panel_sizes[key] = (float(box.width), float(box.height))
-
-    page_h, placements = _panel_slot_geometry(panel_sizes)
-    writer = PdfWriter()
-    page = writer.add_blank_page(width=PAGE_W, height=page_h)
-    for p in placements:
-        src = PdfReader(str(panel_pdfs[p["key"]])).pages[0]
-        page.merge_transformed_page(
-            src,
-            Transformation().scale(p["scale"]).translate(p["img_left"], p["img_bottom"]),
-            over=True,
-        )
-
-    overlay_path = stem.parent / "_figure3_letters_overlay.pdf"
-    _write_letter_overlay_pdf(placements, page_h, overlay_path)
-    page.merge_page(PdfReader(str(overlay_path)).pages[0], over=True)
-    with open(pdf_path, "wb") as f:
-        writer.write(f)
-    try:
-        overlay_path.unlink(missing_ok=True)
-    except OSError:
-        pass
-
-    _pdf_to_png(pdf_path, png_path, dpi=save_dpi)
-    print(f"  Saved: {pdf_path}")
-    print(f"  Saved: {png_path}")
-    return png_path, pdf_path
+    Replaces a geometry solver, a contain-fit and a hand-rolled letter overlay
+    (~120 lines) that between them scaled each panel by a different factor, so
+    the same declared font size printed at a different size in each row.
+    `figlayout.compose` refuses to scale at all.
+    """
+    return figlayout.compose(LAYOUT, panel_pdfs, stem, dpi=save_dpi)
 
 
 def _jsonable_stats(stats: dict) -> dict:
@@ -196,77 +105,137 @@ def _jsonable_stats(stats: dict) -> dict:
     }
 
 
+def fig_plasticity_control(stem, size_in):
+    """Matched fixed-trajectory shifts with near-rigid and plastic recurrent weights."""
+    hs = load_headline_stats()
+    seeds = set(hs["paired"]["cohort"]["seeds"])
+    rows = [r for r in hs["paired"]["rows"] if r["seed"] in seeds]
+    fig, ax = plt.subplots(figsize=size_in)
+    arms = (("rg", C["rigid"]), ("nh", C["nohead"]), ("hd", C["head"]))
+    for metric, x0 in (("peak", 0.0), ("com", 3.6)):
+        vals = [np.array([r[f"{arm}_frz_{metric}"]["mean"] for r in rows])
+                for arm, _ in arms]
+        network_strip(
+            ax, vals, [x0, x0 + 1, x0 + 2], [colour for _, colour in arms],
+            alpha=0.55 * METRIC_ALPHA[metric] + 0.1, seed=int(x0),
+        )
+        ax.text(
+            x0 + 1, -0.17, METRIC_LABEL[metric],
+            transform=ax.get_xaxis_transform(), ha="center", va="top",
+            fontsize=FS_TICK,
+        )
+    zero_line(ax)
+    ax.set_xticks([0, 1, 2, 3.6, 4.6, 5.6])
+    ax.set_xticklabels(
+        ["Rigid", "Plastic", "Plastic +\nteaching"] * 2,
+        fontsize=FS_SMALL,
+    )
+    ax.set_xlim(-0.6, 6.2)
+    ax.set_ylabel(r"$\Delta$ distance to reward (replay)")
+    title(ax, f"Plasticity control (n = {len(rows)} triples)")
+    fig.tight_layout(pad=0.35)
+    return save_figure(fig, stem, exact_size=True)
+
+
+def _figure_paths(args):
+    """COM writes the manuscript stem; peak writes a sibling copy and its own panels."""
+    figures_dir = Path(args.output_dir).resolve()
+    if args.center == "peak":
+        return figures_dir / "panels_peak", figures_dir / "figure3_peak_raw"
+    return figures_dir / "panels", figures_dir / "figure3_raw"
+
+
 def generate_all(args):
     """Render every requested panel, then assemble the composite figure."""
     run_dir = Path(args.run_dir).resolve()
     data_dir = run_dir / "data"
-    panels_dir = Path(args.output_dir).resolve() / "panels"
-    figures_dir = Path(args.output_dir).resolve()
+    panels_dir, figure_stem = _figure_paths(args)
+    figures_dir = figure_stem.parent
     ensure_dir(panels_dir)
 
     reward_pos = np.array(args.reward_pos, dtype=float)
     reward_bin = (int(reward_pos[0] * M), int(reward_pos[1] * M))
     panel_pdfs: dict[str, Path] = {}
 
-    print("Loading phases A / B / C ...")
-    phases = load_phases(data_dir)
+    if getattr(args, "assemble_only", False):
+        print("Assembly-only mode: reusing existing panel PDFs...")
+        panel_pdfs = figlayout.existing_panels(
+            panels_dir, [k for k in LAYOUT.keys() if k in args.panels])
+        assemble_figure(panel_pdfs, figure_stem)
+        return
 
-    if "a" in args.panels:
-        print("Panel a (frozen-replay remapping — WITH head, fields MOVE)...")
+    cache_path = figures_dir / "figure_data.npz"
+    if args.plot_only:
+        saved = require_keys(
+            load_figure_data(cache_path), "phases", "stats", "neuron_ids", path=cache_path)
+        phases = saved["phases"]
+        stats = saved["stats"]
+        neuron_ids = [int(x) for x in saved["neuron_ids"]]
+    else:
+        print("Loading phases A / B / C ...")
+        phases = load_phases(data_dir)
         if args.neuron_ids:
             neuron_ids = [int(x) for x in args.neuron_ids]
         else:
-            neuron_ids = fig1_panel_d_neuron_ids(phases, n=args.n_neurons, seed=args.seed)
+            neuron_ids = list(PANEL_A_NEURON_IDS[:args.n_neurons])
         print(f"  Neuron ids: {neuron_ids}")
+        ids = shared_place_cell_ids(phases, skaggs_threshold=args.skaggs_threshold)
+        stats = paired_distance_stats(phases, reward_pos, ids)
+        update_figure_data(cache_path, {
+            "phases": phases, "stats": stats, "neuron_ids": neuron_ids,
+        })
+    print(
+        f"  Shared place cells (A∩B): n={stats['n']} "
+        f"(Skaggs ≥ {args.skaggs_threshold})"
+    )
+    print(
+        f"  A→B: COM Δd={stats['com_mean_delta_AB']:+.3f} "
+        f"({100 * stats['com_frac_toward_AB']:.0f}% toward)"
+    )
+    print(
+        f"  C:pre→post (frozen replay, n={stats['n_ac']}): COM Δd={stats['com_mean_delta_AC']:+.3f} "
+        f"({100 * stats['com_frac_toward_AC']:.0f}% toward)"
+    )
+    summary_path = panels_dir / "phase_abc_summary.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(_jsonable_stats(stats), f, indent=2)
+    print(f"  Saved: {summary_path}")
+
+    if "a" in args.panels:
+        print("Panel a (frozen-replay remapping — WITH head, fields MOVE)...")
         _, pdf = fig_replay_remap_grid(
             phases["C_pre"]["rm"], phases["C_post"]["rm"], neuron_ids, reward_bin,
             stem=panels_dir / "panel_a",
             cmap=RATEMAP,
+            size_in=LAYOUT.slot_size_in("a"),
             # No sentence title: it collided with the panel letter and is
             # caption material. The head-ON condition is stated in the caption.
         )
         panel_pdfs["a"] = pdf
 
-    need_stats = args.panels & {"b", "c", "d"}
-    stats = None
-    if need_stats:
-        ids = shared_place_cell_ids(phases, skaggs_threshold=args.skaggs_threshold)
-        stats = paired_distance_stats(phases, reward_pos, ids)
-        print(
-            f"  Shared place cells (A∩B): n={stats['n']} "
-            f"(Skaggs ≥ {args.skaggs_threshold})"
-        )
-        print(
-            f"  A→B: COM Δd={stats['com_mean_delta_AB']:+.3f} "
-            f"({100 * stats['com_frac_toward_AB']:.0f}% toward)"
-        )
-        print(
-            f"  C:pre→post (frozen replay, n={stats['n_ac']}): COM Δd={stats['com_mean_delta_AC']:+.3f} "
-            f"({100 * stats['com_frac_toward_AC']:.0f}% toward)"
-        )
-        summary_path = panels_dir / "phase_abc_summary.json"
-        with open(summary_path, "w", encoding="utf-8") as f:
-            json.dump(_jsonable_stats(stats), f, indent=2)
-        print(f"  Saved: {summary_path}")
-
     if "b" in args.panels:
-        print("Panel b (COM centres A / B / C)...")
-        _, pdf = fig_centers_abc(phases, reward_pos, stats["neuron_ids"], panels_dir / "panel_b")
+        print(f"Panel b ({args.center} centres A / B / C)...")
+        _, pdf = fig_centers_abc(phases, reward_pos, stats["neuron_ids"],
+                                 panels_dir / "panel_b",
+                                 size_in=LAYOUT.slot_size_in("b"),
+                                 center=args.center)
         panel_pdfs["b"] = pdf
 
     if "c" in args.panels:
         print("Panel c (Δd violins A→B and C:pre→post frozen replay)...")
-        _, pdf = fig_delta_violins(stats, panels_dir / "panel_c")
+        _, pdf = fig_network_shifts(args.cohort, panels_dir / "panel_c",
+                                    size_in=LAYOUT.slot_size_in("c"))
         panel_pdfs["c"] = pdf
 
     if "d" in args.panels:
-        print("Panel d (distance histograms A–B and C:pre→post frozen replay)...")
-        _, pdf = fig_distance_histograms(stats, panels_dir / "panel_d")
+        print("Panel d (matched plasticity control)...")
+        _, pdf = fig_plasticity_control(
+            panels_dir / "panel_d", size_in=LAYOUT.slot_size_in("d"))
         panel_pdfs["d"] = pdf
 
     if not args.no_assemble and panel_pdfs:
         print("Assembling vector composite PDF...")
-        assemble_figure(panel_pdfs, figures_dir / "figure3_raw")
+        assemble_figure(panel_pdfs, figure_stem)
 
     print("\nDone.")
     print(f"  Figures: {figures_dir}")
@@ -283,9 +252,18 @@ def parse_args():
     p.add_argument("--neuron_ids", type=int, nargs="*", default=None)
     p.add_argument("--panels", default="a,b,c,d")
     p.add_argument("--skaggs_threshold", type=float, default=0.05)
-    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--center", choices=("com", "peak"), default="com",
+                   help="field centre for shift, distance and scatter panels "
+                        "(com = centre of mass, the manuscript default; "
+                        "peak writes figure3_peak_raw)")
+    p.add_argument("--cohort", choices=("nh", "hd"), default="hd",
+                   help="across-network panel c: without (nh) or with (hd) proximity teaching")
     p.add_argument("--no_show", action="store_true")
     p.add_argument("--no_assemble", action="store_true")
+    add_plot_only(p)
+    p.add_argument("--assemble_only", action="store_true",
+                   help="recompose from the existing panel PDFs, skipping the "
+                        "data load -- layout iteration in seconds, not minutes")
     args = p.parse_args()
     args.panels = {x.strip().lower() for x in args.panels.split(",") if x.strip()}
     return args

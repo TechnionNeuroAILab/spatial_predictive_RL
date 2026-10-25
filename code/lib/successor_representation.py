@@ -211,14 +211,23 @@ def normalize_transition_rows(T: np.ndarray, m: int, wall_buffer: int) -> np.nda
     return out
 
 
-def transition_from_behavior_positions(pos: np.ndarray, m: int, wall_buffer: int) -> tuple[np.ndarray, float]:
-    """Empirical transition matrix counted from a trajectory, plus the fraction of states it visited."""
+def transition_from_behavior_positions(pos: np.ndarray, m: int, wall_buffer: int,
+                                       max_step: float | None = None) -> tuple[np.ndarray, float]:
+    """Empirical transition matrix counted from a trajectory, plus the fraction of states it visited.
+
+    With `max_step`, consecutive positions further apart than that are not
+    counted: in goal-directed probes they are teleports to a new start after
+    goal arrival, not movements the policy made.
+    """
     n = n_interior_states(m, wall_buffer)
     T_counts = np.zeros((n, n), dtype=float)
 
     idx = pos_to_interior_idx(pos[:, 0], pos[:, 1], m, wall_buffer)
+    ok = np.ones(max(len(idx) - 1, 0), dtype=bool)
+    if max_step is not None and len(idx) >= 2:
+        ok = np.linalg.norm(np.diff(pos, axis=0), axis=1) <= max_step
     if idx.size >= 2:
-        for t in range(idx.size - 1):
+        for t in np.where(ok)[0]:
             T_counts[idx[t], idx[t + 1]] += 1.0
 
     visited_fraction = float(np.mean(T_counts.sum(axis=1) > 0))
@@ -315,8 +324,8 @@ def load_behavior_positions(path: Path) -> np.ndarray | None:
     if not path.exists():
         return None
 
-    if path.suffix.lower() == ".pkl":
-        df = pd.read_pickle(path)
+    if path.suffix.lower() == ".parquet":
+        df = pd.read_parquet(path)
     elif path.suffix.lower() == ".csv":
         df = pd.read_csv(path)
     elif path.suffix.lower() == ".npz":
@@ -367,7 +376,7 @@ def build_T_policy(
             return T, f"behavior_file:{p}", info
 
     if policy_source in {"auto", "empirical"}:
-        for name in ["df_behavior_policy.pkl", "policy_behavior.pkl", "policy_rollout_behavior.pkl"]:
+        for name in ["df_behavior_policy.parquet", "policy_behavior.parquet", "policy_rollout_behavior.parquet"]:
             p = data_dir / name
             pos = load_behavior_positions(p)
             if pos is not None and pos.shape[0] >= 2:
@@ -376,7 +385,7 @@ def build_T_policy(
                 return T, f"behavior_file:{p}", info
 
     if policy_source == "behavior_after":
-        p = data_dir / "df_behavior_after.pkl"
+        p = data_dir / "df_behavior_after.parquet"
         pos = load_behavior_positions(p)
         if pos is not None and pos.shape[0] >= 2:
             T, vf = transition_from_behavior_positions(pos, m, wall_buffer)
@@ -535,14 +544,14 @@ def load_goal_position(data_dir: Path, goal_file: str, reward_x: float, reward_y
 def load_centers(data_dir: Path, which: str) -> tuple[pd.DataFrame, str]:
     """Field centres for 'before' or 'after' from whichever centre file exists, with the path used."""
     if which == "before":
-        cands = [data_dir / "df_centers_before.pkl", data_dir / "place_field_centres_phase1.npy"]
+        cands = [data_dir / "df_centers_before.parquet", data_dir / "place_field_centres_phase1.npy"]
     else:
-        cands = [data_dir / "df_centers_after.pkl", data_dir / "place_field_centres_phase2.npy"]
+        cands = [data_dir / "df_centers_after.parquet", data_dir / "place_field_centres_phase2.npy"]
 
     for p in cands:
         if not p.exists():
             continue
-        if p.suffix.lower() == ".pkl":
+        if p.suffix.lower() == ".parquet":
             df = load_pickle(p)
             if {"neuron_id", "x", "y"}.issubset(df.columns):
                 out = df[["neuron_id", "x", "y"]].copy()

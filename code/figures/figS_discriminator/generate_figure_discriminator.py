@@ -19,7 +19,7 @@ criterion failed and is reported as such):
      because the recurrent state is path-dependent, matching instantaneous
      (position, heading) marginals cannot equate state distributions. Only
      trajectory-level control identifies the weight-driven component.
-  d  Sample-size dependence of the matched estimator (practical guidance).
+  d  The pre-specified ordering test, matched estimate vs fixed-trajectory replay.
 
 Usage:
     python code/figures/figS_discriminator/generate_figure_discriminator.py --no_show
@@ -35,6 +35,7 @@ from pathlib import Path
 from shutil import copy2
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 from pypdf import PdfReader, PdfWriter, Transformation
 from scipy.stats import wilcoxon
@@ -44,11 +45,32 @@ REPO = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 
 from utils import (  # noqa: E402
-    COLOR_HEAD, COLOR_NOHEAD, MM_TO_PT, PAGE_W,
-    apply_nature_style, ensure_dir, save_figure,
+    C, COLOR_HEAD, COLOR_NOHEAD, FS_SMALL, FS_TICK, MM_TO_PT, PAGE_W,
+    plain_log_ticks, stat_annot, title, apply_nature_style, ensure_dir, save_figure,
+    fmt_p,
 )
 
+import figlayout  # noqa: E402
+from figure_cache import add_plot_only  # noqa: E402
+
+from pubstyle import sem  # noqa: E402
 apply_nature_style()
+
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+# The agreement scatter and the ordering test used to share one grid cell as a
+# 1x2 pair; they are panels of their own now, so their labels sit on the type
+# scale rather than being shrunk twice.
+#
+#   a  estimator ladder        b  same-weights specificity control
+#   c  per-network agreement   d  paired ordering test
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 3), ("b", 0, 3, 3),
+     ("c", 1, 0, 3), ("d", 1, 3, 3)],
+    ncols=6, row_h_in=[2.40, 2.20], caption_lines=6,
+    name="figS_discriminator",
+)
 CACHE = REPO / "results" / "aggregate" / "occupancy_matched_estimator.json"
 FIGURES_DIR = HERE / "figures_supp"
 POST = "cycle_1_goal"          # weight-aligned variant (post weights == GT post)
@@ -56,15 +78,26 @@ POST = "cycle_1_goal"          # weight-aligned variant (post weights == GT post
 
 def _fmt_p(p):
     """Format a p-value for a panel annotation; scientific notation below 0.001."""
-    return f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
+    """Panel p-value, in the same format as every other figure in the paper.
+
+    Routed to the shared formatter so no panel invents its own notation, and
+    none of them use a mathtext superscript (which prints at 0.7x and falls
+    under the 5 pt floor).
+    """
+    return fmt_p(p, italic=False)
 
 
 def load():
-    """Read the cached estimator-validation JSON; return it with the no-head and head row lists."""
+    """Read the estimator JSON and keep the paired-family passers used in the text."""
+    sys.path.insert(0, str(REPO / "code" / "lib"))
+    from analysis_helpers import campaign_passers
     with open(CACHE) as f:
         d = json.load(f)
+    keep = campaign_passers("paired")
     rows = d["per_seed"][POST]
-    return d, rows["nohead"], rows["head"]
+    nh = [r for r in rows["nohead"] if int(r["seed"]) in keep]
+    hd = [r for r in rows["head"] if int(r["seed"]) in keep]
+    return d, nh, hd
 
 
 def _arr(rows, key):
@@ -72,11 +105,11 @@ def _arr(rows, key):
     return np.array([r.get(key) for r in rows], dtype=float)
 
 
-def fig_ladder(nh, hd, stem):
+def fig_ladder(nh, hd, stem, size_in=None):
     """Panel a -- the estimator ladder: naive vs position- vs joint-matched vs reweighted Delta-d, per condition."""
-    fig, ax = plt.subplots(figsize=(3.4, 2.6))
+    fig, ax = plt.subplots(figsize=size_in or (3.4, 2.6))
     rng = np.random.default_rng(0)
-    labels = ["naive", "position\nmatched", "pos x heading\nmatched", "frozen replay\n(ground truth)"]
+    labels = ["Naive", "Position\nmatched", "Position \u00d7\nheading", "Fixed-traj.\nreplay"]
     keys = ["est_naive", "est_pos", "est_joint", "gt_mean_dd"]
     for k, (rows, c, off) in enumerate([(nh, COLOR_NOHEAD, -0.17), (hd, COLOR_HEAD, +0.17)]):
         for i, key in enumerate(keys):
@@ -84,20 +117,25 @@ def fig_ladder(nh, hd, stem):
             v = v[np.isfinite(v)]
             ax.scatter(np.full(len(v), i + off) + rng.uniform(-0.06, 0.06, len(v)),
                        v, s=5, color=c, alpha=0.35, linewidths=0, zorder=3)
-            ax.errorbar([i + off], [v.mean()], yerr=[v.std(ddof=1)], fmt="D",
+            ax.errorbar([i + off], [v.mean()], yerr=[sem(v)], fmt="D",
                         color="black", markersize=3.5, capsize=2, lw=0.9, zorder=5)
     ax.axhline(0, color="0.4", lw=0.7, ls="--")
     ax.set_xticks(range(4))
-    ax.set_xticklabels(labels, fontsize=5)
+    ax.set_xticklabels(labels, fontsize=FS_SMALL)
     ax.set_ylabel("Δ distance to reward\n(negative = toward reward)")
-    ax.set_title("Matching removes the sampling bias\n(blue no-head, brown head-ON)", fontsize=6)
+    title(ax, "Estimator ladder")
+    ax.legend(handles=[Line2D([0], [0], marker="o", ls="none", color=COLOR_NOHEAD,
+                              markersize=3, label="Without teaching"),
+                       Line2D([0], [0], marker="o", ls="none", color=COLOR_HEAD,
+                              markersize=3, label="With teaching")],
+              fontsize=FS_SMALL, frameon=False, loc="lower right")
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
-def fig_specificity(nh, hd, stem):
+def fig_specificity(nh, hd, stem, size_in=None):
     """Panel b -- specificity on a same-weights contrast, where the true shift is exactly zero."""
-    fig, ax = plt.subplots(figsize=(2.6, 2.6))
+    fig, ax = plt.subplots(figsize=size_in or (2.6, 2.6))
     rng = np.random.default_rng(1)
     rows_all = nh + hd
     for i, key in enumerate(["null_naive", "null_joint"]):
@@ -105,40 +143,57 @@ def fig_specificity(nh, hd, stem):
         v = v[np.isfinite(v)]
         ax.scatter(np.full(len(v), i) + rng.uniform(-0.1, 0.1, len(v)), v,
                    s=6, color="0.5", alpha=0.5, linewidths=0, zorder=3)
-        ax.errorbar([i], [v.mean()], yerr=[v.std(ddof=1)], fmt="D", color="black",
+        ax.errorbar([i], [v.mean()], yerr=[sem(v)], fmt="D", color="black",
                     markersize=4, capsize=3, lw=1.0, zorder=5)
-    ax.axhline(0, color="crimson", lw=0.9, ls="--", label="true shift = 0")
+    ax.axhline(0, color=C["policy"], lw=0.9, ls="--", label="True shift = 0")
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["naive", "pos x heading\nmatched"], fontsize=5.5)
+    ax.set_xticklabels(["Naive", "Position \u00d7 heading\nmatched"], fontsize=FS_SMALL)
     ax.set_ylabel("Δ distance to reward")
-    ax.set_title("Same-weights contrast:\nfalse shift eliminated", fontsize=6)
-    ax.legend(fontsize=5, frameon=False)
+    title(ax, "Same-weights control")
+    ax.legend(fontsize=FS_SMALL, frameon=False)
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
-def fig_limit(nh, hd, stem):
-    """Scatter vs GT + the ordering result: the honest-failure panel."""
-    fig, axes = plt.subplots(1, 2, figsize=(4.6, 2.4))
-    ax = axes[0]
-    for rows, c, lab in [(nh, COLOR_NOHEAD, "no-head"), (hd, COLOR_HEAD, "head-ON")]:
+def fig_agreement(nh, hd, stem, size_in=None):
+    """Panel c -- matched estimator against ground truth, network by network.
+
+    The honest-failure panel: matching fixes the population mean but not the
+    per-network estimate, because the two periods still traverse different
+    paths through the state space.
+    """
+    fig, ax = plt.subplots(figsize=size_in or (2.3, 2.2))
+    for rows, c, lab in [(nh, COLOR_NOHEAD, "Without teaching"), (hd, COLOR_HEAD, "With teaching")]:
         g, e = _arr(rows, "gt_mean_dd"), _arr(rows, "est_joint")
         ok = np.isfinite(g) & np.isfinite(e)
         ax.scatter(g[ok], e[ok], s=8, color=c, alpha=0.65, linewidths=0, label=lab)
     g_all = np.concatenate([_arr(nh, "gt_mean_dd"), _arr(hd, "gt_mean_dd")])
     e_all = np.concatenate([_arr(nh, "est_joint"), _arr(hd, "est_joint")])
     ok = np.isfinite(g_all) & np.isfinite(e_all)
-    r = np.corrcoef(g_all[ok], e_all[ok])[0, 1]
     lim = [min(g_all[ok].min(), e_all[ok].min()) - 0.02,
            max(g_all[ok].max(), e_all[ok].max()) + 0.02]
     ax.plot(lim, lim, color="0.6", lw=0.7, ls="--")
-    ax.set_xlabel("ground truth (frozen replay)")
-    ax.set_ylabel("matched estimator")
-    ax.set_title(f"Per-network agreement is weak\nr = {r:.2f}: the path-dependence limit", fontsize=6)
-    ax.legend(fontsize=5, frameon=False)
+    ax.set_xlabel("Fixed-trajectory replay")
+    ax.set_ylabel("Matched estimate")
+    title(ax, "Per-network agreement")
+    bits = []
+    for rows, lab in ((nh, "without"), (hd, "with")):
+        g, e = _arr(rows, "gt_mean_dd"), _arr(rows, "est_joint")
+        m = np.isfinite(g) & np.isfinite(e)
+        bits.append(f"{lab} r={np.corrcoef(e[m], g[m])[0, 1]:.2f}")
+    stat_annot(ax, "\n".join(bits), loc="lower right")
+    ax.legend(fontsize=FS_SMALL, frameon=False, loc="upper left")
+    fig.tight_layout(pad=0.4)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
-    ax = axes[1]
-    # ordering: paired seeds
+
+def fig_ordering(nh, hd, stem, size_in=None):
+    """Panel d -- the pre-specified ordering test, paired by seed.
+
+    Only the fixed-trajectory control recovers the head vs no-head ordering;
+    the matched estimator reverses it.
+    """
+    fig, ax = plt.subplots(figsize=size_in or (2.3, 2.2))
     nhd = {r_["seed"]: r_ for r_ in nh}
     hdd = {r_["seed"]: r_ for r_ in hd}
     common = sorted(set(nhd) & set(hdd))
@@ -149,46 +204,21 @@ def fig_limit(nh, hd, stem):
         ok = np.isfinite(a) & np.isfinite(b)
         # pairing variable: seed (same pre-learning network in both conditions)
         p = wilcoxon(a[ok], b[ok]).pvalue
-        ax.errorbar([i - 0.12], [a[ok].mean()], yerr=[a[ok].std(ddof=1)], fmt="o",
+        ax.errorbar([i - 0.12], [a[ok].mean()], yerr=[sem(a[ok])], fmt="o",
                     color=COLOR_NOHEAD, markersize=4, capsize=2, lw=0.9)
-        ax.errorbar([i + 0.12], [b[ok].mean()], yerr=[b[ok].std(ddof=1)], fmt="o",
+        ax.errorbar([i + 0.12], [b[ok].mean()], yerr=[sem(b[ok])], fmt="o",
                     color=COLOR_HEAD, markersize=4, capsize=2, lw=0.9)
-        correct = b[ok].mean() < a[ok].mean()
-        ax.annotate(f"{_fmt_p(p)}\n{'correct' if correct else 'WRONG'} order",
+        ax.annotate(f"paired {_fmt_p(p)}",
                     (i, max(a[ok].mean(), b[ok].mean()) + 0.012),
-                    ha="center", fontsize=5, color="green" if correct else "crimson")
+                    ha="center", fontsize=FS_SMALL,
+                    color="#333333")
     ax.axhline(0, color="0.4", lw=0.6, ls="--")
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["matched\nestimator", "frozen replay\n(truth)"], fontsize=5.5)
+    ax.set_xticklabels(["Matched\nestimate", "Fixed-trajectory\nreplay"], fontsize=FS_TICK)
     ax.set_ylabel("Δ distance to reward")
-    ax.set_title("Only trajectory control recovers\nthe head vs no-head ordering", fontsize=6)
-    fig.tight_layout(pad=0.4, w_pad=1.0)
-    return save_figure(fig, stem)
-
-
-def fig_samplesize(nh, hd, stem):
-    """Panel d -- matched-estimator Delta-d against the number of matched timesteps."""
-    fig, ax = plt.subplots(figsize=(2.8, 2.4))
-    for rows, c, lab in [(nh, COLOR_NOHEAD, "no-head"), (hd, COLOR_HEAD, "head-ON")]:
-        fracs, means, sds, ns = [], [], [], []
-        for fr in ("0.125", "0.25", "0.5", "1.0"):
-            vals = [r["size_curve"][fr]["mean_dd"] for r in rows
-                    if r.get("size_curve", {}).get(fr)]
-            nm = [r["size_curve"][fr]["n_matched"] for r in rows
-                  if r.get("size_curve", {}).get(fr)]
-            if vals:
-                fracs.append(float(fr)); means.append(np.mean(vals))
-                sds.append(np.std(vals, ddof=1)); ns.append(int(np.median(nm)))
-        ax.errorbar(ns, means, yerr=sds, marker="o", markersize=3, lw=1.0,
-                    capsize=2, color=c, label=lab)
-    ax.axhline(0, color="0.4", lw=0.6, ls="--")
-    ax.set_xscale("log")
-    ax.set_xlabel("matched timesteps (per period)")
-    ax.set_ylabel("matched-estimator Δd")
-    ax.set_title("Estimate vs matched sample size", fontsize=6)
-    ax.legend(fontsize=5, frameon=False)
+    title(ax, "Teaching-condition ordering")
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 def _pdf_to_png(pdf, png, dpi=300):
@@ -200,52 +230,38 @@ def _pdf_to_png(pdf, png, dpi=300):
 
 
 def assemble(pdfs, out_stem, dpi=300):
-    """Lay the panel PDFs out 2x2 on one page and write the composite as PDF and PNG."""
-    out_stem = Path(out_stem).with_suffix("")
-    M_, G = 10 * MM_TO_PT, 5 * MM_TO_PT
-    rows = [[k for k in ("a", "b") if k in pdfs], [k for k in ("c", "d") if k in pdfs]]
-    rows = [r for r in rows if r]
-    sizes = {k: (lambda b: (float(b.width), float(b.height)))(PdfReader(str(pdfs[k])).pages[0].mediabox)
-             for r in rows for k in r}
-    heights = []
-    for r in rows:
-        cw = (PAGE_W - 2 * M_ - (len(r) - 1) * G) / len(r)
-        heights.append(max(sizes[k][1] * cw / sizes[k][0] for k in r))
-    page_h = 2 * M_ + sum(heights) + (len(rows) - 1) * G
-    writer = PdfWriter()
-    page = writer.add_blank_page(width=PAGE_W, height=page_h)
-    y = M_
-    for r, rh in zip(reversed(rows), reversed(heights)):
-        cw = (PAGE_W - 2 * M_ - (len(r) - 1) * G) / len(r)
-        for i, k in enumerate(r):
-            iw, ih = sizes[k]
-            sc = min(cw / iw, rh / ih)
-            left = M_ + i * (cw + G) + (cw - iw * sc) / 2
-            page.merge_transformed_page(PdfReader(str(pdfs[k])).pages[0],
-                                        Transformation().scale(sc).translate(left, y + (rh - ih * sc) / 2),
-                                        over=True)
-        y += rh + G
-    pdf_path = out_stem.with_suffix(".pdf")
-    with open(pdf_path, "wb") as f:
-        writer.write(f)
-    _pdf_to_png(pdf_path, out_stem.with_suffix(".png"), dpi)
-    print(f"  Saved: {pdf_path}\n  Saved: {out_stem.with_suffix('.png')}")
+    """Compose onto `LAYOUT`, with the panel letters the caption promises."""
+    return figlayout.compose(LAYOUT, pdfs, out_stem, dpi=dpi)
 
 
 def main():
     """Build every panel from the cached JSON and assemble the figure."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--no_show", action="store_true")
+    ap.add_argument("--assemble_only", action="store_true")
+    add_plot_only(ap)
     args = ap.parse_args()
     panels = ensure_dir(FIGURES_DIR / "panels")
+    if args.assemble_only:
+        print("Assembly-only mode: reusing existing panel PDFs...")
+        assemble(figlayout.existing_panels(panels, LAYOUT.keys()),
+                 FIGURES_DIR / "figure_discriminator_supp_raw")
+        print("Done.")
+        return
     _, nh, hd = load()
+    if args.plot_only:
+        print("Plot-only: drawing from the existing JSON cache.")
     print(f"loaded {len(nh)} no-head + {len(hd)} head rows (post={POST})")
 
     pdfs = {}
-    print("Panel a (ladder)…");      _, pdfs["a"] = fig_ladder(nh, hd, panels / "panel_a")
-    print("Panel b (specificity)…"); _, pdfs["b"] = fig_specificity(nh, hd, panels / "panel_b")
-    print("Panel c (limit)…");       _, pdfs["c"] = fig_limit(nh, hd, panels / "panel_c")
-    print("Panel d (sample size)…"); _, pdfs["d"] = fig_samplesize(nh, hd, panels / "panel_d")
+    print("Panel a (estimator ladder)…")
+    _, pdfs["a"] = fig_ladder(nh, hd, panels / "panel_a", LAYOUT.slot_size_in("a"))
+    print("Panel b (specificity control)…")
+    _, pdfs["b"] = fig_specificity(nh, hd, panels / "panel_b", LAYOUT.slot_size_in("b"))
+    print("Panel c (per-network agreement)…")
+    _, pdfs["c"] = fig_agreement(nh, hd, panels / "panel_c", LAYOUT.slot_size_in("c"))
+    print("Panel d (ordering test)…")
+    _, pdfs["d"] = fig_ordering(nh, hd, panels / "panel_d", LAYOUT.slot_size_in("d"))
     print("Assembling…"); assemble(pdfs, FIGURES_DIR / "figure_discriminator_supp_raw")
     print("Done.")
 

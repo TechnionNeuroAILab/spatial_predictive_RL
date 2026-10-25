@@ -26,7 +26,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "code" / "lib"))
 
-from analysis_helpers import seed_is_clean  # noqa: E402
+from analysis_helpers import campaign_passers  # noqa: E402
 
 CONDS = [("nohead", REPO / "results" / "multi_seed", "nohead_"),
          ("head", REPO / "results" / "multi_seed_head", "head_")]
@@ -51,12 +51,22 @@ def main():
 
     jobs = []
     for cond, cdir, prefix in CONDS:
-        seeds = args.seeds if args.seeds is not None else range(50)
+        if args.seeds is not None:
+            seeds = list(args.seeds)
+        else:
+            # Every finished seed directory, not only 0–49. The cohort is
+            # collected until 50 gate-passing networks, so later indices
+            # are part of the result.
+            seeds = []
+            stem = prefix + "seed"
+            for p in sorted(cdir.glob(f"{stem}*")):
+                if p.is_dir() and p.name[len(stem):].isdigit():
+                    seeds.append(int(p.name[len(stem):]))
         for s in seeds:
             rd = cdir / f"{prefix}seed{s}"
             if not (rd / "data").exists():
                 continue
-            if not seed_is_clean(str(rd / "data"), GATE_PERIODS, 5.5):
+            if s not in campaign_passers("paired"):     # the pre-specified cohort
                 continue
             for pp in POST_PERIODS:
                 jobs.append((cond, str(rd), s, pp))

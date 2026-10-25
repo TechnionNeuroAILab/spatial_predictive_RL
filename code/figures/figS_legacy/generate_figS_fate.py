@@ -60,7 +60,7 @@ def main() -> int:
     if not (run_dir / "data").is_dir():
         print(f"ERROR: no data/ under {run_dir}\n"
               f"       figS_fate needs a v11 run with replay periods "
-              f"(df_activations_replay_c{args.replay_cycle}_*.pkl).")
+              f"(df_activations_replay_c{args.replay_cycle}_*.parquet).")
         return 1
 
     cmd = [sys.executable, str(LEGACY),

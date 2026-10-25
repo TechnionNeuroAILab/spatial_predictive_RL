@@ -36,14 +36,14 @@ from pc_common import append_stat, resolve_reward_pos, write_stats_report
 
 def load_maps(data_dir, period, m, hidden_dim):
     """Rate maps, occupancy and Skaggs scores for one replay period."""
-    beh_path = os.path.join(data_dir, f"df_behavior_{period}.pkl")
-    act_path = os.path.join(data_dir, f"df_activations_{period}.pkl")
+    beh_path = os.path.join(data_dir, f"df_behavior_{period}.parquet")
+    act_path = os.path.join(data_dir, f"df_activations_{period}.parquet")
     if not (os.path.exists(beh_path) and os.path.exists(act_path)):
         raise FileNotFoundError(
             f"Missing replay probe '{period}'.\n  expected: {beh_path}\n {act_path}\n"
             f"Did the v11 run finish the replay cycle? (--replay_cycle)")
-    beh = pd.read_pickle(beh_path)
-    act = pd.read_pickle(act_path)
+    beh = pd.read_parquet(beh_path)
+    act = pd.read_parquet(act_path)
     rm, occ = build_rate_maps(beh, act, m, hidden_dim)
     sk = compute_skaggs(rm, occ)
     return rm, occ, sk
@@ -79,7 +79,7 @@ def fig_replay_grid(rm_pre, rm_post, rank_score, reward_bin, n_cells=20,save_pat
         row_post = row_pre + nrows_per
         col = i % ncols
         for ax, rm in [(axes[row_pre, col], rm_pre), (axes[row_post, col], rm_post)]:
-            ax.imshow(smooth_and_norm(rm[nid]), origin="lower", cmap="jet", vmin=0, vmax=1)
+            ax.imshow(smooth_and_norm(rm[nid]), origin="lower", cmap="YlGnBu", vmin=0, vmax=1)
             ax.plot(rx, ry, "w*", markersize=5)
             ax.set_xticks([]); ax.set_yticks([])
             ax.set_facecolor("black")
@@ -106,7 +106,7 @@ def _draw_map_grid(rm, ids, reward_bin, title, save_path, no_show):
     fig.suptitle(title, fontsize=14, y=0.995)
     for i, nid in enumerate(ids):
         ax = fig.add_subplot(nrows, ncols, i + 1)
-        ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower", cmap="jet",
+        ax.imshow(smooth_and_norm(rm[int(nid)]), origin="lower", cmap="YlGnBu",
                   interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=5)
         ax.set_xticks([]); ax.set_yticks([])
@@ -160,7 +160,7 @@ def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_
     for col, nid in enumerate(ids):
         # pre
         ax = axes[0, col]
-        ax.imshow(smooth_and_norm(rm_pre[nid]), origin="lower", cmap="jet",interpolation="gaussian", vmin=0, vmax=1)
+        ax.imshow(smooth_and_norm(rm_pre[nid]), origin="lower", cmap="YlGnBu",interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=6)
         ax.set_xticks([]); ax.set_yticks([]); ax.set_aspect("equal")
         top_title = f"#{nid}"
@@ -169,7 +169,7 @@ def fig_replay_examples(rm_pre, rm_post, c_pre, c_post, ids, reward_pos, reward_
         ax.set_title(top_title, fontsize=7)
         # post (optionally with a pre->post field-centre movement arrow)
         ax = axes[1, col]
-        ax.imshow(smooth_and_norm(rm_post[nid]), origin="lower", cmap="jet",
+        ax.imshow(smooth_and_norm(rm_post[nid]), origin="lower", cmap="YlGnBu",
                   interpolation="gaussian", vmin=0, vmax=1)
         ax.plot(rx, ry, "w*", markersize=6)
         if draw_arrow:
@@ -574,8 +574,8 @@ def confident_place_cell_analysis(run_dir, N, rm_pre, rm_post, sk_pre, sk_post, 
     (i.e. whether the recruitment/loss pattern is reward-position-dependent).
     """
     data_dir = os.path.join(run_dir, "data")
-    centers_pre_path = os.path.join(data_dir, f"df_centers_replay_c{N}_pred.pkl")
-    centers_post_path = os.path.join(data_dir, f"df_centers_replay_c{N}_postrl.pkl")
+    centers_pre_path = os.path.join(data_dir, f"df_centers_replay_c{N}_pred.parquet")
+    centers_post_path = os.path.join(data_dir, f"df_centers_replay_c{N}_postrl.parquet")
     print(f"\n=== Confident pre-RL place cells (GMM k<={k_max}, ICL top-{icl_quantile*100:.0f}% "
           f"within replay_c{N}_pred, Skaggs>={skaggs_threshold}) ===")
     if not (os.path.exists(centers_pre_path) and os.path.exists(centers_post_path)):
@@ -584,8 +584,8 @@ def confident_place_cell_analysis(run_dir, N, rm_pre, rm_post, sk_pre, sk_post, 
               f"--states replay_c{N}_pred,replay_c{N}_postrl")
         return None
 
-    df_pre = pd.read_pickle(centers_pre_path).drop_duplicates("neuron_id")
-    df_post = pd.read_pickle(centers_post_path).drop_duplicates("neuron_id")
+    df_pre = pd.read_parquet(centers_pre_path).drop_duplicates("neuron_id")
+    df_post = pd.read_parquet(centers_post_path).drop_duplicates("neuron_id")
 
     df_pre_k = df_pre[df_pre["k"] <= k_max].copy()
     icl = df_pre_k["icl_score"].replace([np.inf, -np.inf], np.nan)

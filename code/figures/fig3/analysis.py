@@ -54,4 +54,6 @@ fig_replay_remap_grid = _fig2.fig_replay_remap_grid
 fig_centers_abc = _fig2.fig_centers_abc
 fig_delta_violins = _fig2.fig_delta_violins
 fig_distance_histograms = _fig2.fig_distance_histograms
+fig_network_shifts = _fig2.fig_network_shifts
+fig_replay_histograms = _fig2.fig_replay_histograms
 FIG1_PANEL_D_NEURONS = _fig2.FIG1_PANEL_D_NEURONS

@@ -23,8 +23,8 @@ from pc_common import append_stat, resolve_reward_pos, save_all, write_stats_rep
 def load_data(data_dir, period="after"):
     """Loads and aligns neural and behavioral data."""
     try:
-        df_act = pd.read_pickle(os.path.join(data_dir, f"df_activations_{period}.pkl"))
-        df_beh = pd.read_pickle(os.path.join(data_dir, f"df_behavior_{period}.pkl"))
+        df_act = pd.read_parquet(os.path.join(data_dir, f"df_activations_{period}.parquet"))
+        df_beh = pd.read_parquet(os.path.join(data_dir, f"df_behavior_{period}.parquet"))
 
         # Merge on timestep
         df = pd.merge(df_act, df_beh, on="timestep")

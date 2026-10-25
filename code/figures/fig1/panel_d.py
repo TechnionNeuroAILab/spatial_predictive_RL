@@ -29,8 +29,8 @@ def x_tertile_labels(x: np.ndarray) -> np.ndarray:
 
 def load_phase_probe(data_dir: Path):
     """Load one probe period as (positions, heading, activations)."""
-    beh = pd.read_pickle(data_dir / "df_behavior_before.pkl")
-    act = pd.read_pickle(data_dir / "df_activations_before.pkl")
+    beh = pd.read_parquet(data_dir / "df_behavior_before.parquet")
+    act = pd.read_parquet(data_dir / "df_activations_before.parquet")
     n = len(beh)
     positions = beh[["x", "y"]].to_numpy(dtype=float)
     theta = beh["theta"].to_numpy(dtype=float)
@@ -47,7 +47,8 @@ def _subsample(n: int, max_points: int, seed: int = 42) -> np.ndarray:
 
 
 def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int = 8000,
-                   width_in: float | None = None):
+                   width_in: float | None = None,
+                   size_in: tuple[float, float] | None = None):
     """Three 3D PCA views: colour by x, y (same cmap), and theta (cyclic).
 
     Rendered at `width_in` (its final on-page width) so the type scale survives
@@ -72,7 +73,7 @@ def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int 
     theta_norm = (theta + np.pi) / (2.0 * np.pi)
 
     w = width_in if width_in else 7.8
-    fig = plt.figure(figsize=(w, w * 0.46))
+    fig = plt.figure(figsize=size_in or (w, w * 0.46))
     specs = [
         (x, XY_CMAP, (0.0, 1.0), "Arena x"),
         (y, XY_CMAP, (0.0, 1.0), "Arena y"),
@@ -92,9 +93,9 @@ def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int 
         ax.view_init(elev=18, azim=-55)
         ax.set_xticklabels([]); ax.set_yticklabels([]); ax.set_zticklabels([])
         ax.tick_params(length=0)
-        ax.set_xlabel("PC1", fontsize=4.6, labelpad=-11)
-        ax.set_ylabel("PC2", fontsize=4.6, labelpad=-11)
-        ax.set_zlabel("PC3", fontsize=4.6, labelpad=-11)
+        ax.set_xlabel("PC1", fontsize=FS_SMALL, labelpad=-10)
+        ax.set_ylabel("PC2", fontsize=FS_SMALL, labelpad=-10)
+        ax.set_zlabel("PC3", fontsize=FS_SMALL, labelpad=-10)
 
         # Clear the grey panes and heavy 3D gridlines: they add a lot of ink,
         # date the figure, and compete with the point cloud that carries the
@@ -112,12 +113,12 @@ def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int 
     # (normalised arena position), so one bar serves both; heading is cyclic and
     # needs its own. Previously three identical vertical 0-1 bars ate ~25% of
     # the width and their labels collided with the PC3 axis label.
-    cax1 = fig.add_axes([0.09, 0.07, 0.24, 0.026])
+    cax1 = fig.add_axes([0.10, 0.155, 0.26, 0.022])
     cb1 = fig.colorbar(mappables[0], cax=cax1, orientation="horizontal")
     cb1.set_ticks([0, 1]); cb1.set_ticklabels(["0", "1"])
     cb1.set_label("Arena x, y", fontsize=FS_SMALL, labelpad=1)
 
-    cax2 = fig.add_axes([0.63, 0.07, 0.24, 0.026])
+    cax2 = fig.add_axes([0.64, 0.155, 0.26, 0.022])
     cb2 = fig.colorbar(mappables[2], cax=cax2, orientation="horizontal")
     cb2.set_ticks([0, 0.5, 1]); cb2.set_ticklabels(["−π", "0", "π"])
     cb2.set_label("Heading", fontsize=FS_SMALL, labelpad=1)
@@ -125,22 +126,33 @@ def render_panel_d(data_dir: Path, stem, reward_pos=(0.5, 0.5), max_points: int 
         cb.outline.set_visible(False)
         cb.ax.tick_params(labelsize=FS_SMALL, size=1.0, width=0.4, pad=1.0)
 
-    # Variance explained, stated once instead of in nine axis labels. Top-right
-    # of the strip: centred at the bottom it ran straight through both colourbars.
-    fig.text(0.005, 0.995,
-             f"PC1 {evr[0]*100:.0f}% · PC2 {evr[1]*100:.0f}% · PC3 {evr[2]*100:.0f}%",
-             ha="left", va="top", fontsize=FS_SMALL, color="#6E6E6E")
+    # Variance explained, stated once instead of in nine axis labels. It gets
+    # its own line under the colourbars: top-left it ran through the "Arena x"
+    # subplot title (as it did in every shipped version of this figure), and
+    # bottom-right it ran through the Heading bar, which reaches x = 0.90.
+    fig.text(0.5, 0.012,
+             f"PC1 {evr[0]*100:.0f}% · PC2 {evr[1]*100:.0f}% · PC3 {evr[2]*100:.0f}% "
+             f"of hidden-state variance",
+             ha="center", va="bottom", fontsize=FS_SMALL, color="#6E6E6E")
 
-    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.18, wspace=0.0)
+    # Was left=0, right=1, top=1, wspace=0: the outer PC labels sat flush
+    # against the panel edge and the 3-D boxes touched each other. The bottom
+    # strip carries the two colourbars and the variance line.
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.26, wspace=0.04)
 
     stem = Path(stem)
     stem.parent.mkdir(parents=True, exist_ok=True)
     png_path = stem.with_suffix(".png")
     pdf_path = stem.with_suffix(".pdf")
-    fig.savefig(png_path, format="png", dpi=PNG_DPI, facecolor="white", bbox_inches="tight",
-                pad_inches=0.02)
-    fig.savefig(pdf_path, format="pdf", dpi=PDF_DPI, facecolor="white", bbox_inches="tight",
-                pad_inches=0.02)
+    if size_in is not None:
+        from matplotlib.transforms import Bbox
+        bbox, pad = Bbox.from_bounds(0, 0, *size_in), 0.0
+    else:
+        bbox, pad = "tight", 0.02
+    fig.savefig(png_path, format="png", dpi=PNG_DPI, facecolor="white",
+                bbox_inches=bbox, pad_inches=pad)
+    fig.savefig(pdf_path, format="pdf", dpi=PDF_DPI, facecolor="white",
+                bbox_inches=bbox, pad_inches=pad)
     plt.close(fig)
     print(f"  Saved: {png_path}")
     print(f"  Saved: {pdf_path}")

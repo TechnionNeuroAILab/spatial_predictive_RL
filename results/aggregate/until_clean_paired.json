@@ -1,0 +1,582 @@
+{
+  "family": "paired",
+  "target": 50,
+  "updated": "2026-10-14T07:23:19.141560+00:00",
+  "n_passed": 50,
+  "n_launched": 109,
+  "entries": [
+    {
+      "seed": 0,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 1,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 2,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 3,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 4,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 5,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 6,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 7,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 8,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 9,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 10,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 11,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 12,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 13,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 14,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 15,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 16,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 17,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 18,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 19,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 20,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 21,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 22,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 23,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 24,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 25,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 26,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 27,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 28,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 29,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 30,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 31,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 32,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 33,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 34,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 35,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 36,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 37,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 38,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 39,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 40,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 41,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 42,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 43,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 44,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 45,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 46,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 47,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 48,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 49,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 50,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 51,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 52,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 53,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 54,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 55,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 56,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 57,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 58,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 59,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 60,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 61,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 62,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 63,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 64,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 65,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 66,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 67,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 68,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 69,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 70,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 71,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 72,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 73,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 74,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 75,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 76,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 77,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 78,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 79,
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "seed": 80,
+      "pass": false,
+      "status": "pending"
+    },
+    {
+      "seed": 81,
+      "pass": false,
+      "status": "crash",
+      "t": 1791953272.0005128
+    },
+    {
+      "seed": 82,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791954104.0696359
+    },
+    {
+      "seed": 83,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791954108.9445982
+    },
+    {
+      "seed": 84,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791954111.8584003
+    },
+    {
+      "seed": 85,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791954452.1449528
+    },
+    {
+      "seed": 88,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791955267.2104921
+    },
+    {
+      "seed": 87,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791955272.8555043
+    },
+    {
+      "seed": 86,
+      "pass": true,
+      "status": "pass",
+      "t": 1791955281.2040634
+    },
+    {
+      "seed": 89,
+      "pass": true,
+      "status": "pass",
+      "t": 1791955606.8803537
+    },
+    {
+      "seed": 92,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791956613.115391
+    },
+    {
+      "seed": 91,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791956625.7043467
+    },
+    {
+      "seed": 90,
+      "pass": true,
+      "status": "pass",
+      "t": 1791956643.497559
+    },
+    {
+      "seed": 93,
+      "pass": true,
+      "status": "pass",
+      "t": 1791957032.106708
+    },
+    {
+      "seed": 94,
+      "pass": true,
+      "status": "pass",
+      "t": 1791958070.9913235
+    },
+    {
+      "seed": 96,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791958074.395299
+    },
+    {
+      "seed": 95,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791958117.7478023
+    },
+    {
+      "seed": 97,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791958556.6496532
+    },
+    {
+      "seed": 99,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791959453.4438558
+    },
+    {
+      "seed": 98,
+      "pass": true,
+      "status": "pass",
+      "t": 1791959463.0189238
+    },
+    {
+      "seed": 100,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791959497.1794565
+    },
+    {
+      "seed": 101,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791959955.4950936
+    },
+    {
+      "seed": 102,
+      "pass": true,
+      "status": "pass",
+      "t": 1791960889.1799848
+    },
+    {
+      "seed": 104,
+      "pass": true,
+      "status": "pass",
+      "t": 1791960926.841814
+    },
+    {
+      "seed": 103,
+      "pass": true,
+      "status": "pass",
+      "t": 1791960937.876402
+    },
+    {
+      "seed": 105,
+      "pass": true,
+      "status": "pass",
+      "t": 1791961437.0270543
+    },
+    {
+      "seed": 107,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791962326.5543916
+    },
+    {
+      "seed": 108,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791962350.6694312
+    },
+    {
+      "seed": 106,
+      "pass": false,
+      "status": "gate_fail",
+      "t": 1791962358.5379603
+    }
+  ]
+}

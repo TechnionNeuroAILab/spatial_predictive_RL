@@ -88,11 +88,11 @@ def seed_direction_metrics(data_dir: Path, skaggs_threshold: float = SKAGGS_THR)
     pass the Skaggs gate."""
     _, SR_random, state_xy = _get_shared_random()
 
-    beh_path = Path(data_dir) / "df_behavior_cycle_1_goal.pkl"
+    beh_path = Path(data_dir) / "df_behavior_cycle_1_goal.parquet"
     if not beh_path.exists():
         return None
     try:
-        pos = pd.read_pickle(beh_path)[["x", "y"]].to_numpy(dtype=float)
+        pos = pd.read_parquet(beh_path)[["x", "y"]].to_numpy(dtype=float)
     except Exception:
         return None
 

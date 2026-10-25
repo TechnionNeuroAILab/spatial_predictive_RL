@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-Extinction seeds: head-ON learning at A (cycle 1, episode-identical to the head
-condition), then a cycle with reward delivery and the head objective switched
-off (see code/model/ratinabox_extinction.py), with a frozen-replay triple.
+Extinction seeds: head-ON learning at A (cycle 1, matched seed and
+hyperparameters), then a cycle with reward delivery and the head objective
+switched off (see code/model/ratinabox_extinction.py), with a frozen-replay
+triple.  The simulator preserves the omission cohort's historical one-step PPO
+state-recomputation convention, so cycle 1 is not byte-identical to the main
+head condition; the manuscript Methods documents this exception.
 
 Matching is enforced structurally, but not with run_rigid_seeds.py's
 set-symmetric-difference trick — that breaks here because the changed values
@@ -64,7 +67,8 @@ assert _diff == {
     "--max_episodes": ("1000", "2000"),
     "--extinguish_at_cycle": (None, "1"),
 }, f"extinction args differ from head-ON by more than intended: {_diff}"
-# cycle 1 must be episode-identical to the head condition
+# Both conditions allocate 1000 episodes to their first cycle.  This checks
+# protocol length, not byte identity (see the module docstring).
 assert int(_ext["--max_episodes"]) // int(_ext["--n_cycles"]) == 1000
 
 EXT_BASE: list[str] = []

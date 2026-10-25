@@ -59,22 +59,17 @@ SEED = 0
 
 EXAMPLE_SESSION = ("m11", 5)   # figure panel (a)
 
-# Model reward-relative fraction (mean, SD over networks), read from the model cache so the
-# data-vs-model test always uses the current model run; the constants are only a fallback.
+# Model comparison band is read from the relocation reward-relative cache so a
+# new relocation cohort cannot leave a stale pasted constant in this file.
 _RR_CACHE = HERE.parents[2] / "results" / "multi_seed_reloc" / "aggregate" / "reward_relative_summary.json"
 
 
-def _model_rr_band(fallback=(0.064, 0.031)):
-    try:
-        rows = json.loads(_RR_CACHE.read_text())["per_seed"]
-        v = np.array([r["controlled"]["frac_reward_relative"] for r in rows], dtype=float)
-        return float(v.mean()), float(v.std(ddof=1))
-    except Exception as e:
-        print(f"[warn] model reward-relative cache unreadable ({e}); using the fallback {fallback}", file=sys.stderr)
-        return fallback
+def _model_rr_from_cache(path: Path = _RR_CACHE) -> tuple[float, float]:
+    """Controlled-readout mean and SD of frac_reward_relative from the model cache."""
+    with open(path) as f:
+        s = json.load(f)["summary"]["controlled"]["frac_reward_relative"]
+    return float(s["mean"]), float(s["sd"])
 
-
-MODEL_RR_FRAC, MODEL_RR_SD = _model_rr_band()
 
 NOTE_TEST_I = (
     "On a stereotyped 1D VR track, laps are nearly identical trajectories, so "
@@ -445,6 +440,14 @@ def analyze_session(path, sess_seed):
                n_anchored=int(is_anchored.sum()))
     for k in ("rr_frac", "rr_frac_50cm_only", "place_anchored_frac"):
         assert 0.0 <= row[k] <= 1.0
+    # per-cell field peaks before/after the switch and class labels, for the
+    # before-vs-after scatter (place-anchored cells lie on the identity line,
+    # reward-relative cells on the line offset by the zone shift)
+    row["cells"] = dict(pk_pre=np.round(pk_pre, 1).tolist(),
+                        pk_post=np.round(pk_post, 1).tolist(),
+                        is_rr=is_rr.astype(int).tolist(),
+                        is_anchored=is_anchored.astype(int).tolist(),
+                        zone_pre_start=float(rz_pre[0]), zone_post_start=float(rz_post[0]))
 
     # ---- test iii: lick latency vs map latency ------------------------------
     licks_bin, bad_lick_trials = corrected_binary_licks(lick, tdf, trial)
@@ -535,6 +538,7 @@ def summarize(rows):
     ok = [r for r in rows if "skipped" not in r]
     out = dict(n_sessions_analyzed=len(ok),
                n_sessions_skipped=len(rows) - len(ok))
+    model_rr_frac, model_rr_sd = _model_rr_from_cache()
 
     def stat(key):
         v = np.array([r[key] for r in ok if r.get(key) is not None],
@@ -574,13 +578,13 @@ def summarize(rows):
     out["wilcoxon_lick_vs_map_latency"] = paired_wilcoxon("lick_latency",
                                                           "map_latency")
     out["wilcoxon_rrfrac_vs_model"] = onesample_wilcoxon("rr_frac",
-                                                         MODEL_RR_FRAC)
+                                                         model_rr_frac)
     mr = out["delta_raw"]["mean"]
     mm = out["delta_matched"]["mean"]
     out["attenuation_pooled"] = (
         None if (mr is None or abs(mr) < 1e-3) else float(1.0 - mm / mr))
-    out["model_rr_frac"] = MODEL_RR_FRAC
-    out["model_rr_sd"] = MODEL_RR_SD
+    out["model_rr_frac"] = model_rr_frac
+    out["model_rr_sd"] = model_rr_sd
     out["note_test_i"] = NOTE_TEST_I
     out["note_attenuation"] = NOTE_ATTENUATION
     out["note_matching"] = NOTE_MATCHING
@@ -641,7 +645,8 @@ def main():
           f"{s['delta_matched']['mean']:+.4f} ± {s['delta_matched']['sd']:.4f}, "
           f"attenuation A = {s['attenuation']['mean']:.3f}")
     print(f"TEST ii: RR fraction = {s['rr_frac']['mean']:.3f} "
-          f"± {s['rr_frac']['sd']:.3f} (model {MODEL_RR_FRAC}±{MODEL_RR_SD}); "
+          f"± {s['rr_frac']['sd']:.3f} (model {s['model_rr_frac']:.3f}"
+          f"±{s['model_rr_sd']:.3f}); "
           f"50cm-only = {s['rr_frac_50cm_only']['mean']:.3f}; "
           f"anchored = {s['place_anchored_frac']['mean']:.3f}")
     print(f"TEST iii: lick latency = {s['lick_latency']['mean']:.1f} "

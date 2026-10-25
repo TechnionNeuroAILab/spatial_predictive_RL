@@ -1,0 +1,28 @@
+{
+  "activation": "SparseBiasReLU",
+  "checkpoint_every": 2000,
+  "controller_learning_rate": 0.0001,
+  "device": "cuda",
+  "fixed_goal": true,
+  "interleave_epochs": 20,
+  "interleave_lr": 0.0001,
+  "max_episodes": 1000,
+  "max_steps": 20,
+  "n_cycles": 1,
+  "n_trials": 1000,
+  "no_goal_vec": false,
+  "output_dir": "/home/stefano/projects/spatial_predictive_RL/results/multi_seed_rigid/rigid_seed69",
+  "phase1_epochs": 100,
+  "pred_loss_weight": 0.3,
+  "replay_cycle": 1,
+  "reward_pos": [
+    0.3,
+    0.3
+  ],
+  "reward_pred_head": false,
+  "reward_pred_sigma": 0.15,
+  "reward_pred_weight": 0.3,
+  "rnn_rl_learning_rate": 2e-06,
+  "seed": 69,
+  "timesteps": 100
+}

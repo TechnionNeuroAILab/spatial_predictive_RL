@@ -16,10 +16,10 @@
 
 ## Panels
 
-- **a** Frozen-replay remapping grid: 8 example cells, pre vs post-RL weights on same trajectory
+- **a** Frozen-replay remapping grid: 8 well-tuned fields illustrating reward-directed shifts, pre vs post-RL weights on the same trajectory
 - **b** COM scatter for Phases A (prediction), B (RL), C (frozen post-RL)
 - **c** Violin of Δd for A→B and A→C (both should now be significant)
-- **d** Distance-to-reward histograms for A–B and A–C
+- **d** Matched plasticity control: near-rigid, plastic and plastic-plus-teaching networks
 
 ## Supplementary Figure 3
 

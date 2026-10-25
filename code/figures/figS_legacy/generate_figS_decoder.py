@@ -54,7 +54,7 @@ def main() -> int:
 
     run_dir = Path(args.run_dir)
     for period in (args.period, args.period_b):
-        needed = run_dir / "data" / f"df_activations_{period}.pkl"
+        needed = run_dir / "data" / f"df_activations_{period}.parquet"
         if not needed.exists():
             print(f"ERROR: missing {needed}")
             return 1

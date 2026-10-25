@@ -73,11 +73,11 @@ FIG3_BASE: list[str] = [
 
 
 def _already_done_nohead(seed: int) -> bool:
-    return (NOHEAD_OUT / f"nohead_seed{seed}" / "data" / "df_activations_cycle_1.pkl").exists()
+    return (NOHEAD_OUT / f"nohead_seed{seed}" / "data" / "df_activations_cycle_1.parquet").exists()
 
 
 def _already_done_head(seed: int) -> bool:
-    return (HEAD_OUT / f"head_seed{seed}" / "data" / "df_activations_cycle_1.pkl").exists()
+    return (HEAD_OUT / f"head_seed{seed}" / "data" / "df_activations_cycle_1.parquet").exists()
 
 
 def _build_cmd(cond: str, seed: int):

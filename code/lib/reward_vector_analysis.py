@@ -22,7 +22,9 @@ M_GRID = 32
 WALL_BUFFER_CELLS = 1 # simulator's hard movement restriction
 EDGE_MARGIN_CELLS = 1 # additional soft margin against bearing/distance border effects
 
-# Relocation periods whose active reward is B; B is not in config.json, it is the CLI default (0.7, 0.7).
+# Relocation periods whose active reward is B.  New runs record B in
+# config.json; DEFAULT_REWARD_B preserves compatibility with the historical
+# cohort generated before that provenance field was added.
 RELOC_PHASE_B_PERIODS = {
     "after", "cycle_2", "cycle_2_goal", "goal_conditioned", "replay_reloc_postB",
 }
@@ -42,6 +44,7 @@ def resolve_period_reward_pos(run_dir, period: str, reward_b=DEFAULT_REWARD_B) -
     # extinction runs have n_cycles > 1 but the reward never moves
     if config.get("extinguish_at_cycle", -1) >= 0:
         return reward_a
+    reward_b = config.get("relocate_pos", reward_b)
     return np.asarray(reward_b, dtype=float) if period in RELOC_PHASE_B_PERIODS else reward_a
 
 

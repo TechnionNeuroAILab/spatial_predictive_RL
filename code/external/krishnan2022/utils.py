@@ -25,6 +25,7 @@ import os
 import re
 from functools import lru_cache
 
+import numpy as np
 import pandas as pd
 
 # Code lives here; the published Source Data file lives in data/.
@@ -395,6 +396,101 @@ def load_pf_fraction_by_region() -> pd.DataFrame:
     assert (df.groupby("condition").size() == 3).all(), "expected 3 animals/condition"
     for col in ("pct_middle", "pct_end", "pct_start"):
         assert df[col].between(0, 100).all(), f"{col} outside [0, 100]"
+    return df
+
+
+# --------------------------------------------------------------------------- #
+# Supplementary Figure 11: the Fig. 3 measures for all 12 animals              #
+# --------------------------------------------------------------------------- #
+def load_supp11_reliability() -> pd.DataFrame:
+    """Per-animal split-half reliability, all 12 animals (sheet 'Supplementary
+    Figure 11', panel B, sub-table 'Reliability'; same layout and measure as
+    Fig. 3B, which shows only the 3 animals with VTA-axon imaging).
+
+    Returns DataFrame(animal, rewarded, re_low, re_rewarded); re_rewarded is NaN
+    for the 6 animals without a re-rewarded session.
+    """
+    ws = _sheet("Supplementary Figure 11")
+    anchor = None
+    for r, c in _find_cells(ws, "Reliability", col=1):
+        if _norm(_cell(ws, r + 1, 1)) == "animal":
+            anchor = (r, c)
+            break
+    if anchor is None:
+        raise RuntimeError("Supplementary Figure 11: no 'Reliability' block")
+    hr = anchor[0] + 1
+    headers = [_norm(_cell(ws, hr, c)) for c in range(1, 5)]
+    assert headers == ["animal", "rewarded", "re low", "re-rewarded"], headers
+    rows = []
+    r = hr + 1
+    while isinstance(_cell(ws, r, 1), (int, float)):
+        rr = _cell(ws, r, 4)
+        rows.append(dict(animal=int(_f(_cell(ws, r, 1))), rewarded=_f(_cell(ws, r, 2)),
+                         re_low=_f(_cell(ws, r, 3)),
+                         re_rewarded=float(rr) if isinstance(rr, (int, float)) else np.nan))
+        r += 1
+    df = pd.DataFrame(rows)
+    assert len(df) == 12, f"expected 12 animals, got {len(df)}"
+    return df
+
+
+def load_supp11_end_fraction() -> pd.DataFrame:
+    """Per-animal % of place fields in the end-of-track (reward) region, rewarded
+    vs RE low, all 12 animals (sheet 'Supplementary Figure 11', panel D)."""
+    ws = _sheet("Supplementary Figure 11")
+    out = {}
+    for cond, label in (("rewarded", "Rewarded"), ("re_low", "RE low")):
+        hits = [(r, c) for r, c in _find_cells(ws, label) if _norm(_cell(ws, r + 1, c)) == "animal"]
+        assert hits, f"panel D block {label!r} not found"
+        r0, c0 = hits[0]
+        assert _norm(_cell(ws, r0 + 1, c0 + 2)) == "end of track"
+        vals, r = {}, r0 + 2
+        while isinstance(_cell(ws, r, c0), (int, float)):
+            vals[int(_f(_cell(ws, r, c0)))] = _f(_cell(ws, r, c0 + 2))
+            r += 1
+        out[cond] = vals
+    animals = sorted(set(out["rewarded"]) & set(out["re_low"]))
+    df = pd.DataFrame(dict(animal=animals,
+                           rewarded=[out["rewarded"][a] for a in animals],
+                           re_low=[out["re_low"][a] for a in animals]))
+    assert len(df) == 12, f"expected 12 animals, got {len(df)}"
+    return df
+
+
+def load_region_reliability() -> pd.DataFrame:
+    """Cell-level reliability by track region (sheet 'Figure3', Fig. 3C):
+    mean and 95% CI half-width per condition x region."""
+    ws = _sheet("Figure3")
+    anchor = [(r, c) for r, c in _find_cells(ws, "Figure 3C")]
+    assert anchor, "Figure3: no 'Figure 3C' anchor"
+    r_rel = [r for r, c in _find_cells(ws, "Reliability", col=1) if r > anchor[0][0]][0]
+    rows = []
+    for r in range(r_rel + 3, r_rel + 6):
+        cond = _norm(_cell(ws, r, 1)).replace(" ", "_").replace("rerewarded", "re_rewarded")
+        for k, region in enumerate(("start", "middle", "end")):
+            c = 2 + 3 * k
+            rows.append(dict(condition=cond, region=region, n_cells=int(_f(_cell(ws, r, c))),
+                             mean=_f(_cell(ws, r, c + 1)), ci95=_f(_cell(ws, r, c + 2))))
+    df = pd.DataFrame(rows)
+    assert set(df["condition"]) == {"rewarded", "re_low", "re_rewarded"}, set(df["condition"])
+    return df
+
+
+def load_lap_course() -> pd.DataFrame:
+    """Lap-resolved course across extinction laps 1-20 (sheet 'Figure1', Fig. 1E):
+    decoder R^2 (decoded vs true position) and normalized lick rate, mean and SEM."""
+    ws = _sheet("Figure1")
+    hits = [(r, c) for r, c in _find_cells(ws, "Lap")]
+    assert hits, "Figure1: no 'Lap' header"
+    r0, c0 = hits[0]
+    rows, r = [], r0 + 2
+    while isinstance(_cell(ws, r, c0), (int, float)):
+        rows.append(dict(lap=int(_f(_cell(ws, r, c0))),
+                         decoder_r2=_f(_cell(ws, r, c0 + 1)), decoder_r2_sem=_f(_cell(ws, r, c0 + 2)),
+                         lick=_f(_cell(ws, r, c0 + 3)), lick_sem=_f(_cell(ws, r, c0 + 4))))
+        r += 1
+    df = pd.DataFrame(rows)
+    assert len(df) == 20, f"expected 20 laps, got {len(df)}"
     return df
 
 

@@ -45,7 +45,11 @@ from utils import (  # noqa: E402
     FIGURES_DIR, PANELS_DIR, MM_TO_PT, PAGE_W,
     COLOR_NOHEAD, COLOR_HEAD, COLOR_A, COLOR_B,
     apply_nature_style, ensure_dir, save_figure,
+    FS_BASE, FS_SMALL, FS_TICK, title, stat_annot,
+    fmt_p,
 )
+import figlayout  # noqa: E402
+from figure_cache import add_plot_only, load_figure_data, require_keys, update_figure_data  # noqa: E402
 
 sys.path.insert(0, str(REPO / "code" / "lib"))
 # NOTE: the former panel f (SR comparison) has been removed. Its metric
@@ -63,6 +67,21 @@ apply_nature_style()
 _RELOC_PERIODS = ["replay_reloc_pred", "replay_reloc_postA", "replay_reloc_postB"]
 
 
+def _discover_prefix_seeds(cond_dir: Path, prefix: str) -> list[int]:
+    """Seed indices under `<prefix>seed{N}/` with a data/ directory."""
+    cond_dir = Path(cond_dir)
+    if not cond_dir.exists():
+        return []
+    out = []
+    for p in sorted(cond_dir.glob(f"{prefix}seed*")):
+        if p.is_dir() and (p / "data").exists():
+            try:
+                out.append(int(p.name.replace(f"{prefix}seed", "")))
+            except ValueError:
+                pass
+    return out
+
+
 def _discover_reloc_clean_seeds(reloc_dir: Path) -> list[int]:
     """Scan RELOC_DIR for all complete reloc_seed{N} runs and return those
     passing the entropy-collapse gate (same diagnostic used everywhere else
@@ -78,7 +97,7 @@ def _discover_reloc_clean_seeds(reloc_dir: Path) -> list[int]:
         except ValueError:
             continue
         data_dir = p / "data"
-        if (data_dir / "df_activations_replay_reloc_postB.pkl").exists():
+        if (data_dir / "df_activations_replay_reloc_postB.parquet").exists():
             seeds.append(seed)
     return [s for s in seeds if seed_is_clean(reloc_dir / f"reloc_seed{s}" / "data", _RELOC_PERIODS)]
 
@@ -98,9 +117,30 @@ def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 300) -> None:
 # Panel a — schematic: two hypotheses + frozen-replay diagnostic
 # ---------------------------------------------------------------------------
 
-def fig_schematic(stem) -> Path:
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+# The predictions table was panel "e" with no "d" in the figure; it is d now,
+# so the caption letters and the artwork agree. Panels b and c used to be
+# upscaled 1.30x at assembly, which printed their 6.0 pt titles at 7.8 pt --
+# larger than the body text of the main figures.
+#
+#   a  H1/H2 schematic and the frozen-replay diagnostic
+#   b  per-network fixed-trajectory shift, with and without the objective
+#   c  task performance vs parameter-dependent shift
+#   d  experimental tests the distinction motivates
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 6),
+     ("b", 1, 0, 3), ("c", 1, 3, 3),
+     ("d", 2, 0, 6)],
+    ncols=6, row_h_in=[2.55, 2.35, 1.75], caption_lines=6,
+    name="figS_hypotheses",
+)
+
+
+def fig_schematic(stem, size_in=None) -> Path:
     """Panel a -- schematic contrasting occupancy-driven and weight-driven remapping."""
-    fig, ax = plt.subplots(figsize=(7.2, 3.0))
+    fig, ax = plt.subplots(figsize=size_in or (7.2, 3.0))
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 4.2)
     ax.axis("off")
@@ -152,22 +192,22 @@ def fig_schematic(stem) -> Path:
                                        orientation=np.pi / 4, fc="#fff6cc", ec="0.25", lw=0.9, zorder=3)
     ax.add_patch(diamond)
     ax.text(5.0, 0.35, "Frozen-replay\ndiagnostic\n(fixed trajectory,\npre vs post)",
-            ha="center", va="center", fontsize=5.6, zorder=4)
+            ha="center", va="center", fontsize=FS_TICK, zorder=4)
 
     ax.text(1.6, 0.5, "predicts:\nshift VANISHES", ha="center", va="center",
-            fontsize=6.0, color="#2255aa", style="italic")
+            fontsize=FS_TICK, color="#2255aa", style="italic")
     ax.text(8.4, 0.5, "predicts:\nshift PERSISTS", ha="center", va="center",
-            fontsize=6.0, color="#a0522d", style="italic")
+            fontsize=FS_TICK, color="#a0522d", style="italic")
 
     fig.tight_layout(pad=0.3)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
 # Panel b — double dissociation (head OFF vs head ON, frozen replay)
 # ---------------------------------------------------------------------------
 
-def fig_double_dissociation(rows: list[dict], stem) -> Path:
+def fig_double_dissociation(rows: list[dict], stem, size_in=None) -> Path:
     """Panel b -- frozen-replay weight-driven shift, head-ON against no-head, paired by seed."""
     stats = double_dissociation_stats(rows)
     # analysis.py returns positive = toward reward, but Figures 2-4 and the
@@ -179,7 +219,7 @@ def fig_double_dissociation(rows: list[dict], stem) -> Path:
     d_hd = -np.array([r["delta_head"] for r in rows])
     n = len(rows)
 
-    fig, ax = plt.subplots(figsize=(2.6, 2.6))
+    fig, ax = plt.subplots(figsize=size_in or (2.6, 2.6))
     rng = np.random.default_rng(0)
     jitter = rng.uniform(-0.06, 0.06, n)
 
@@ -195,80 +235,80 @@ def fig_double_dissociation(rows: list[dict], stem) -> Path:
 
     ax.axhline(0, color="0.4", lw=0.7, ls="--", zorder=1)
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["No head\n(Fig 2)", "Head ON\n(Fig 3)"])
+    ax.set_xticklabels(["No head", "Head ON"])
     ax.set_ylabel(r"Mean $\Delta d$ frozen replay (pre→post weights)" + "\n(negative = toward reward; SR predicts 0)")
     p = stats["wilcoxon_p_paired"]
-    p_str = f"p={p:.1e}" if p < 0.001 else f"p={p:.3f}"
+    p_str = fmt_p(p, italic=False)
     # also show individual vs-zero tests
     from scipy.stats import wilcoxon as _wc
     _, p_nh = _wc(d_nh)
     _, p_hd = _wc(d_hd)
-    p_nh_str = f"{p_nh:.3f}" if p_nh >= 0.001 else f"{p_nh:.1e}"
-    p_hd_str = f"{p_hd:.3f}" if p_hd >= 0.001 else f"{p_hd:.1e}"
+    p_nh_str = fmt_p(p_nh, italic=False).replace("P ", "")
+    p_hd_str = fmt_p(p_hd, italic=False).replace("P ", "")
     ax.set_title(
         f"Frozen-replay: weight-driven shift\n"
-        f"nh p={p_nh_str}  hd p={p_hd_str}  paired {p_str}",
-        fontsize=6.0, pad=3
+        f"no head {p_nh_str}   head ON {p_hd_str}   paired {p_str}",
+        fontsize=FS_TICK, pad=3
     )
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
 # Panel c — behavior / remapping decoupling
 # ---------------------------------------------------------------------------
 
-def fig_behavior_decoupling(rows: list[dict], stem) -> Path:
+def fig_behavior_decoupling(rows: list[dict], stem, size_in=None) -> Path:
     """Panel c -- cycle-2 test success against the percentage of cells moving toward reward B."""
     xs = np.array([r["succ_c2"] for r in rows])
     ys = np.array([r["frac_B"] for r in rows]) * 100
     seeds = [r["seed"] for r in rows]
     r_s, p_s = spearmanr(xs, ys)
 
-    fig, ax = plt.subplots(figsize=(2.6, 2.6))
+    fig, ax = plt.subplots(figsize=size_in or (2.6, 2.6))
     m, b = np.polyfit(xs, ys, 1)
     xf = np.linspace(xs.min() - 0.05, xs.max() + 0.05, 100)
     ax.plot(xf, m * xf + b, color="0.5", lw=1.0, ls="--", alpha=0.7, zorder=1)
     ax.scatter(xs, ys, s=32, color=COLOR_B, zorder=4, edgecolors="0.3", linewidths=0.4)
     for x, y, s in zip(xs, ys, seeds):
-        ax.text(x + 0.012, y + 1.0, str(s), fontsize=5.6, color="0.35")
+        ax.text(x + 0.012, y + 1.0, str(s), fontsize=FS_TICK, color="0.35")
     ax.axhline(50, color="0.5", lw=0.6, ls=":", alpha=0.7)
     ax.set_xlabel("Cycle-2 test success\n(reward B, behavior)")
     ax.set_ylabel("% cells toward B\n(postA→postB)")
     ax.set_ylim(20, 75)
     ax.set_title(f"Behavior does not predict\nrepresentational shift\nr={r_s:+.2f}, p={p_s:.3f}",
-                 fontsize=6.3, pad=3)
+                 fontsize=FS_TICK, pad=3)
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
 # Panel d — proactive interference
 # ---------------------------------------------------------------------------
 
-def fig_proactive_interference(rows: list[dict], stem) -> Path:
+def fig_proactive_interference(rows: list[dict], stem, size_in=None) -> Path:
     """Retired panel d (A-encoding strength against B-remapping). Kept for reference; nothing calls it -- see the note at the top of this module for why it was dropped."""
     xs = np.array([r["delta_A"] for r in rows])
     ys = np.array([r["delta_B"] for r in rows])
     seeds = [r["seed"] for r in rows]
     r_s, p_s = spearmanr(xs, ys)
 
-    fig, ax = plt.subplots(figsize=(2.6, 2.6))
+    fig, ax = plt.subplots(figsize=size_in or (2.6, 2.6))
     m, b = np.polyfit(xs, ys, 1)
     xf = np.linspace(xs.min() - 0.005, xs.max() + 0.005, 100)
     ax.plot(xf, m * xf + b, color="0.5", lw=1.0, ls="--", alpha=0.7, zorder=1)
     colors = [COLOR_A if x < np.median(xs) else COLOR_B for x in xs]
     ax.scatter(xs, ys, s=32, color=colors, zorder=4, edgecolors="0.3", linewidths=0.4)
     for x, y, s in zip(xs, ys, seeds):
-        ax.text(x + 0.001, y + 0.001, str(s), fontsize=5.6, color="0.35")
+        ax.text(x + 0.001, y + 0.001, str(s), fontsize=FS_TICK, color="0.35")
     ax.axhline(0, color="0.5", lw=0.6, ls=":", alpha=0.7)
     ax.axvline(0, color="0.5", lw=0.6, ls=":", alpha=0.7)
     ax.set_xlabel(r"Mean $\Delta d$ toward A (cycle 1)")
     ax.set_ylabel(r"Mean $\Delta d$ toward B (cycle 2)")
     ax.set_title(f"Strong A-encoding predicts\nresistance to B-remapping\nr={r_s:+.2f}, p={p_s:.3f}",
-                 fontsize=6.3, pad=3)
+                 fontsize=FS_TICK, pad=3)
     fig.tight_layout(pad=0.4)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
@@ -299,10 +339,10 @@ PREDICTIONS = [
 ]
 
 
-def fig_predictions_table(stem) -> Path:
-    """Panel e -- the predictions table, rendered as a figure."""
+def fig_predictions_table(stem, size_in=None) -> Path:
+    """Panel d -- the predictions table, rendered as a figure."""
     n_rows = len(PREDICTIONS)
-    fig, ax = plt.subplots(figsize=(7.2, 1.9))
+    fig, ax = plt.subplots(figsize=size_in or (7.2, 1.9))
     ax.axis("off")
     ax.set_xlim(0, 10)
     ax.set_ylim(0, n_rows + 1)
@@ -316,7 +356,7 @@ def fig_predictions_table(stem) -> Path:
         ax.add_patch(plt.Rectangle((cx0, y_top - 0.5), cx1 - cx0 - 0.05, 0.5,
                                     fc=col, ec="0.4", lw=0.6, zorder=2))
         ax.text((cx0 + cx1) / 2 - 0.025, y_top - 0.25, h, ha="center", va="center",
-                fontsize=6.2, weight="bold", zorder=3)
+                fontsize=FS_TICK, weight="bold", zorder=3)
 
     for r, (pred, manip, h1, h2) in enumerate(PREDICTIONS):
         y = n_rows - r - 0.5
@@ -326,69 +366,19 @@ def fig_predictions_table(stem) -> Path:
             ax.add_patch(plt.Rectangle((cx0, y - 0.42), cx1 - cx0 - 0.05, 0.84,
                                         fc=fc, ec="0.75", lw=0.5, zorder=2))
             ax.text((cx0 + cx1) / 2 - 0.025, y, text, ha="center", va="center",
-                    fontsize=5.6, zorder=3)
+                    fontsize=FS_TICK, zorder=3)
 
     fig.tight_layout(pad=0.3)
-    return save_figure(fig, stem)
+    return save_figure(fig, stem, exact_size=size_in is not None)
 
 
 # ---------------------------------------------------------------------------
 # PDF assembly
 # ---------------------------------------------------------------------------
 
-def assemble_figure(panel_pdfs: dict[str, Path], stem, save_dpi: int = 300):
-    """Place each panel PDF in its slot and write the composite page as PDF and PNG."""
-    stem = Path(stem).with_suffix("")
-    ensure_dir(stem.parent)
-    pdf_path = stem.with_suffix(".pdf")
-    png_path = stem.with_suffix(".png")
-
-    MARGIN = 5 * MM_TO_PT
-    GAP = 3 * MM_TO_PT
-    ROW_GAP = 4 * MM_TO_PT
-
-    def get_size(pdf):
-        box = PdfReader(str(pdf)).pages[0].mediabox
-        return float(box.width), float(box.height)
-
-    sizes = {k: get_size(v) for k, v in panel_pdfs.items() if v is not None}
-    available = {k for k in panel_pdfs if k in sizes}
-
-    rows_def = [("a",), ("b", "c"), ("e",)]
-    row_keys = [[k for k in row if k in available] for row in rows_def]
-    row_keys = [r for r in row_keys if r]
-
-    def row_height(keys):
-        ncols = len(keys)
-        cw = (PAGE_W - 2 * MARGIN - (ncols - 1) * GAP) / ncols
-        return max((sizes[k][1] * (cw / max(sizes[k][0], 1e-6)) for k in keys), default=0.0)
-
-    rhs = [row_height(r) for r in row_keys]
-    page_h = 2 * MARGIN + sum(rhs) + (len(rhs) - 1) * ROW_GAP
-
-    writer = PdfWriter()
-    page = writer.add_blank_page(width=PAGE_W, height=page_h)
-
-    y = MARGIN
-    for keys, rh in zip(reversed(row_keys), reversed(rhs)):
-        ncols = len(keys)
-        cw = (PAGE_W - 2 * MARGIN - (ncols - 1) * GAP) / ncols
-        for i, k in enumerate(keys):
-            iw, ih = sizes[k]
-            scale = min(cw / iw, rh / ih)
-            sw, sh = iw * scale, ih * scale
-            left = MARGIN + i * (cw + GAP) + (cw - sw) / 2
-            bottom = y + (rh - sh) / 2
-            src = PdfReader(str(panel_pdfs[k])).pages[0]
-            page.merge_transformed_page(src, Transformation().scale(scale).translate(left, bottom), over=True)
-        y += rh + ROW_GAP
-
-    with open(pdf_path, "wb") as f:
-        writer.write(f)
-    _pdf_to_png(pdf_path, png_path, dpi=save_dpi)
-    print(f"  Saved: {pdf_path}")
-    print(f"  Saved: {png_path}")
-    return png_path, pdf_path
+def assemble_figure(panel_pdfs: dict[str, Path], out_stem: Path, dpi: int = 300):
+    """Compose onto `LAYOUT`, with the panel letters the caption promises."""
+    return figlayout.compose(LAYOUT, panel_pdfs, out_stem, dpi=dpi)
 
 
 # ---------------------------------------------------------------------------
@@ -407,9 +397,10 @@ def parse_args():
     """Command-line arguments: run directories, output directory, panel subset."""
     p = argparse.ArgumentParser(description="Generate Figure 5 (dissociating the two hypotheses).")
     p.add_argument("--output_dir", default=str(FIGURES_DIR))
-    p.add_argument("--panels", default="a,b,c,e")
+    p.add_argument("--panels", default="a,b,c,d")
     p.add_argument("--no_show", action="store_true")
     p.add_argument("--no_assemble", action="store_true")
+    add_plot_only(p)
     args = p.parse_args()
     args.panels = {x.strip().lower() for x in args.panels.split(",") if x.strip()}
     return args
@@ -425,46 +416,60 @@ def main():
 
     if "a" in args.panels:
         print("Panel a (schematic: two hypotheses)...")
-        _, pdf = fig_schematic(panels_dir / "panel_a")
+        _, pdf = fig_schematic(panels_dir / "panel_a", LAYOUT.slot_size_in("a"))
         panel_pdfs["a"] = pdf
 
-    if {"b"} & args.panels:
-        print("Loading double-dissociation data (head OFF vs head ON, frozen replay)...")
-        dd_rows = load_double_dissociation(NOHEAD_DIR, HEAD_DIR, seeds=range(50))
+    cache_path = Path(args.output_dir) / "figure_data.npz"
+    fresh = {}
+    saved = {}
+    if args.plot_only and ({"b", "c"} & args.panels):
+        saved = load_figure_data(cache_path)
+
+    if "b" in args.panels:
+        if args.plot_only:
+            dd_rows = require_keys(saved, "dd_rows", path=cache_path)["dd_rows"]
+            print(f"Plot-only: {len(dd_rows)} paired seeds")
+        else:
+            print("Loading double-dissociation data (head OFF vs head ON, frozen replay)...")
+            # Union of seed indices present in either condition; load_double_dissociation
+            # still requires both arms and the entropy gate for a paired row.
+            dd_seeds = sorted(set(_discover_prefix_seeds(NOHEAD_DIR, "nohead_"))
+                              | set(_discover_prefix_seeds(HEAD_DIR, "head_")))
+            dd_rows = load_double_dissociation(NOHEAD_DIR, HEAD_DIR, seeds=dd_seeds)
+            fresh["dd_rows"] = dd_rows
         stats = double_dissociation_stats(dd_rows)
         print(f"  n={stats['n_seeds']} paired seeds  "
               f"no-head={stats['mean_nohead']:+.4f}±{stats['sd_nohead']:.4f}  "
               f"head={stats['mean_head']:+.4f}±{stats['sd_head']:.4f}  "
               f"p={stats['wilcoxon_p_paired']:.3g}")
         print("Panel b (double dissociation)...")
-        _, pdf = fig_double_dissociation(dd_rows, panels_dir / "panel_b")
+        _, pdf = fig_double_dissociation(dd_rows, panels_dir / "panel_b", LAYOUT.slot_size_in("b"))
         panel_pdfs["b"] = pdf
 
-    if {"c", "d"} & args.panels:
-        reloc_clean_seeds = _discover_reloc_clean_seeds(RELOC_DIR)
-        print(f"Loading relocation summary (behavior + tracking, {len(reloc_clean_seeds)} clean seeds)...")
-        reloc_rows = load_relocation_summary(RELOC_DIR, reloc_clean_seeds)
+    if "c" in args.panels:
+        if args.plot_only:
+            reloc_rows = require_keys(saved, "reloc_rows", path=cache_path)["reloc_rows"]
+            print(f"Plot-only: {len(reloc_rows)} relocation seeds")
+        else:
+            reloc_clean_seeds = _discover_reloc_clean_seeds(RELOC_DIR)
+            print(f"Loading relocation summary (behavior + tracking, {len(reloc_clean_seeds)} clean seeds)...")
+            reloc_rows = load_relocation_summary(RELOC_DIR, reloc_clean_seeds)
+            fresh["reloc_rows"] = reloc_rows
         for r in reloc_rows:
             print(f"  seed {r['seed']}: succ_c2={r['succ_c2']:.2f}  "
                   f"→A={100*r['frac_A']:.0f}%  →B={100*r['frac_B']:.0f}%")
+        print("Panel c (behavior/remapping decoupling)...")
+        _, pdf = fig_behavior_decoupling(reloc_rows, panels_dir / "panel_c", LAYOUT.slot_size_in("c"))
+        panel_pdfs["c"] = pdf
 
-        if "c" in args.panels:
-            print("Panel c (behavior/remapping decoupling)...")
-            _, pdf = fig_behavior_decoupling(reloc_rows, panels_dir / "panel_c")
-            panel_pdfs["c"] = pdf
+    if fresh:
+        update_figure_data(cache_path, fresh)
 
-        # Panel d (proactive interference) removed. It reported
-        # Spearman r=+0.26, p=0.152 under a title asserting "strong A-encoding
-        # predicts resistance to B-remapping": not significant, and the sign is
-        # opposite to the claim (with negative = toward reward, a positive
-        # correlation means seeds that remap strongly to A also remap strongly
-        # to B). It also contradicted row 4 of the paper's own predictions
-        # table, which has been removed with it.
-
-    if "e" in args.panels:
+    if "d" in args.panels:
         print("Panel e (predictions table)...")
-        _, pdf = fig_predictions_table(panels_dir / "panel_e")
-        panel_pdfs["e"] = pdf
+        _, pdf = fig_predictions_table(panels_dir / "panel_d",
+                                       LAYOUT.slot_size_in("d"))
+        panel_pdfs["d"] = pdf
 
     if not args.no_assemble and panel_pdfs:
         print("Assembling vector composite PDF...")

@@ -53,7 +53,7 @@ PCA of phase-1 hidden states (3 components) during the random-walk probe. Three 
 
 ### Panels e and f — peak / COM distance histograms
 
-Place cells gated by Skaggs ≥ `--skaggs_threshold` (default 0.05) in both periods. For each cell, field **peak** and activity-weighted **COM** are measured on smoothed rate maps; panels show overlaid histograms of Euclidean distance to the reward. Periods match panel **d**: `cycle_1` (prediction / RW) vs `cycle_1_goal` (goal-driven policy). Frozen replay belongs in Figure 2, not here.
+Place cells gated by Skaggs ≥ `--skaggs_threshold` (default 0.05) in both periods. For each cell, field **peak** and activity-weighted **COM** are measured on smoothed rate maps; panels show overlaid histograms of Euclidean distance to the reward. Periods match panel **d**: `replay_c1_pred` (pre-learning exploratory replay) vs `cycle_1_goal` (post-learning goal-driven policy). Frozen post-learning replay belongs in Figure 2, not here.
 
 Numeric arrays are also saved to `figures/panels/peak_com_distances.npz`.
 

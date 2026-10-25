@@ -19,6 +19,8 @@ Phases:
            cleanly, using the same sys.path shims the generators use
   cli      `--help` on every entry point (catches import + argparse breakage)
   data     the run dirs and JSON caches each figure reads actually exist
+  paper    manuscript figures, methods constants and reported statistics agree
+           with the publication pipeline and committed analysis caches
   micro    (--micro-run only) a tiny ratinabox_v11 training run in a temp dir,
            proving the simulator executes and not merely imports
 
@@ -75,6 +77,11 @@ def phase_deps() -> None:
     else:
         record("deps", "pdftoppm (poppler-utils)", FAIL,
                "every figure assembler shells out to it; install poppler-utils")
+    if shutil.which("mutool"):
+        record("deps", "mutool (mupdf-tools)", OK)
+    else:
+        record("deps", "mutool (mupdf-tools)", FAIL,
+               "check_figure_type.py requires it; install mupdf-tools")
 
 
 # ------------------------------------------------------------------ imports
@@ -118,6 +125,11 @@ def _import_isolated(path: Path, extra_paths: list[Path]) -> None:
         "import sys, importlib.util\n" + pre +
         f"spec = importlib.util.spec_from_file_location('m', {str(path)!r})\n"
         "mod = importlib.util.module_from_spec(spec)\n"
+        # The documented recipe registers the module before executing it.
+        # Without this, `dataclasses` resolving a string annotation does
+        # sys.modules.get(cls.__module__).__dict__ and dies on None -- a
+        # failure in the harness, not in the module under test.
+        "sys.modules['m'] = mod\n"
         "spec.loader.exec_module(mod)\n"
     )
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
@@ -173,6 +185,7 @@ def _entry_points() -> list[Path]:
     eps += sorted((PC / "tools").glob("*.py"))
     eps += sorted((PC / "external").rglob("analysis*.py"))
     eps.append(PC / "sync_paper_figures.py")
+    eps.append(PC / "verify_paper.py")
     return eps
 
 
@@ -216,10 +229,12 @@ def phase_cli() -> None:
 # --------------------------------------------------------------------- data
 # What each figure reads. Paths are relative to the repo root.
 DATA_REQS: dict[str, list[str]] = {
-    "fig1/figS_pipeline":  ["results/nohead_seed42", "results/multi_seed"],
-    "fig2/figS_frozen":    ["results/multi_seed", "results/multi_seed/nohead_seed16"],
-    "fig3/figS_head":      ["results/multi_seed_head", "results/multi_seed_head/head_seed28"],
-    "fig4/figS_reloc":     ["results/multi_seed_reloc", "results/multi_seed_reloc/reloc_seed9"],
+    "fig1/figS_pipeline":  ["results/multi_seed",
+                            "results/multi_seed/nohead_seed16"],
+    "fig2":                ["results/multi_seed", "results/multi_seed/nohead_seed16"],
+    "fig3":                ["results/multi_seed_head", "results/multi_seed_head/head_seed28"],
+    "fig4/figS_reloc":     ["results/multi_seed_reloc",
+                            "results/multi_seed_reloc/reloc_seed40"],
     "fig5 (data confr.)":  ["results/aggregate/extinction_summary.json",
                             "data/krishnan2022/cache/krishnan_data.json",
                             "data/sosa2025/cache/sosa_tests.json",
@@ -227,20 +242,10 @@ DATA_REQS: dict[str, list[str]] = {
     "figS_discriminator":  ["results/aggregate/occupancy_matched_estimator.json"],
     "figS_extinction":     ["results/aggregate/extinction_summary.json",
                             "data/krishnan2022/cache/krishnan_data.json"],
-    "figS_sr/figS_rigid":  ["results/multi_seed", "results/multi_seed_head", "results/multi_seed_rigid"],
+    "figS_sr":             ["results/multi_seed", "results/multi_seed_head"],
     "figS_rewardvector":   ["results/multi_seed", "results/multi_seed_head", "results/multi_seed_reloc"],
     "figS_sosa":           ["data/sosa2025/cache/sosa_tests.json"],
-    "figS_legacy (fate/decoder)": ["sandbox/New_Results_v3/final_v11_fixed/data"],
 }
-
-# DEFAULT_RUN in these utils.py files does not match the run the shipped
-# exemplar was made from -- generators must be given --run_dir explicitly.
-DEFAULT_RUN_MISMATCH = {
-    "figures/fig2/utils.py": ("results/nohead_seed42", "results/multi_seed/nohead_seed16"),
-    "figures/fig3/utils.py": ("results/multi_seed_head/head_seed0",
-                              "results/multi_seed_head/head_seed28"),
-}
-
 
 def phase_data() -> None:
     print("\n== data ==")
@@ -250,10 +255,25 @@ def phase_data() -> None:
             record("data", label, FAIL, "missing: " + ", ".join(missing))
         else:
             record("data", label, OK)
-    for f, (default, shipped) in DEFAULT_RUN_MISMATCH.items():
-        record("data", f"{f} DEFAULT_RUN", WARN,
-               f"defaults to {default}; shipped exemplar is {shipped} "
-               f"-- pass --run_dir explicitly")
+
+
+# -------------------------------------------------------------------- paper
+def phase_paper() -> None:
+    print("\n== paper/code consistency ==")
+    script = PC / "verify_paper.py"
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=str(REPO),
+    )
+    if result.returncode == 0:
+        summary = result.stdout.strip().splitlines()[-1]
+        record("paper", "verify_paper.py", OK, summary)
+    else:
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        record("paper", "verify_paper.py", FAIL, "\n        ".join(detail[-8:]))
 
 
 # -------------------------------------------------------------------- micro
@@ -267,7 +287,7 @@ def phase_micro() -> None:
                "--phase1_epochs", "1", "--n_cycles", "1",
                "--max_episodes", "2", "--max_steps", "3",
                "--fixed_goal", "--replay_steps", "10",
-               "--checkpoint_every", "100000", "--no_show"]
+               "--checkpoint_every", "100000", "--no_show", "--smoke"]
         print(f"  {DIM}{' '.join(cmd[:6])} ...{RESET}")
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
@@ -283,8 +303,8 @@ def phase_micro() -> None:
             record("micro", "ratinabox_v11.py", FAIL, "\n        ".join(tail[-4:]))
 
 
-PHASES = {"deps": phase_deps, "imports": phase_imports,
-          "cli": phase_cli, "data": phase_data, "micro": phase_micro}
+PHASES = {"deps": phase_deps, "imports": phase_imports, "cli": phase_cli,
+          "data": phase_data, "paper": phase_paper, "micro": phase_micro}
 
 
 def main() -> int:
@@ -299,7 +319,9 @@ def main() -> int:
     if args.phase:
         chosen = args.phase
     else:
-        chosen = ["deps", "imports", "cli", "data"] + (["micro"] if args.micro_run else [])
+        chosen = ["deps", "imports", "cli", "data", "paper"]
+        if args.micro_run:
+            chosen.append("micro")
 
     print(f"code smoke test — repo {REPO}")
     print(f"python {sys.version.split()[0]}  ({sys.executable})")

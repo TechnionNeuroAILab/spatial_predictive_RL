@@ -20,6 +20,7 @@ from occupancy_matched_estimator import (  # noqa: E402
     HIDDEN, M, SIGMA, load_period_arrays, position_bins, rate_maps_from,
     skaggs_weighted, trim_teleports,
 )
+from analysis_helpers import is_goal_directed  # noqa: E402
 
 REWARD_A = np.array([0.3, 0.3])
 REWARD_B = np.array([0.7, 0.7])
@@ -98,9 +99,9 @@ def readout(run_dir: Path, period_a: str, period_b: str, seed: int) -> dict | No
         print(f"  {run_dir}: load failed ({e})")
         return None
     # drop post-teleport transients in goal-directed periods
-    if period_a.endswith("_goal"):
+    if is_goal_directed(period_a):
         k = trim_teleports(pos_a); pos_a, act_a = pos_a[k], act_a[k]
-    if period_b.endswith("_goal"):
+    if is_goal_directed(period_b):
         k = trim_teleports(pos_b); pos_b, act_b = pos_b[k], act_b[k]
 
     rew_a, rew_b = ACTIVE_REWARD[period_a], ACTIVE_REWARD[period_b]

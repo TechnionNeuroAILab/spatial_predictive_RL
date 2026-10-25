@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-import pickle
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -63,8 +63,12 @@ def save_json(path, payload):
         json.dump(payload, f, indent=2, sort_keys=True)
 
 def save_pickle(path, payload):
-    with open(path, "wb") as f:
-        pickle.dump(payload, f)
+    """Write a hidden-state sample or replay trajectory as Parquet."""
+    lib = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")
+    if lib not in sys.path:
+        sys.path.insert(0, lib)
+    from dataframe_io import save_payload
+    save_payload(path, payload)
 
 ARGS = parse_args()
 warnings.filterwarnings('ignore')
@@ -97,21 +101,45 @@ save_json(
         "phase1_epochs": ARGS.phase1_epochs,
         "max_episodes": ARGS.max_episodes,
         "max_steps": ARGS.max_steps,
+        "warmup_steps": WARMUP_STEPS,
         "checkpoint_every": ARGS.checkpoint_every,
         "n_cycles": ARGS.n_cycles,
         "interleave_epochs": ARGS.interleave_epochs,
         "interleave_lr": ARGS.interleave_lr,
         "rnn_rl_learning_rate": float(ARGS.rnn_rl_lr),
         "controller_learning_rate": 1e-4,
+        "reward_decoder_learning_rate": 1e-4 if ARGS.reward_pred_head else None,
         "pred_loss_weight": PRED_LOSS_WEIGHT,
+        "phase1_action_convention": "outgoing action from observation t to target t+1",
+        "online_action_convention": "action on preceding transition (current heading code)",
+        "online_prediction_regularizer": "next-observation MSE only (no L1)",
+        "interleaved_policy": "greedy, fixed length, no early termination",
+        "goal_probe_logit_divisor": 0.3,
+        "goal_probe_segments": 50,
+        "cycle_random_probe_steps": 10000,
+        "cycle_goal_probe_steps": 5000,
+        "final_random_probe_steps": 50000,
+        "final_goal_probe_steps": 50000,
+        "snapshot_order": "post-RL replay and probes, then interleaved prediction",
         "activation": "SparseBiasReLU",
         "fixed_goal": bool(ARGS.fixed_goal),
         "no_goal_vec": bool(ARGS.no_goal_vec),
         "replay_cycle": int(ARGS.replay_cycle),
+        "replay_steps": int(ARGS.replay_steps),
         "reward_pred_head": bool(ARGS.reward_pred_head),
         "reward_pred_weight": float(ARGS.reward_pred_weight),
         "reward_pred_sigma": float(ARGS.reward_pred_sigma),
         "reward_pos": [float(ARGS.reward_x), float(ARGS.reward_y)],
+        "reward_grid_pos": [
+            float(np.clip(round(ARGS.reward_x * 32), 2, 30) / 32),
+            float(np.clip(round(ARGS.reward_y * 32), 2, 30) / 32),
+        ],
+        "relocate_pos": [float(ARGS.relocate_x), float(ARGS.relocate_y)],
+        "relocate_grid_pos": [
+            float(np.clip(round(ARGS.relocate_x * 32), 2, 30) / 32),
+            float(np.clip(round(ARGS.relocate_y * 32), 2, 30) / 32),
+        ],
+        "relocate_at_cycle": int(ARGS.relocate_at_cycle),
     },
 )
 print(f"Saving artifacts to: {RUN_DIR}")
@@ -122,9 +150,9 @@ hds = np.array([(1, 0), (np.sqrt(2) / 2, np.sqrt(2) / 2), (0, 1), (-np.sqrt(2) /
 coord_updates = np.array([(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)])
 
 # v11: fixed-goal option + replay-probe settings
-# Grid index of the fixed reward; derived from --reward_x/--reward_y so the
-# training goal, the goal-directed probe, and the reward-prediction head target
-# all use the SAME location. Default (0.5,0.5) -> grid (16,16).
+# Grid index used by training for its supplied goal vector and termination.
+# Probes, spatial analyses, and the proximity target retain the requested
+# continuous coordinate; for an off-grid request these locations differ.
 GOAL_CENTER_GRID = np.array([int(round(ARGS.reward_x * m)), int(round(ARGS.reward_y * m))])
 GOAL_CENTER_GRID = np.clip(GOAL_CENTER_GRID, 2, m - 2)
 # relocation: reward A (start) and reward B (relocated)
@@ -133,7 +161,7 @@ REWARD_B = np.array([ARGS.relocate_x, ARGS.relocate_y], dtype=float)
 GRID_A = np.clip(np.array([int(round(ARGS.reward_x * m)), int(round(ARGS.reward_y * m))]), 2, m - 2)
 GRID_B = np.clip(np.array([int(round(ARGS.relocate_x * m)), int(round(ARGS.relocate_y * m))]), 2, m - 2)
 RELOCATE = ARGS.relocate_at_cycle >= 0
-REPLAY_STEPS = 50000
+REPLAY_STEPS = int(ARGS.replay_steps)
 def sample_start_and_goal():
     if ARGS.fixed_goal:
         goal_grid = GOAL_CENTER_GRID.copy()
@@ -382,10 +410,10 @@ def run_probe_walk(rnn, period, n_steps=50000, save_dir=None):
     act_flat = hidden_arr.reshape(-1)
     df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
     if save_dir is not None:
-        beh_path = os.path.join(save_dir, f"df_behavior_{period}.pkl")
-        act_path = os.path.join(save_dir, f"df_activations_{period}.pkl")
-        df_behavior.to_pickle(beh_path)
-        df_activations.to_pickle(act_path)
+        beh_path = os.path.join(save_dir, f"df_behavior_{period}.parquet")
+        act_path = os.path.join(save_dir, f"df_activations_{period}.parquet")
+        df_behavior.to_parquet(beh_path, index=False)
+        df_activations.to_parquet(act_path, index=False)
         print(f"  Saved behavior  : {beh_path}  ({len(df_behavior):,} rows)")
         print(f"  Saved activations: {act_path}  ({len(df_activations):,} rows)")
 
@@ -470,10 +498,10 @@ def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=50000, save_dir=No
     act_flat = hidden_arr.reshape(-1)
     df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
     if save_dir is not None:
-        beh_path = os.path.join(save_dir, f"df_behavior_{period}.pkl")
-        act_path = os.path.join(save_dir, f"df_activations_{period}.pkl")
-        df_behavior.to_pickle(beh_path)
-        df_activations.to_pickle(act_path)
+        beh_path = os.path.join(save_dir, f"df_behavior_{period}.parquet")
+        act_path = os.path.join(save_dir, f"df_activations_{period}.parquet")
+        df_behavior.to_parquet(beh_path, index=False)
+        df_activations.to_parquet(act_path, index=False)
         print(f"  Saved behavior  : {beh_path}  ({len(df_behavior):,} rows)")
         print(f"  Saved activations: {act_path}  ({len(df_activations):,} rows)")
 
@@ -531,9 +559,9 @@ def collect_prediction_trajectory(rnn, period, n_steps=REPLAY_STEPS, save_dir=No
         "theta": np.array(beh_theta, dtype=np.float32),
     }
     if save_dir is not None:
-        df_behavior.to_pickle(os.path.join(save_dir, f"df_behavior_{period}.pkl"))
-        df_activations.to_pickle(os.path.join(save_dir, f"df_activations_{period}.pkl"))
-        save_pickle(os.path.join(save_dir, f"replay_traj_{period}.pkl"), traj)
+        df_behavior.to_parquet(os.path.join(save_dir, f"df_behavior_{period}.parquet"), index=False)
+        df_activations.to_parquet(os.path.join(save_dir, f"df_activations_{period}.parquet"), index=False)
+        save_pickle(os.path.join(save_dir, f"replay_traj_{period}.parquet"), traj)
         print(f"  Saved source behaviour/activations + raw trajectory '{period}' "
               f"(obs {traj['obs'].shape}, {n_steps:,} steps)")
 
@@ -568,8 +596,8 @@ def run_replay_probe(rnn, traj, period, save_dir=None):
     act_flat = hidden_arr.reshape(-1)
     df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
     if save_dir is not None:
-        df_behavior.to_pickle(os.path.join(save_dir, f"df_behavior_{period}.pkl"))
-        df_activations.to_pickle(os.path.join(save_dir, f"df_activations_{period}.pkl"))
+        df_behavior.to_parquet(os.path.join(save_dir, f"df_behavior_{period}.parquet"), index=False)
+        df_activations.to_parquet(os.path.join(save_dir, f"df_activations_{period}.parquet"), index=False)
         print(f"  Saved replay behaviour/activations '{period}' ({n_steps:,} steps)")
 
     return df_behavior, df_activations
@@ -615,8 +643,8 @@ def compute_skaggs_report(df_behavior, df_activations, period, m=32,skaggs_thres
     print(f"  Cells >= {skaggs_threshold} (place cells) : {n_pass} / {n_neurons}")
 
     if save_dir is not None:
-        pkl_path = os.path.join(save_dir, f"df_skaggs_{period}.pkl")
-        df_skaggs.to_pickle(pkl_path)
+        pkl_path = os.path.join(save_dir, f"df_skaggs_{period}.parquet")
+        df_skaggs.to_parquet(pkl_path, index=False)
         print(f"  Saved: {pkl_path}")
     if figures_dir is not None:
         top_idx = df_skaggs.nlargest(n_top, "skaggs_score").index.values
@@ -1076,7 +1104,7 @@ predictions, hidden_states = extract_hidden_activity_frozen_weights(rnn_model, o
 print(f"Predictions shape: {predictions.shape}")
 print(f"Hidden states shape: {hidden_states.shape}")
 save_pickle(
-    os.path.join(DATA_DIR, "hidden_states_phase1.pkl"),
+    os.path.join(DATA_DIR, "hidden_states_phase1.parquet"),
     {
         "seed": SEED,
         "predictions": predictions.numpy(),
@@ -1159,6 +1187,9 @@ for cycle in range(n_cycles):
         # true pre-rollout state
         h_rollout_start = h.detach().clone()
         b_rollout_start = b.detach().clone()
+        # Online convention: h_t receives the action that led into the current
+        # state. Offline Phase-A/interleaved batches use the outgoing action.
+        # Preserve this historical distinction for cohort reproduction.
         hs, goals, actions, log_probs, rewards, values = [], [], [], [], [], []
         dones, obs_list, prev_acts, bs, next_obs_list, pos_list = [], [], [], [], [], []
         ep_reward = 0.0
@@ -1266,6 +1297,8 @@ for cycle in range(n_cycles):
             )
 
             pred_next_obs = torch.sigmoid(rnn_model.W_out(recomputed_hs))
+            # Online regularizer is MSE only; Phase A and interleaved offline
+            # prediction also include the L1 activity term (see Methods).
             pred_loss = criterion(pred_next_obs, b_next_obs)
             total_loss = rl_loss + PRED_LOSS_WEIGHT * pred_loss
 
@@ -1495,7 +1528,7 @@ predictions_final, hidden_states_final = extract_hidden_activity_frozen_weights(
 print(f"Final Predictions shape: {predictions_final.shape}")
 print(f"Final Hidden states shape: {hidden_states_final.shape}")
 save_pickle(
-    os.path.join(DATA_DIR, "hidden_states_final.pkl"),
+    os.path.join(DATA_DIR, "hidden_states_final.parquet"),
     {
         "seed": SEED,
         "predictions": predictions_final.numpy(),

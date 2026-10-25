@@ -199,7 +199,7 @@ def discover_seeds(cond_dir: Path, prefix: str) -> list[int]:
     return sorted(out)
 
 
-def load_condition(cond_dir: Path, prefix: str, seeds=None, min_entropy: float = 5.5,
+def load_condition(cond_dir: Path, prefix: str, seeds=None, min_entropy: float | None = None,
                    n_perm: int = 200) -> list[dict]:
     """Per-seed metrics for one condition, skipping seeds that fail the entropy-collapse gate."""
     cond_dir = Path(cond_dir)

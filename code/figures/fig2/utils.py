@@ -23,7 +23,9 @@ from pubstyle import (  # noqa: E402,F401
     apply_nature_style, ensure_dir, save_figure,
     panel_label, title, fmt_p, stat_annot, despine, arena_axes,
     reward_marker, thin_colorbar, zero_line, style_violin, hist_outline,
+    plain_log_ticks,
 )
+import figlayout  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -31,30 +33,43 @@ FIGURES_DIR = Path(__file__).resolve().parent / "figures"
 PANELS_DIR = FIGURES_DIR / "panels"
 FIG1_DIR = Path(__file__).resolve().parents[1] / "fig1"
 
-GRID_COLS = 4
-GRID_GAP = 2.0 * MM_TO_PT
-ROW_GAP = 0.0
-PAGE_MARGIN = 1.0 * MM_TO_PT
+# ---------------------------------------------------------------------------
+# Page layout
+# ---------------------------------------------------------------------------
+# Same two-row plate as manuscript Figure 4 (code/figures/fig3): a wide
+# spatial panel beside a narrower statistic, then the clouds beside the
+# distance histograms. Both rows are the same height.
+#
+#   row 1   a  paired example fields          c  change in distance to reward
+#   row 2   b  field-centre clouds             d  distance distributions
+LAYOUT = figlayout.Layout(
+    [("a", 0, 0, 4), ("c", 0, 4, 2),
+     ("b", 1, 0, 3), ("d", 1, 3, 3)],
+    ncols=6,
+    row_h_in=[1.80, 1.80],
+    caption_lines=7,
+    name="fig_replay",
+)
 
-# Three equal-height rows: a | b+c | d
-FIGURE_LAYOUT = [
-    ("a", 0, 0, 4),
-    ("b", 1, 0, 3),
-    ("c", 1, 3, 1),
-    ("d", 2, 0, 4),
-]
-PANEL_ORDER = ["a", "b", "c", "d"]
+PANEL_ORDER = LAYOUT.keys()
+
+
+def slot_size_in(key: str) -> tuple[float, float]:
+    """The figsize a panel must be authored at to survive assembly unscaled."""
+    return LAYOUT.slot_size_in(key)
 
 # Shared with Figure 1 rate_maps import (same symbols expected by that module).
 
 M = 32
 HIDDEN_DIM = 512
-DEFAULT_RUN = REPO_ROOT / "results" / "nohead_seed42"
+# Canonical exemplar shared by manuscript Figures 1 and 2.  Keep this default
+# aligned with code/regenerate_all.py and code/verify_paper.py.
+DEFAULT_RUN = REPO_ROOT / "results" / "multi_seed" / "nohead_seed16"
 DEFAULT_REWARD = (0.3, 0.3)
 
 # Phase labels used throughout Figure 2.
-PHASE_A = "cycle_1"              # Phase A — prediction / open-loop RW probe
-PHASE_B = "cycle_1_goal"         # Phase B — RL / goal-conditioned probe
+PHASE_A = "replay_c1_pred"       # exploration before learning (pre-learning weights, random walk)
+PHASE_B = "cycle_1_goal"         # goal-directed probe after learning (reset transients dropped)
 PHASE_C_PRE = "replay_c1_pred"   # Phase C — frozen replay, pre-RL weights
 PHASE_C_POST = "replay_c1_postrl"  # Phase C — frozen replay, post-RL weights
 

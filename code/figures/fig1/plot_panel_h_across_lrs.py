@@ -60,8 +60,8 @@ def discover_runs(scan_root: Path, explicit: list[Path] | None) -> list[tuple[fl
         if cfg.get("reward_pred_head"):
             continue
         need = [
-            data / "df_activations_cycle_1.pkl",
-            data / "df_activations_cycle_1_goal.pkl",
+            data / "df_activations_cycle_1.parquet",
+            data / "df_activations_cycle_1_goal.parquet",
         ]
         if not all(p.exists() for p in need):
             print(f"  skip {run}: missing cycle_1 probes")

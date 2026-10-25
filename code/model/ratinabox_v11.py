@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-import pickle
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -48,6 +48,7 @@ def parse_args():
     parser.add_argument("--reward_pred_sigma", type=float, default=0.15,help="Gaussian sigma for the proximity target in normalised arena units (default: 0.15)")
     parser.add_argument("--reward_x", type=float, default=0.5,help="Fixed reward / probe x-location in normalised arena units (default 0.5 = centre). Use off-centre (e.g. 0.3) to de-confound the centre-of-mass shift metric.")
     parser.add_argument("--reward_y", type=float, default=0.5,help="Fixed reward / probe y-location in normalised arena units (default 0.5 = centre).")
+    parser.add_argument("--smoke", action="store_true", help="Use tiny diagnostic probes for CI/smoke testing; never use for paper runs")
     args, _ =parser.parse_known_args()
     return args
 def ensure_dir(path):
@@ -59,8 +60,12 @@ def save_json(path, payload):
         json.dump(payload, f, indent=2, sort_keys=True)
 
 def save_pickle(path, payload):
-    with open(path, "wb") as f:
-        pickle.dump(payload, f)
+    """Write a hidden-state sample or replay trajectory as Parquet."""
+    lib = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")
+    if lib not in sys.path:
+        sys.path.insert(0, lib)
+    from dataframe_io import save_payload
+    save_payload(path, payload)
 
 ARGS = parse_args()
 warnings.filterwarnings('ignore')
@@ -72,6 +77,13 @@ if ARGS.no_goal_vec and not ARGS.fixed_goal:
           "(random goal, no goal signal). Use them together.")
 PROBE_REWARD_POS = np.array([ARGS.reward_x, ARGS.reward_y])
 WARMUP_STEPS = 10
+DIAGNOSTIC_STEPS = 64 if ARGS.smoke else 5000
+BASELINE_PROBE_STEPS = 64 if ARGS.smoke else 50000
+CYCLE_RANDOM_STEPS = 64 if ARGS.smoke else 10000
+CYCLE_GOAL_STEPS = 64 if ARGS.smoke else 5000
+FINAL_PROBE_STEPS = 64 if ARGS.smoke else 50000
+PROBE_EPISODES = 2 if ARGS.smoke else 50
+TEST_EPISODES = 2 if ARGS.smoke else 15
 SEED = int(ARGS.seed)
 np.random.seed(SEED); torch.manual_seed(SEED); random.seed(SEED)
 if torch.cuda.is_available():
@@ -93,21 +105,40 @@ save_json(
         "phase1_epochs": ARGS.phase1_epochs,
         "max_episodes": ARGS.max_episodes,
         "max_steps": ARGS.max_steps,
+        "warmup_steps": WARMUP_STEPS,
+        "smoke_mode": bool(ARGS.smoke),
         "checkpoint_every": ARGS.checkpoint_every,
         "n_cycles": ARGS.n_cycles,
         "interleave_epochs": ARGS.interleave_epochs,
         "interleave_lr": ARGS.interleave_lr,
         "rnn_rl_learning_rate": float(ARGS.rnn_rl_lr),
         "controller_learning_rate": 1e-4,
+        "reward_decoder_learning_rate": 1e-4 if ARGS.reward_pred_head else None,
         "pred_loss_weight": PRED_LOSS_WEIGHT,
+        "phase1_action_convention": "outgoing action from observation t to target t+1",
+        "online_action_convention": "action on preceding transition (current heading code)",
+        "online_prediction_regularizer": "next-observation MSE only (no L1)",
+        "interleaved_policy": "greedy, fixed length, no early termination",
+        "goal_probe_logit_divisor": 0.3,
+        "goal_probe_segments": PROBE_EPISODES,
+        "cycle_random_probe_steps": CYCLE_RANDOM_STEPS,
+        "cycle_goal_probe_steps": CYCLE_GOAL_STEPS,
+        "final_random_probe_steps": FINAL_PROBE_STEPS,
+        "final_goal_probe_steps": FINAL_PROBE_STEPS,
+        "snapshot_order": "post-RL replay and probes, then interleaved prediction",
         "activation": "SparseBiasReLU",
         "fixed_goal": bool(ARGS.fixed_goal),
         "no_goal_vec": bool(ARGS.no_goal_vec),
         "replay_cycle": int(ARGS.replay_cycle),
+        "replay_steps": int(ARGS.replay_steps),
         "reward_pred_head": bool(ARGS.reward_pred_head),
         "reward_pred_weight": float(ARGS.reward_pred_weight),
         "reward_pred_sigma": float(ARGS.reward_pred_sigma),
         "reward_pos": [float(ARGS.reward_x), float(ARGS.reward_y)],
+        "reward_grid_pos": [
+            float(np.clip(round(ARGS.reward_x * 32), 2, 30) / 32),
+            float(np.clip(round(ARGS.reward_y * 32), 2, 30) / 32),
+        ],
     },
 )
 print(f"Saving artifacts to: {RUN_DIR}")
@@ -118,12 +149,13 @@ hds = np.array([(1, 0), (np.sqrt(2) / 2, np.sqrt(2) / 2), (0, 1), (-np.sqrt(2) /
 coord_updates = np.array([(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)])
 
 # v11: fixed-goal option + replay-probe settings
-# Grid index of the fixed reward; derived from --reward_x/--reward_y so the
-# training goal, the goal-directed probe, and the reward-prediction head target
-# all use the SAME location. Default (0.5,0.5) -> grid (16,16).
+# Grid index used by training for its supplied goal vector and termination.
+# Probes, spatial analyses, and the proximity target retain the requested
+# continuous coordinate; for an off-grid request these locations differ
+# slightly (e.g. 0.3 -> 10/32 = 0.3125 for training).
 GOAL_CENTER_GRID = np.array([int(round(ARGS.reward_x * m)), int(round(ARGS.reward_y * m))])
 GOAL_CENTER_GRID = np.clip(GOAL_CENTER_GRID, 2, m - 2)
-REPLAY_STEPS = 50000
+REPLAY_STEPS = int(ARGS.replay_steps)
 def sample_start_and_goal():
     if ARGS.fixed_goal:
         goal_grid = GOAL_CENTER_GRID.copy()
@@ -374,10 +406,10 @@ def run_probe_walk(rnn, period, n_steps=50000, save_dir=None):
     act_flat = hidden_arr.reshape(-1)
     df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
     if save_dir is not None:
-        beh_path = os.path.join(save_dir, f"df_behavior_{period}.pkl")
-        act_path = os.path.join(save_dir, f"df_activations_{period}.pkl")
-        df_behavior.to_pickle(beh_path)
-        df_activations.to_pickle(act_path)
+        beh_path = os.path.join(save_dir, f"df_behavior_{period}.parquet")
+        act_path = os.path.join(save_dir, f"df_activations_{period}.parquet")
+        df_behavior.to_parquet(beh_path, index=False)
+        df_activations.to_parquet(act_path, index=False)
         print(f"  Saved behavior  : {beh_path}  ({len(df_behavior):,} rows)")
         print(f"  Saved activations: {act_path}  ({len(df_activations):,} rows)")
 
@@ -389,7 +421,7 @@ def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=50000, save_dir=No
     rnn.eval()
     ctrl.eval()
     goal_pos = np.asarray(reward_pos, dtype=float)
-    n_episodes = 50
+    n_episodes = PROBE_EPISODES
     steps_per_ep = n_steps // n_episodes
     beh_x, beh_y, beh_theta = [], [], []
     hidden_list = []
@@ -462,10 +494,10 @@ def run_goal_conditioned_probe(rnn, ctrl, reward_pos, n_steps=50000, save_dir=No
     act_flat = hidden_arr.reshape(-1)
     df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
     if save_dir is not None:
-        beh_path = os.path.join(save_dir, f"df_behavior_{period}.pkl")
-        act_path = os.path.join(save_dir, f"df_activations_{period}.pkl")
-        df_behavior.to_pickle(beh_path)
-        df_activations.to_pickle(act_path)
+        beh_path = os.path.join(save_dir, f"df_behavior_{period}.parquet")
+        act_path = os.path.join(save_dir, f"df_activations_{period}.parquet")
+        df_behavior.to_parquet(beh_path, index=False)
+        df_activations.to_parquet(act_path, index=False)
         print(f"  Saved behavior  : {beh_path}  ({len(df_behavior):,} rows)")
         print(f"  Saved activations: {act_path}  ({len(df_activations):,} rows)")
 
@@ -523,9 +555,9 @@ def collect_prediction_trajectory(rnn, period, n_steps=REPLAY_STEPS, save_dir=No
         "theta": np.array(beh_theta, dtype=np.float32),
     }
     if save_dir is not None:
-        df_behavior.to_pickle(os.path.join(save_dir, f"df_behavior_{period}.pkl"))
-        df_activations.to_pickle(os.path.join(save_dir, f"df_activations_{period}.pkl"))
-        save_pickle(os.path.join(save_dir, f"replay_traj_{period}.pkl"), traj)
+        df_behavior.to_parquet(os.path.join(save_dir, f"df_behavior_{period}.parquet"), index=False)
+        df_activations.to_parquet(os.path.join(save_dir, f"df_activations_{period}.parquet"), index=False)
+        save_pickle(os.path.join(save_dir, f"replay_traj_{period}.parquet"), traj)
         print(f"  Saved source behaviour/activations + raw trajectory '{period}' "
               f"(obs {traj['obs'].shape}, {n_steps:,} steps)")
 
@@ -560,8 +592,8 @@ def run_replay_probe(rnn, traj, period, save_dir=None):
     act_flat = hidden_arr.reshape(-1)
     df_activations = pd.DataFrame({"timestep": ts_repeated, "neuron_id": nid_tiled, "activity": act_flat})
     if save_dir is not None:
-        df_behavior.to_pickle(os.path.join(save_dir, f"df_behavior_{period}.pkl"))
-        df_activations.to_pickle(os.path.join(save_dir, f"df_activations_{period}.pkl"))
+        df_behavior.to_parquet(os.path.join(save_dir, f"df_behavior_{period}.parquet"), index=False)
+        df_activations.to_parquet(os.path.join(save_dir, f"df_activations_{period}.parquet"), index=False)
         print(f"  Saved replay behaviour/activations '{period}' ({n_steps:,} steps)")
 
     return df_behavior, df_activations
@@ -607,8 +639,8 @@ def compute_skaggs_report(df_behavior, df_activations, period, m=32,skaggs_thres
     print(f"  Cells >= {skaggs_threshold} (place cells) : {n_pass} / {n_neurons}")
 
     if save_dir is not None:
-        pkl_path = os.path.join(save_dir, f"df_skaggs_{period}.pkl")
-        df_skaggs.to_pickle(pkl_path)
+        pkl_path = os.path.join(save_dir, f"df_skaggs_{period}.parquet")
+        df_skaggs.to_parquet(pkl_path, index=False)
         print(f"  Saved: {pkl_path}")
     if figures_dir is not None:
         top_idx = df_skaggs.nlargest(n_top, "skaggs_score").index.values
@@ -655,7 +687,7 @@ def visualize_place_fields(rnn, title="Latent Space", save_path=None):
     b = torch.zeros(1, HIDDEN_DIM).to(device)
     positions, activations = [], []
 
-    for t in range(5000):
+    for t in range(DIAGNOSTIC_STEPS):
         obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
         action_idx = np.random.randint(8)
         act_vec = torch.zeros(1, 8).to(device)
@@ -811,7 +843,7 @@ def visualize_controller_fields(rnn, ctrl, title="Controller Latent Fields",goal
         goal_pos_fixed = grid_centers[goal_grid[0], goal_grid[1]]
 
     positions, activations = [], []
-    for t in range(5000):
+    for t in range(DIAGNOSTIC_STEPS):
         obs = torch.tensor(get_obs(), dtype=torch.float32).unsqueeze(0).to(device)
         action_idx = np.random.randint(8)
         act_vec = torch.zeros(1, 8).to(device)
@@ -1051,7 +1083,9 @@ save_checkpoint(
     reward_pred_head=reward_pred_head,
 )
 
-_beh_before, _act_before = run_probe_walk(rnn_model, period="before", n_steps=50000, save_dir=DATA_DIR)
+_beh_before, _act_before = run_probe_walk(
+    rnn_model, period="before", n_steps=BASELINE_PROBE_STEPS, save_dir=DATA_DIR
+)
 compute_skaggs_report(_beh_before, _act_before, period="before", save_dir=DATA_DIR, figures_dir=FIGURES_DIR)
 visualize_place_fields(
     rnn_model,
@@ -1066,7 +1100,7 @@ predictions, hidden_states = extract_hidden_activity_frozen_weights(rnn_model, o
 print(f"Predictions shape: {predictions.shape}")
 print(f"Hidden states shape: {hidden_states.shape}")
 save_pickle(
-    os.path.join(DATA_DIR, "hidden_states_phase1.pkl"),
+    os.path.join(DATA_DIR, "hidden_states_phase1.parquet"),
     {
         "seed": SEED,
         "predictions": predictions.numpy(),
@@ -1135,6 +1169,10 @@ for cycle in range(n_cycles):
         # true pre-rollout state, needed by the recompute below (fixes off-by-one)
         h_rollout_start = h.detach().clone()
         b_rollout_start = b.detach().clone()
+        # Online convention: h_t receives the action that led into the current
+        # state. This differs from the outgoing-action convention in Phase A
+        # and interleaved offline prediction batches; it is retained to
+        # reproduce the released cohorts and documented in the paper.
         hs, goals, actions, log_probs, rewards, values = [], [], [], [], [], []
         dones, obs_list, prev_acts, bs, next_obs_list, pos_list = [], [], [], [], [], []
         ep_reward = 0.0
@@ -1242,6 +1280,9 @@ for cycle in range(n_cycles):
             )
 
             pred_next_obs = torch.sigmoid(rnn_model.W_out(recomputed_hs))
+            # Historical online regularizer: next-observation MSE only. Phase A
+            # and interleaved offline training additionally apply the L1
+            # activity term; the Methods document this distinction.
             pred_loss = criterion(pred_next_obs, b_next_obs)
             total_loss = rl_loss + PRED_LOSS_WEIGHT * pred_loss
 
@@ -1285,7 +1326,7 @@ for cycle in range(n_cycles):
     # Intermediate probe: random walk
     print(f"\nCycle {cycle + 1}: Intermediate Probe")
     _beh_ic, _act_ic = run_probe_walk(
-        rnn_model, period=f"cycle_{cycle + 1}", n_steps=10000, save_dir=DATA_DIR
+        rnn_model, period=f"cycle_{cycle + 1}", n_steps=CYCLE_RANDOM_STEPS, save_dir=DATA_DIR
     )
     compute_skaggs_report(
         _beh_ic, _act_ic, period=f"cycle_{cycle + 1}",
@@ -1300,7 +1341,7 @@ for cycle in range(n_cycles):
     # Goal-directed probe
     _beh_gd, _act_gd = run_goal_conditioned_probe(
         rnn_model, controller, PROBE_REWARD_POS,
-        n_steps=5000, save_dir=DATA_DIR, period=f"cycle_{cycle + 1}_goal"
+        n_steps=CYCLE_GOAL_STEPS, save_dir=DATA_DIR, period=f"cycle_{cycle + 1}_goal"
     )
     compute_skaggs_report(
         _beh_gd, _act_gd, period=f"cycle_{cycle + 1}_goal",
@@ -1309,7 +1350,7 @@ for cycle in range(n_cycles):
     visualize_place_fields_goal_directed(
         rnn_model, controller, PROBE_REWARD_POS,
         title=f"Cycle {cycle + 1}: Cognitive Map (goal-directed)",
-        n_steps=5000,
+        n_steps=DIAGNOSTIC_STEPS,
         save_path=os.path.join(FIGURES_DIR, f"cycle_{cycle + 1}_goaldirected_map.png"),
     )
     # Generate data from current policy
@@ -1364,10 +1405,12 @@ visualize_controller_fields(
     save_path=os.path.join(FIGURES_DIR, "phase2_controller_latent_fields.png"),
 )
 
-_beh_after, _act_after = run_probe_walk(rnn_model, period="after", n_steps=50000, save_dir=DATA_DIR)
+_beh_after, _act_after = run_probe_walk(
+    rnn_model, period="after", n_steps=FINAL_PROBE_STEPS, save_dir=DATA_DIR
+)
 compute_skaggs_report(_beh_after, _act_after, period="after", save_dir=DATA_DIR, figures_dir=FIGURES_DIR)
 _beh_gc, _act_gc = run_goal_conditioned_probe(
-    rnn_model, controller, PROBE_REWARD_POS, n_steps=50000, save_dir=DATA_DIR
+    rnn_model, controller, PROBE_REWARD_POS, n_steps=FINAL_PROBE_STEPS, save_dir=DATA_DIR
 )
 compute_skaggs_report(_beh_gc, _act_gc, period="goal_conditioned", save_dir=DATA_DIR, figures_dir=FIGURES_DIR)
 #Learning Curves
@@ -1461,7 +1504,7 @@ predictions_final, hidden_states_final = extract_hidden_activity_frozen_weights(
 print(f"Final Predictions shape: {predictions_final.shape}")
 print(f"Final Hidden states shape: {hidden_states_final.shape}")
 save_pickle(
-    os.path.join(DATA_DIR, "hidden_states_final.pkl"),
+    os.path.join(DATA_DIR, "hidden_states_final.parquet"),
     {
         "seed": SEED,
         "predictions": predictions_final.numpy(),
@@ -1487,7 +1530,7 @@ for ax, t_goal, title in zip([ax1, ax2], test_goals, titles):
     ax.add_patch(Circle(t_goal, VISUAL_GOAL_R, color='gold', zorder=10))
     successes = 0
 
-    for i in range(15):
+    for i in range(TEST_EPISODES):
         [c.reset_history() for c in fov_cells_all]
         Ag.reset_history()
         coords = np.random.randint(2, m - 2, size=2)
@@ -1534,8 +1577,8 @@ for ax, t_goal, title in zip([ax1, ax2], test_goals, titles):
         ax.plot(path[:, 0], path[:, 1], color=color, linewidth=2, alpha=0.8)
         ax.scatter(path[0, 0], path[0, 1], color='blue', s=40)
 
-    test_success_rates.append(float(successes / 15.0))
-    ax.text(0.05, 0.95, f"Success: {successes}/15", transform=ax.transAxes,
+    test_success_rates.append(float(successes / TEST_EPISODES))
+    ax.text(0.05, 0.95, f"Success: {successes}/{TEST_EPISODES}", transform=ax.transAxes,
             fontsize=12, fontweight='bold')
 
 plt.tight_layout()
