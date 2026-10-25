@@ -30,13 +30,15 @@ manuscript. Both are checked against `main.tex`.
 | path | what it is | tracked? |
 |---|---|---|
 | `code/` | simulators, run drivers, analyses, figure generators and checks | yes |
-| `results/aggregate/` | compact cohort definitions and manuscript statistics | yes |
-| `results/multi_seed*/` | full simulation outputs; large files are regenerated locally | metadata only |
+| `results/aggregate/` and `results/*/aggregate/*.json` | compact cohort definitions and manuscript statistics | yes |
+| `results/multi_seed*/` | simulation outputs, checkpoints, learning curves and logs | no; regenerate locally |
 | `data/` | published-source inputs/caches and provenance for Krishnan 2022 and Sosa 2025 | yes, except raw NWB |
 | `context/` | figure provenance and maintenance notes | yes |
 | `paper_repo/` | separate Overleaf-synced manuscript repository | no in this repository |
 
-Raw checkpoints, per-timestep activity and downloaded NWB files are intentionally
-not distributed in git because they total hundreds of gigabytes. The run drivers
-recreate them with deterministic seed-indexed commands. Compact JSON summaries
-needed to audit the reported results are part of the publication package.
+Simulation outputs are not stored in git. This includes checkpoints, activity
+tables, per-run configuration and metrics, learning curves, logs, and derived
+cell tables. The run drivers recreate them with deterministic seed-indexed
+commands. Assembled figures under `code/figures/` are tracked. Compact JSON
+summaries needed to audit the reported results are also tracked. Downloaded
+Sosa NWB recordings are not distributed.

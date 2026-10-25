@@ -252,13 +252,14 @@ paper pipeline. Trees under `sandbox/` are archival and must not be used for
 manuscript regeneration. They predate fixes to arena object placement,
 peak/centre-of-mass analysis and matched-arm random-number seeding.
 
-Raw activity, checkpoints and diagnostic images are too large for git and are
-regenerated with the seed-indexed drivers above. The publication package must
-include the compact JSON files used by `verify_paper.py`; the gate fails
+The simulators regenerate checkpoints, activity tables, configuration files,
+metrics, learning curves and logs. None of those products is stored in git.
+Assembled figures under `code/figures/` are stored. The publication package
+also includes the compact JSON files used by `verify_paper.py`; the gate fails
 explicitly if any is missing. Dependency pins describe the tested
 analysis/figure environment. Historical training library versions were not
-fully recorded, so the released configs and random seeds are the strongest
-available training provenance and this limitation should not be overstated.
+fully recorded, so the released random seeds and run-driver arguments are the
+available training provenance.
 
 Each figure directory retains a local `utils.py` for compatibility with the
 original scripts. The orchestrator runs generators in separate processes so
