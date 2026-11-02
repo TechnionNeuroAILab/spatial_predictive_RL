@@ -1,6 +1,6 @@
-# spatial_predictive_RL
+# Reward changes the use and structure of predictive spatial maps
 
-Predictive-RNN place-cell model and reproduction pipeline for
+Model and reproduction pipeline for
 *Reward changes the use and structure of predictive spatial maps through
 distinct mechanisms* ([`paper_repo/main.tex`](paper_repo/main.tex)).
 
